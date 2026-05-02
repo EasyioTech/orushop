@@ -120,10 +120,11 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
               },
             ),
           ),
-        ),
+        ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildFilterChip(String label, String value) {
     final isSelected = _selectedFilter == value;

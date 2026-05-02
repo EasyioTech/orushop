@@ -180,10 +180,9 @@ class _KhataScreenState extends ConsumerState<KhataScreen>
                       ],
                     ),
         ),
-          ),
-        ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
+    ),
+    floatingActionButton: FloatingActionButton.extended(
         heroTag: 'khata_add_customer_fab',
         onPressed: () {
           HapticFeedback.mediumImpact();
