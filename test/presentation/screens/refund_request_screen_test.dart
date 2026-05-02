@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:retaildost/core/models/sale.dart';
-import 'package:retaildost/presentation/screens/refund_request_screen.dart';
+import 'package:orushops/core/models/sale.dart';
+import 'package:orushops/presentation/screens/refund_request_screen.dart';
 
 void main() {
   group('RefundRequestScreen', () {
@@ -129,3 +129,4 @@ void main() {
     });
   });
 }
+

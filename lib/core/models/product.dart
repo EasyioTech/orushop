@@ -6,6 +6,7 @@ class Product {
   final int quantity;
   final String category;
   final String? imageUrl;
+  final String? imagePath;
   final DateTime createdAt;
   final DateTime updatedAt;
   final int? liveBatchQuantity;
@@ -18,6 +19,7 @@ class Product {
     required this.quantity,
     required this.category,
     this.imageUrl,
+    this.imagePath,
     required this.createdAt,
     required this.updatedAt,
     this.liveBatchQuantity,
@@ -26,17 +28,21 @@ class Product {
   int get displayQuantity => liveBatchQuantity ?? quantity;
 
   Map<String, dynamic> toMap() {
-    return {
-      'id': id,
+    final map = {
       'name': name,
       'sku': sku,
       'price': price,
       'quantity': quantity,
       'category': category,
       'imageUrl': imageUrl,
+      'imagePath': imagePath,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
     };
+    if (id != 0) {
+      map['id'] = id;
+    }
+    return map;
   }
 
   factory Product.fromMap(Map<String, dynamic> map) {
@@ -48,6 +54,7 @@ class Product {
       quantity: map['quantity'] as int,
       category: map['category'] as String,
       imageUrl: map['imageUrl'] as String?,
+      imagePath: map['imagePath'] as String?,
       createdAt: DateTime.parse(map['createdAt'] as String),
       updatedAt: DateTime.parse(map['updatedAt'] as String),
       liveBatchQuantity: map['liveBatchQuantity'] as int?,
@@ -62,6 +69,7 @@ class Product {
     int? quantity,
     String? category,
     String? imageUrl,
+    String? imagePath,
     DateTime? createdAt,
     DateTime? updatedAt,
     int? liveBatchQuantity,
@@ -74,9 +82,11 @@ class Product {
       quantity: quantity ?? this.quantity,
       category: category ?? this.category,
       imageUrl: imageUrl ?? this.imageUrl,
+      imagePath: imagePath ?? this.imagePath,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       liveBatchQuantity: liveBatchQuantity ?? this.liveBatchQuantity,
     );
   }
 }
+

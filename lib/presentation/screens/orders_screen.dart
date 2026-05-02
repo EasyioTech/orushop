@@ -5,6 +5,8 @@ import '../../core/theme/app_theme.dart';
 import '../../providers/orders_provider.dart';
 import 'create_order_screen.dart';
 import 'receive_order_screen.dart';
+import '../../core/providers/connectivity_provider.dart';
+import '../../core/widgets/error_boundary.dart';
 
 class OrdersScreen extends ConsumerStatefulWidget {
   const OrdersScreen({super.key});
@@ -23,10 +25,13 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
         : _selectedFilter == 'pending'
             ? ref.watch(pendingOrdersProvider)
             : ref.watch(receivedOrdersProvider);
+    final isOffline = ref.watch(isOfflineProvider);
 
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
-      body: Column(
+      body: OfflineBanner(
+        isOffline: isOffline,
+        child: Column(
         children: [
           Container(
             width: double.infinity,
@@ -64,6 +69,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
                       ),
                     ),
                     FloatingActionButton.small(
+                      heroTag: 'orders_add_fab',
                       onPressed: () => Navigator.push(
                         context,
                         MaterialPageRoute(builder: (_) => const CreateOrderScreen()),
@@ -114,7 +120,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
               },
             ),
           ),
-        ],
+        ),
       ),
     );
   }
@@ -208,3 +214,4 @@ class _OrderCard extends StatelessWidget {
     );
   }
 }
+

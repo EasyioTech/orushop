@@ -14,7 +14,7 @@ class AnalyticsRepository {
       [startOfDay.toIso8601String(), endOfDay.toIso8601String()],
     );
 
-    final row = result.first;
+    final row = result.isNotEmpty ? result.first : {};
     return DailySalesTotal(
       total: (row['total'] as num?)?.toDouble() ?? 0.0,
       count: (row['count'] as int?) ?? 0,
@@ -164,10 +164,10 @@ class AnalyticsRepository {
   Future<List<DailySalesData>> getSalesTrend(DateTime start, DateTime end) async {
     final db = await _dbHelper.database;
     final result = await db.rawQuery(
-      'SELECT DATE(createdAt) as date, SUM(finalAmount) as total, COUNT(*) as count '
+      'SELECT date(createdAt) as date, SUM(finalAmount) as total, COUNT(*) as count '
       'FROM sales '
       'WHERE createdAt >= ? AND createdAt < ? '
-      'GROUP BY DATE(createdAt) '
+      'GROUP BY date(createdAt) '
       'ORDER BY date ASC',
       [start.toIso8601String(), end.add(const Duration(days: 1)).toIso8601String()],
     );
@@ -190,13 +190,14 @@ class AnalyticsRepository {
       [start.toIso8601String(), end.add(const Duration(days: 1)).toIso8601String()],
     );
 
-    final row = result.first;
+    final row = result.isNotEmpty ? result.first : {};
     final totalReturns = await db.rawQuery(
       'SELECT SUM(refundAmount) as refunded FROM returns WHERE createdAt >= ? AND createdAt < ?',
       [start.toIso8601String(), end.add(const Duration(days: 1)).toIso8601String()],
     );
 
-    final refunded = (totalReturns.first['refunded'] as num?)?.toDouble() ?? 0.0;
+    final refundRow = totalReturns.isNotEmpty ? totalReturns.first : {};
+    final refunded = (refundRow['refunded'] as num?)?.toDouble() ?? 0.0;
 
     return PeriodAnalytics(
       totalSales: (row['total'] as num?)?.toDouble() ?? 0.0,
@@ -356,3 +357,4 @@ class PaymentMethodBreakdown {
     required this.totalAmount,
   });
 }
+

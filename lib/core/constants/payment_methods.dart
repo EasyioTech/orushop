@@ -24,3 +24,4 @@ class SaleStatus {
 
   static const List<String> all = [pending, completed, cancelled];
 }
+

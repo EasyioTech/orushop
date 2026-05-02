@@ -21,3 +21,9 @@ final expiredBatchesProvider = FutureProvider<List<ProductBatch>>((ref) async {
   final repository = ref.watch(batchRepositoryProvider);
   return repository.getExpiredBatches();
 });
+
+final recentBatchesProvider = FutureProvider<List<ProductBatch>>((ref) async {
+  final repository = ref.watch(batchRepositoryProvider);
+  return repository.getAll();
+});
+

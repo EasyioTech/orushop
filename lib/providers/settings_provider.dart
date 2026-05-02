@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'shared_prefs_provider.dart';
 
 import '../core/models/app_settings.dart';
 import '../core/repositories/settings_repository.dart';
@@ -13,14 +13,12 @@ final settingsProvider = FutureProvider<AppSettings?>((ref) async {
   return repository.get();
 });
 
-final sharedPreferencesProvider = FutureProvider((ref) async {
-  return SharedPreferences.getInstance();
-});
+// Centralized sharedPreferencesProvider is now in shared_prefs_provider.dart
 
 final databaseHelperProvider = Provider((ref) => DatabaseHelper());
 
 final settingsServiceProvider = FutureProvider((ref) async {
-  final prefs = await ref.watch(sharedPreferencesProvider.future);
+  final prefs = ref.watch(sharedPreferencesProvider);
   final dbHelper = ref.watch(databaseHelperProvider);
   return SettingsService(prefs: prefs, dbHelper: dbHelper);
 });
@@ -99,3 +97,4 @@ final updateAnalyticsProvider = FutureProvider.family<void, bool>((ref, enabled)
   final settings = await ref.watch(settingsServiceProvider.future);
   await settings.setAnalyticsEnabled(enabled);
 });
+

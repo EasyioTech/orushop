@@ -746,3 +746,4 @@ class SaleDetailScreen extends ConsumerWidget {
   }
 }
 
+

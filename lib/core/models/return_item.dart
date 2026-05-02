@@ -1,4 +1,4 @@
-﻿class ReturnItem {
+class ReturnItem {
   final int id;
   final int returnId;
   final int saleItemId;
@@ -29,3 +29,4 @@
     );
   }
 }
+

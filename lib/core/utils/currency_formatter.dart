@@ -29,3 +29,4 @@ class CurrencyFormatter {
     return formatter.format(amount);
   }
 }
+

@@ -1,25 +1,41 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 
 import 'core/theme/app_theme.dart';
 import 'core/widgets/error_boundary.dart';
-import 'core/database/database_helper.dart';
-import 'core/models/product.dart';
-import 'presentation/screens/analytics_screen.dart';
+import 'core/services/auth_service.dart';
+import 'core/services/revenue_cat_service.dart';
+import 'core/database/seed_data.dart';
+import 'features/khata/screens/khata_screen.dart';
 import 'presentation/screens/cart_screen.dart';
 import 'presentation/screens/inventory_screen.dart';
 import 'presentation/screens/products_screen.dart';
-import 'presentation/screens/settings_screen.dart';
-import 'providers/cart_provider.dart' show initializeSharedPrefs, sharedPreferencesProvider;
+import 'presentation/screens/profile_screen.dart';
+import 'features/onboarding/screens/onboarding_flow_screen.dart';
+import 'features/auth/screens/login_screen.dart';
+import 'providers/shared_prefs_provider.dart';
+import 'providers/onboarding_provider.dart';
+import 'providers/navigation_provider.dart';
+import 'core/providers/connectivity_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  final prefs = await SharedPreferences.getInstance();
+
+  final results = await Future.wait([
+    Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    ),
+    SharedPreferences.getInstance(),
+  ]);
+
+  final prefs = results[1] as SharedPreferences;
   initializeSharedPrefs(prefs);
 
-  // Seed sample data if products table is empty
-  await _seedSampleDataIfEmpty();
+  await SeedData.seedProducts(force: false);
 
   runApp(
     ProviderScope(
@@ -31,41 +47,67 @@ void main() async {
   );
 }
 
-Future<void> _seedSampleDataIfEmpty() async {
-  final dbHelper = DatabaseHelper();
-  final db = await dbHelper.database;
+// Local seed logic removed in favor of SeedData service
 
-  final count = await db.rawQuery('SELECT COUNT(*) as count FROM products');
-  final productCount = (count.first['count'] as int?) ?? 0;
-
-  if (productCount == 0) {
-    final now = DateTime.now();
-    final sampleProducts = [
-      Product(id: 1, name: 'Apparel - Cotton T-Shirt', sku: 'APPL-001', price: 299, quantity: 50, category: 'Apparel', createdAt: now, updatedAt: now),
-      Product(id: 2, name: 'Electronics - USB Cable', sku: 'ELEC-001', price: 149, quantity: 100, category: 'Electronics', createdAt: now, updatedAt: now),
-      Product(id: 3, name: 'Accessories - Phone Case', sku: 'ACC-001', price: 199, quantity: 75, category: 'Accessories', createdAt: now, updatedAt: now),
-      Product(id: 4, name: 'Electronics - Power Bank', sku: 'ELEC-002', price: 899, quantity: 30, category: 'Electronics', createdAt: now, updatedAt: now),
-      Product(id: 5, name: 'Apparel - Jeans', sku: 'APPL-002', price: 1499, quantity: 25, category: 'Apparel', createdAt: now, updatedAt: now),
-      Product(id: 6, name: 'Home - LED Lamp', sku: 'HOME-001', price: 599, quantity: 40, category: 'Home', createdAt: now, updatedAt: now),
-      Product(id: 7, name: 'Sports - Water Bottle', sku: 'SPORT-001', price: 399, quantity: 60, category: 'Sports', createdAt: now, updatedAt: now),
-      Product(id: 8, name: 'Beauty - Face Wash', sku: 'BEAUTY-001', price: 249, quantity: 80, category: 'Beauty', createdAt: now, updatedAt: now),
-    ];
-
-    for (final product in sampleProducts) {
-      await db.insert('products', product.toMap());
-    }
-  }
-}
-
-class MyApp extends StatelessWidget {
+class MyApp extends ConsumerWidget {
   const MyApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final authState = ref.watch(authStateProvider);
+    final onboarding = ref.watch(onboardingProvider);
+
+    // If onboarding is not completed, we always show the onboarding flow.
+    // The onboarding flow itself handles the login/signup step.
+    if (!onboarding.isCompleted) {
+      return MaterialApp(
+        title: 'OruShops',
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.lightTheme,
+        home: const OnboardingFlowScreen(),
+        builder: (context, child) => ErrorBoundary(child: child!),
+      );
+    }
+
+    // If onboarding IS completed, we follow the standard auth flow.
     return MaterialApp(
-      title: 'RetailDost',
+      title: 'OruShops',
+      debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
-      home: const MyHomePage(),
+      home: authState.when(
+        data: (user) {
+          if (user == null) return const LoginScreen();
+          
+          // Initialize Subscriptions for the logged-in user
+          ref.read(revenueCatServiceProvider).initialize(user.uid);
+          
+          return const MyHomePage();
+        },
+        loading: () => const Scaffold(
+          body: Center(
+            child: CircularProgressIndicator(color: AppTheme.accentColor),
+          ),
+        ),
+        error: (e, _) => Scaffold(
+          body: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.error_outline_rounded, color: AppTheme.errorColor, size: 64),
+                const SizedBox(height: 16),
+                Text('Something went wrong', style: Theme.of(context).textTheme.headlineSmall),
+                const SizedBox(height: 8),
+                Text(e.toString(), style: TextStyle(color: AppTheme.textSecondary)),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: () => ref.invalidate(authStateProvider),
+                  child: const Text('Retry'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
       builder: (context, child) {
         return ErrorBoundary(child: child!);
       },
@@ -73,80 +115,180 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class MyHomePage extends StatefulWidget {
+
+class MyHomePage extends ConsumerStatefulWidget {
   const MyHomePage({super.key});
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  ConsumerState<MyHomePage> createState() => _MyHomePageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _selectedIndex = 0;
-
-  List<Widget> _buildScreens(BuildContext context) => [
-    const ProductsScreen(),
-    const CartScreen(),
-    const InventoryScreen(),
-    const AnalyticsScreen(),
-    const SettingsScreen(),
+class _MyHomePageState extends ConsumerState<MyHomePage> {
+  static const _navItems = [
+    _NavItem(label: 'Shop',      icon: Icons.storefront_outlined,  activeIcon: Icons.storefront_rounded),
+    _NavItem(label: 'Cart',      icon: Icons.shopping_cart_outlined, activeIcon: Icons.shopping_cart_rounded),
+    _NavItem(label: 'Stock',     icon: Icons.inventory_2_outlined,  activeIcon: Icons.inventory_2_rounded),
+    _NavItem(label: 'Khata',     icon: Icons.book_outlined,         activeIcon: Icons.book_rounded),
+    _NavItem(label: 'Profile',   icon: Icons.person_outline_rounded, activeIcon: Icons.person_rounded),
   ];
 
-  void _onNavBarTap(int index) {
-    setState(() => _selectedIndex = index);
+  List<Widget> _buildScreens() => const [
+    ProductsScreen(),
+    CartScreen(),
+    InventoryScreen(),
+    KhataScreen(),
+    ProfileScreen(),
+  ];
+
+  void _onNavTap(int index) {
+    HapticFeedback.selectionClick();
+    FocusManager.instance.primaryFocus?.unfocus();
+    ref.read(navigationIndexProvider.notifier).state = index;
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: _buildScreens(context)[_selectedIndex],
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, -5),
-            ),
-          ],
+    final selectedIndex = ref.watch(navigationIndexProvider);
+    final screens = _buildScreens();
+
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        if (selectedIndex != 0) {
+          ref.read(navigationIndexProvider.notifier).state = 0;
+        } else {
+          SystemNavigator.pop();
+        }
+      },
+      child: Scaffold(
+        body: _OfflineAwareBody(selectedIndex: selectedIndex, screens: screens),
+        bottomNavigationBar: _AppNavBar(
+          selectedIndex: selectedIndex,
+          items: _navItems,
+          onTap: _onNavTap,
         ),
-        child: BottomNavigationBar(
-          currentIndex: _selectedIndex,
-          onTap: _onNavBarTap,
-          selectedItemColor: AppTheme.primaryColor,
-          unselectedItemColor: AppTheme.textSecondary,
-          selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-          unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 12),
-          type: BottomNavigationBarType.fixed,
-          backgroundColor: Colors.white,
-          elevation: 0,
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.shopping_bag_outlined),
-              activeIcon: Icon(Icons.shopping_bag),
-              label: 'Shop',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.shopping_cart_outlined),
-              activeIcon: Icon(Icons.shopping_cart),
-              label: 'Cart',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.inventory_2_outlined),
-              activeIcon: Icon(Icons.inventory_2),
-              label: 'Inventory',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.analytics_outlined),
-              activeIcon: Icon(Icons.analytics),
-              label: 'Analytics',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.settings_outlined),
-              activeIcon: Icon(Icons.settings),
-              label: 'Settings',
-            ),
-          ],
+      ),
+    );
+  }
+}
+
+class _OfflineAwareBody extends ConsumerWidget {
+  final int selectedIndex;
+  final List<Widget> screens;
+
+  const _OfflineAwareBody({required this.selectedIndex, required this.screens});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isOffline = ref.watch(isOfflineProvider);
+    return OfflineBanner(
+      isOffline: isOffline,
+      child: IndexedStack(index: selectedIndex, children: screens),
+    );
+  }
+}
+
+// ── Nav data ─────────────────────────────────────────────────────────────────
+
+class _NavItem {
+  final String label;
+  final IconData icon;
+  final IconData activeIcon;
+  const _NavItem({required this.label, required this.icon, required this.activeIcon});
+}
+
+// ── Custom bottom nav ─────────────────────────────────────────────────────────
+
+class _AppNavBar extends StatelessWidget {
+  final int selectedIndex;
+  final List<_NavItem> items;
+  final ValueChanged<int> onTap;
+
+  const _AppNavBar({
+    required this.selectedIndex,
+    required this.items,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(
+          top: BorderSide(color: const Color(0xFFE2E8F0), width: 1),
         ),
+      ),
+      child: Padding(
+        padding: EdgeInsets.only(bottom: bottomPadding),
+        child: SizedBox(
+          height: 60,
+          child: Row(
+            children: List.generate(items.length, (i) {
+              final item = items[i];
+              final active = i == selectedIndex;
+              return Expanded(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => onTap(i),
+                  child: _NavBarItem(item: item, active: active),
+                ),
+              );
+            }),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _NavBarItem extends StatelessWidget {
+  final _NavItem item;
+  final bool active;
+
+  const _NavBarItem({required this.item, required this.active});
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 160),
+      curve: Curves.easeOut,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 160),
+            child: Icon(
+              active ? item.activeIcon : item.icon,
+              key: ValueKey(active),
+              size: 22,
+              color: active ? AppTheme.primaryColor : const Color(0xFF94A3B8),
+            ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            item.label,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+              color: active ? AppTheme.primaryColor : const Color(0xFF94A3B8),
+              letterSpacing: 0.2,
+            ),
+          ),
+          const SizedBox(height: 4),
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            width: active ? 18 : 0,
+            height: 2,
+            decoration: BoxDecoration(
+              color: AppTheme.accentColor,
+              borderRadius: BorderRadius.circular(1),
+            ),
+          ),
+        ],
       ),
     );
   }

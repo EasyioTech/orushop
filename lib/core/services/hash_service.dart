@@ -22,3 +22,4 @@ class HashService {
     return '{$pairs}';
   }
 }
+

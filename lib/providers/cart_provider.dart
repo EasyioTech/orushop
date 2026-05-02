@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import 'shared_prefs_provider.dart';
 
 import '../core/models/cart_item.dart';
 import '../core/services/cart_service.dart';
@@ -66,15 +67,7 @@ class CartStateNotifier extends StateNotifier<List<CartItem>> {
 
 final cartServiceProvider = Provider((ref) => CartService());
 
-late SharedPreferences _sharedPrefsInstance;
-
-void initializeSharedPrefs(SharedPreferences prefs) {
-  _sharedPrefsInstance = prefs;
-}
-
-final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
-  return _sharedPrefsInstance;
-});
+// Centralized sharedPreferencesProvider is now in shared_prefs_provider.dart
 
 final cartProvider = StateNotifierProvider<CartStateNotifier, List<CartItem>>(
   (ref) {
@@ -97,3 +90,4 @@ final cartTotalQuantityProvider = Provider<int>((ref) {
   final items = ref.watch(cartProvider);
   return items.fold(0, (sum, item) => sum + item.quantity);
 });
+

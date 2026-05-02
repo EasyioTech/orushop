@@ -6,7 +6,7 @@ class ReceiptGenerator {
   static String generateReceipt({
     required Sale sale,
     required List<SaleItem> items,
-    String? storeName = 'RetailDost',
+    String? storeName = 'OruShops',
     String? storePhone,
   }) {
     final buffer = StringBuffer();
@@ -52,3 +52,4 @@ class ReceiptGenerator {
     return '${dateTime.day}/${dateTime.month}/${dateTime.year} ${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
   }
 }
+

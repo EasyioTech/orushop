@@ -1,21 +1,26 @@
 import '../database/database_helper.dart';
+import '../database/table_constants.dart';
+import '../exceptions/backend_exception.dart';
 import '../models/sale.dart';
 import '../models/sale_item.dart';
-import 'batch_repository.dart';
+import '../models/cart_item.dart';
+import '../models/product_batch.dart';
+import 'package:sqflite/sqflite.dart';
+import 'package:flutter/foundation.dart';
 
 class SaleRepository {
   final DatabaseHelper _dbHelper = DatabaseHelper();
-  final BatchRepository _batchRepository = BatchRepository();
 
   Future<int> create(Sale sale) async {
     final db = await _dbHelper.database;
-    return db.insert('sales', sale.toMap());
+    final map = sale.toMap()..remove('id');
+    return db.insert(TableConstants.sales, map);
   }
 
   Future<Sale?> getById(int id) async {
     final db = await _dbHelper.database;
     final result = await db.query(
-      'sales',
+      TableConstants.sales,
       where: 'id = ?',
       whereArgs: [id],
     );
@@ -26,7 +31,7 @@ class SaleRepository {
   Future<List<Sale>> getAll({int limit = 100, int offset = 0}) async {
     final db = await _dbHelper.database;
     final result = await db.query(
-      'sales',
+      TableConstants.sales,
       orderBy: 'createdAt DESC',
       limit: limit,
       offset: offset,
@@ -37,7 +42,7 @@ class SaleRepository {
   Future<List<Sale>> getByDateRange(DateTime start, DateTime end) async {
     final db = await _dbHelper.database;
     final result = await db.query(
-      'sales',
+      TableConstants.sales,
       where: 'createdAt BETWEEN ? AND ?',
       whereArgs: [start.toIso8601String(), end.toIso8601String()],
       orderBy: 'createdAt DESC',
@@ -48,7 +53,7 @@ class SaleRepository {
   Future<List<Sale>> getByStatus(String status) async {
     final db = await _dbHelper.database;
     final result = await db.query(
-      'sales',
+      TableConstants.sales,
       where: 'status = ?',
       whereArgs: [status],
       orderBy: 'createdAt DESC',
@@ -59,42 +64,44 @@ class SaleRepository {
   Future<double> getTotalSalesAmount(DateTime start, DateTime end) async {
     final db = await _dbHelper.database;
     final result = await db.rawQuery(
-      'SELECT SUM(finalAmount) as total FROM sales WHERE createdAt BETWEEN ? AND ?',
+      'SELECT SUM(finalAmount) as total FROM ${TableConstants.sales} WHERE createdAt BETWEEN ? AND ?',
       [start.toIso8601String(), end.toIso8601String()],
     );
-    final total = result.first['total'] as double?;
+    final row = result.isNotEmpty ? result.first : {};
+    final total = row['total'] as double?;
     return total ?? 0.0;
   }
 
   Future<int> getSalesCount(DateTime start, DateTime end) async {
     final db = await _dbHelper.database;
     final result = await db.rawQuery(
-      'SELECT COUNT(*) as count FROM sales WHERE createdAt BETWEEN ? AND ?',
+      'SELECT COUNT(*) as count FROM ${TableConstants.sales} WHERE createdAt BETWEEN ? AND ?',
       [start.toIso8601String(), end.toIso8601String()],
     );
-    final count = result.first['count'] as int?;
+    final row = result.isNotEmpty ? result.first : {};
+    final count = row['count'] as int?;
     return count ?? 0;
   }
 
   Future<int> update(Sale sale) async {
     final db = await _dbHelper.database;
     return db.update(
-      'sales',
+      TableConstants.sales,
       sale.toMap(),
       where: 'id = ?',
       whereArgs: [sale.id],
     );
   }
 
-  Future<int> addItem(SaleItem item) async {
-    final db = await _dbHelper.database;
-    return db.insert('sale_items', item.toMap());
+  Future<int> addItem(Transaction txn, SaleItem item) async {
+    final map = item.toMap()..remove('id');
+    return txn.insert(TableConstants.saleItems, map);
   }
 
   Future<List<SaleItem>> getSaleItems(int saleId) async {
     final db = await _dbHelper.database;
     final result = await db.query(
-      'sale_items',
+      TableConstants.saleItems,
       where: 'saleId = ?',
       whereArgs: [saleId],
     );
@@ -104,43 +111,102 @@ class SaleRepository {
   Future<double> getAverageSalesValue(DateTime start, DateTime end) async {
     final db = await _dbHelper.database;
     final result = await db.rawQuery(
-      'SELECT AVG(finalAmount) as average FROM sales WHERE createdAt BETWEEN ? AND ?',
+      'SELECT AVG(finalAmount) as average FROM ${TableConstants.sales} WHERE createdAt BETWEEN ? AND ?',
       [start.toIso8601String(), end.toIso8601String()],
     );
     final average = result.first['average'] as double?;
     return average ?? 0.0;
   }
 
-  Future<List<int>> deductFIFO(int productId, int quantity) async {
+  Future<Map<String, dynamic>> processCompleteSale({
+    required Sale sale,
+    required List<CartItem> items,
+  }) async {
     final db = await _dbHelper.database;
-    final batches = await _batchRepository.getAvailableBatches(productId);
 
-    if (batches.isEmpty) {
-      throw Exception('No available batches for product $productId');
+    try {
+      return await db.transaction((txn) async {
+        debugPrint('SaleRepository: Starting transaction for ${items.length} items');
+
+        // 1. Create Sale record
+        final saleMap = sale.toMap()..remove('id');
+        final saleId = await txn.insert(TableConstants.sales, saleMap);
+        final saleWithId = sale.copyWith(id: saleId);
+
+        final List<SaleItem> processedItems = [];
+
+        // 2. Process each item
+        for (final item in items) {
+          // Fetch batches inside transaction with a row-level lock (implicit in txn)
+          final List<Map<String, dynamic>> batchMaps = await txn.query(
+            TableConstants.productBatches,
+            where: 'productId = ? AND quantity > 0',
+            whereArgs: [item.productId],
+            orderBy: 'expiryDate ASC', // FIFO logic
+          );
+
+          final batches = batchMaps.map((m) => ProductBatch.fromMap(m)).toList();
+
+          // Strict Stock Validation
+          final totalAvailable = batches.fold<int>(0, (sum, b) => sum + b.quantity);
+          if (totalAvailable < item.quantity) {
+            throw InsufficientStockException(item.productName, item.quantity, totalAvailable);
+          }
+
+          final usedBatchIds = <int>[];
+          var remainingQty = item.quantity;
+
+          // 3. Deduct from batches (FIFO)
+          for (final batch in batches) {
+            if (remainingQty <= 0) break;
+
+            final deductQty = remainingQty > batch.quantity ? batch.quantity : remainingQty;
+            
+            final count = await txn.rawUpdate(
+              'UPDATE ${TableConstants.productBatches} SET quantity = quantity - ? WHERE id = ? AND quantity >= ?',
+              [deductQty, batch.id, deductQty],
+            );
+
+            if (count == 0) {
+              throw TransactionException('Race condition detected for batch ${batch.id}. Stock was modified externally.');
+            }
+
+            usedBatchIds.add(batch.id);
+            remainingQty -= deductQty;
+          }
+
+          // 4. Update summary quantity in products table for fast lookups
+          await txn.rawUpdate(
+            'UPDATE ${TableConstants.products} SET quantity = quantity - ? WHERE id = ?',
+            [item.quantity, item.productId],
+          );
+
+          // 5. Create Sale Item record
+          final saleItem = SaleItem(
+            id: 0,
+            saleId: saleId,
+            productId: item.productId,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice.toDouble(),
+            totalPrice: (item.quantity * item.unitPrice).toDouble(),
+            batchIds: usedBatchIds,
+          );
+
+          final saleItemId = await addItem(txn, saleItem);
+          processedItems.add(saleItem.copyWith(id: saleItemId));
+        }
+
+        debugPrint('SaleRepository: Transaction successful. Sale ID: $saleId');
+        return {
+          'sale': saleWithId,
+          'items': processedItems,
+        };
+      });
+    } catch (e) {
+      debugPrint('SaleRepository: Transaction failed: $e');
+      if (e is BackendException) rethrow;
+      throw TransactionException('Failed to process sale: $e');
     }
-
-    final totalAvailable = batches.fold<int>(0, (sum, b) => sum + b.quantity);
-    if (totalAvailable < quantity) {
-      throw Exception('Insufficient stock. Required: $quantity, Available: $totalAvailable');
-    }
-
-    final usedBatchIds = <int>[];
-    var remainingQty = quantity;
-
-    await db.transaction((txn) async {
-      for (final batch in batches) {
-        if (remainingQty <= 0) break;
-
-        final deductQty = remainingQty > batch.quantity ? batch.quantity : remainingQty;
-        await txn.rawUpdate(
-          'UPDATE product_batches SET quantity = quantity - ? WHERE id = ?',
-          [deductQty, batch.id],
-        );
-        usedBatchIds.add(batch.id);
-        remainingQty -= deductQty;
-      }
-    });
-
-    return usedBatchIds;
   }
 }
+

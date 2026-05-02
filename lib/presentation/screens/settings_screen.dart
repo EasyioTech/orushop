@@ -4,7 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../providers/settings_provider.dart';
 import 'sync_backup_screen.dart';
+import 'orders_screen.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/database/database_helper.dart';
+import 'package:orushops/providers/products_provider.dart';
+import '../../core/repositories/owner_repository.dart';
+import '../../core/repositories/owner_provider.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -12,6 +17,7 @@ class SettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final settingsAsync = ref.watch(settingsProvider);
+    final ownerDetailsAsync = ref.watch(ownerDetailsStreamProvider);
 
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
@@ -27,7 +33,6 @@ class SettingsScreen extends ConsumerWidget {
             physics: const AlwaysScrollableScrollPhysics(),
             child: Column(
               children: [
-                // 1. Branded Header Section with Gradient
                 Container(
                   width: double.infinity,
                   decoration: BoxDecoration(
@@ -78,128 +83,252 @@ class SettingsScreen extends ConsumerWidget {
                     ],
                   ),
                 ),
-              _SettingsSection(
-                title: 'Store',
-                children: [
-                  _SettingsTile(
-                    title: 'Store Name',
-                    subtitle: settings?.storeName ?? 'Not set',
-                    trailing: true,
-                  ),
-                  _SettingsTile(
-                    title: 'Phone',
-                    subtitle: settings?.storePhone ?? 'Not set',
-                    trailing: true,
-                  ),
-                  _SettingsTile(
-                    title: 'Address',
-                    subtitle: settings?.storeAddress ?? 'Not set',
-                    trailing: true,
-                  ),
-                ],
-              ),
-              _SettingsSection(
-                title: 'Sales Settings',
-                children: [
-                  _SwitchTile(
-                    title: 'Enable Discounts',
-                    subtitle: 'Allow manual discounts on sales',
-                    value: settings?.enableDiscounts ?? false,
-                    onChanged: (value) {},
-                  ),
-                  _SwitchTile(
-                    title: 'Enable UPI',
-                    subtitle: 'Accept UPI payments',
-                    value: settings?.enableUpi ?? false,
-                    onChanged: (value) {},
-                  ),
-                  _SettingsTile(
-                    title: 'Default Discount',
-                    subtitle: '${settings?.defaultDiscountPercent.toInt() ?? 0}% off',
-                    trailing: true,
-                  ),
-                ],
-              ),
-              _SettingsSection(
-                title: 'Data',
-                children: [
-                  _SettingsTile(
-                    title: 'Sync & Backup',
-                    subtitle: 'Cloud sync and backup management',
-                    trailing: true,
-                    onTap: () {
-                      Navigator.push(
+                // Store Settings
+                _SettingsSection(
+                  title: 'Store Information',
+                  children: [
+                    _EditableSettingTile(
+                      icon: Icons.store_rounded,
+                      label: 'Store Name',
+                      value: ownerDetailsAsync.value?['storeName'] ?? 'Not set',
+                      onEdit: () => _showEditDialog(
                         context,
-                        MaterialPageRoute(
-                          builder: (_) => const SyncBackupScreen(),
-                        ),
-                      );
-                    },
-                  ),
-                  _SettingsTile(
-                    title: 'Export Sales',
-                    subtitle: 'Download sales data as CSV',
-                    trailing: true,
-                    onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Exporting sales data...')),
-                      );
-                    },
-                  ),
-                ],
-              ),
-              _SettingsSection(
-                title: 'App',
-                children: [
-                  _SettingsTile(
-                    title: 'App Version',
-                    subtitle: '1.0.0',
-                    trailing: true,
-                  ),
-                  _ClearCacheTile(ref: ref),
-                  _ClearDataTile(ref: ref),
-                ],
-              ),
-              _SettingsSection(
-                title: 'About',
-                children: [
-                  _SettingsTile(
-                    title: 'About RetailDost',
-                    subtitle: 'POS System for Retail',
-                    trailing: true,
-                  ),
-                  _SettingsTile(
-                    title: 'Help & Support',
-                    subtitle: 'Contact support team',
-                    trailing: true,
-                    onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Support: support@retaildost.com')),
-                      );
-                    },
-                  ),
-                ],
-              ),
-              const SizedBox(height: 32),
-            ],
+                        ref,
+                        'Store Name',
+                        ownerDetailsAsync.value?['storeName'] ?? '',
+                        (value) => OwnerRepository().updateStoreName(value),
+                      ),
+                    ),
+                    _EditableSettingTile(
+                      icon: Icons.phone_rounded,
+                      label: 'Phone',
+                      value: ownerDetailsAsync.value?['storePhone'] ?? 'Not set',
+                      onEdit: () => _showEditDialog(
+                        context,
+                        ref,
+                        'Phone Number',
+                        ownerDetailsAsync.value?['storePhone'] ?? '',
+                        (value) => OwnerRepository().updateStorePhone(value),
+                      ),
+                    ),
+                    _EditableSettingTile(
+                      icon: Icons.location_on_rounded,
+                      label: 'Address',
+                      value: ownerDetailsAsync.value?['storeAddress'] ?? 'Not set',
+                      onEdit: () => _showEditDialog(
+                        context,
+                        ref,
+                        'Address',
+                        ownerDetailsAsync.value?['storeAddress'] ?? '',
+                        (value) => OwnerRepository().updateStoreAddress(value),
+                      ),
+                    ),
+                  ],
+                ),
+                // Sales Settings
+                _SettingsSection(
+                  title: 'Sales & Payments',
+                  children: [
+                    _ToggleSettingTile(
+                      icon: Icons.payment_rounded,
+                      label: 'Enable UPI',
+                      subtitle: 'Accept UPI payments',
+                      value: ownerDetailsAsync.value?['enableUpi'] ?? false,
+                      onChanged: (value) async {
+                        try {
+                          await OwnerRepository().updateEnableUpi(value);
+                          ref.invalidate(ownerDetailsStreamProvider);
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  value ? 'UPI enabled' : 'UPI disabled',
+                                ),
+                                duration: const Duration(seconds: 1),
+                              ),
+                            );
+                          }
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Error: $e'),
+                                backgroundColor: AppTheme.errorColor,
+                              ),
+                            );
+                          }
+                        }
+                      },
+                    ),
+                  ],
+                ),
+                // Procurement
+                _SettingsSection(
+                  title: 'Procurement',
+                  children: [
+                    _ActionButton(
+                      icon: Icons.shopping_cart_checkout_rounded,
+                      label: 'Purchase Orders',
+                      subtitle: 'Create and manage supplier orders',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const OrdersScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+                // Data Management
+                _SettingsSection(
+                  title: 'Data Management',
+                  children: [
+                    _SeedCatalogButton(ref: ref),
+                    _ActionButton(
+                      icon: Icons.cloud_sync_rounded,
+                      label: 'Sync & Backup',
+                      subtitle: 'Cloud sync and backup management',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const SyncBackupScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    _ActionButton(
+                      icon: Icons.download_rounded,
+                      label: 'Export Sales',
+                      subtitle: 'Download sales data as CSV',
+                      onTap: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Exporting sales data...'),
+                            duration: Duration(seconds: 2),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+                // App Management
+                _SettingsSection(
+                  title: 'App Management',
+                  children: [
+                    _InfoButton(
+                      icon: Icons.info_rounded,
+                      label: 'App Version',
+                      value: '1.0.0',
+                    ),
+                    _ClearCacheButton(ref: ref),
+                    _ClearDataButton(ref: ref),
+                  ],
+                ),
+                // About
+                _SettingsSection(
+                  title: 'About',
+                  children: [
+                    _InfoButton(
+                      icon: Icons.store_rounded,
+                      label: 'About OruShops',
+                      value: 'Retail POS System',
+                    ),
+                    _ActionButton(
+                      icon: Icons.help_rounded,
+                      label: 'Help & Support',
+                      subtitle: 'Contact support team',
+                      onTap: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Support: support@OruShops.com'),
+                            duration: Duration(seconds: 2),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 32),
+              ],
+            ),
           ),
-        ),
-        loading: () => const Center(
-          child: Padding(
-            padding: EdgeInsets.all(40),
-            child: CircularProgressIndicator(),
+          loading: () => const Center(
+            child: Padding(
+              padding: EdgeInsets.all(40),
+              child: CircularProgressIndicator(),
+            ),
           ),
-        ),
-        error: (err, _) => Center(
-          child: Padding(
-            padding: const EdgeInsets.all(40),
-            child: Text('Error: $err'),
+          error: (err, _) => Center(
+            child: Padding(
+              padding: const EdgeInsets.all(40),
+              child: Text('Error: $err'),
+            ),
           ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
+
+  void _showEditDialog(
+    BuildContext context,
+    WidgetRef ref,
+    String title,
+    String initialValue,
+    Future<void> Function(String) onSave,
+  ) {
+    final controller = TextEditingController(text: initialValue);
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Edit $title'),
+        content: TextField(
+          controller: controller,
+          autofocus: false,
+          decoration: InputDecoration(
+            hintText: 'Enter $title',
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              try {
+                await onSave(controller.text);
+                ref.invalidate(ownerDetailsStreamProvider);
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('$title updated successfully'),
+                      backgroundColor: AppTheme.successColor,
+                      duration: const Duration(seconds: 1),
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Error: $e'),
+                      backgroundColor: AppTheme.errorColor,
+                    ),
+                  );
+                }
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _SettingsSection extends StatelessWidget {
@@ -234,26 +363,26 @@ class _SettingsSection extends StatelessWidget {
   }
 }
 
-class _SettingsTile extends StatelessWidget {
-  final String title;
-  final String subtitle;
-  final bool trailing;
-  final VoidCallback? onTap;
+class _EditableSettingTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final VoidCallback onEdit;
 
-  const _SettingsTile({
-    required this.title,
-    required this.subtitle,
-    this.trailing = false,
-    this.onTap,
+  const _EditableSettingTile({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.onEdit,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.02),
@@ -262,26 +391,59 @@ class _SettingsTile extends StatelessWidget {
           ),
         ],
       ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
-        subtitle: Text(subtitle, style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
-        trailing: trailing ? Icon(Icons.chevron_right_rounded, color: AppTheme.textSecondary.withValues(alpha: 0.5)) : null,
-        onTap: onTap,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          children: [
+            Icon(icon, color: AppTheme.primaryColor, size: 24),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                      color: AppTheme.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    value,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppTheme.textSecondary,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.edit_rounded, size: 20),
+              onPressed: onEdit,
+              color: AppTheme.primaryColor,
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-class _SwitchTile extends StatelessWidget {
-  final String title;
+class _ToggleSettingTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
   final String subtitle;
   final bool value;
   final ValueChanged<bool> onChanged;
 
-  const _SwitchTile({
-    required this.title,
+  const _ToggleSettingTile({
+    required this.icon,
+    required this.label,
     required this.subtitle,
     required this.value,
     required this.onChanged,
@@ -289,35 +451,254 @@ class _SwitchTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      child: ListTile(
-        title: Text(title),
-        subtitle: Text(subtitle),
-        trailing: Switch(value: value, onChanged: onChanged),
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          children: [
+            Icon(icon, color: AppTheme.primaryColor, size: 24),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                      color: AppTheme.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppTheme.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Switch(
+              value: value,
+              onChanged: onChanged,
+              activeThumbColor: AppTheme.primaryColor,
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-class _ClearCacheTile extends ConsumerWidget {
+class _ActionButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  const _ActionButton({
+    required this.icon,
+    required this.label,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              children: [
+                Icon(icon, color: AppTheme.primaryColor, size: 24),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        label,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                          color: AppTheme.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        subtitle,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppTheme.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: AppTheme.textSecondary.withValues(alpha: 0.5),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _InfoButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+
+  const _InfoButton({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          children: [
+            Icon(icon, color: AppTheme.primaryColor, size: 24),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                      color: AppTheme.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    value,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppTheme.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ClearCacheButton extends ConsumerWidget {
   final WidgetRef ref;
 
-  const _ClearCacheTile({required this.ref});
+  const _ClearCacheButton({required this.ref});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      child: ListTile(
-        title: const Text('Clear Cache'),
-        subtitle: const Text('Remove cached data'),
-        onTap: () => _clearCache(context, ref),
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.orange.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.orange.withValues(alpha: 0.2)),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _showClearDialog(context, ref),
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              children: [
+                Icon(Icons.cleaning_services_rounded, color: Colors.orange, size: 24),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Clear Cache',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                          color: AppTheme.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Remove cached data',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppTheme.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
 
-  Future<void> _clearCache(BuildContext context, WidgetRef ref) async {
+  void _showClearDialog(BuildContext context, WidgetRef ref) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -328,11 +709,12 @@ class _ClearCacheTile extends ConsumerWidget {
             onPressed: () => Navigator.pop(context),
             child: const Text('Cancel'),
           ),
-          TextButton(
+          FilledButton(
             onPressed: () {
               Navigator.pop(context);
               _performClearCache(context, ref);
             },
+            style: FilledButton.styleFrom(backgroundColor: Colors.orange),
             child: const Text('Clear'),
           ),
         ],
@@ -352,6 +734,7 @@ class _ClearCacheTile extends ConsumerWidget {
         const SnackBar(
           content: Text('Cache cleared successfully'),
           backgroundColor: AppTheme.successColor,
+          duration: Duration(seconds: 1),
         ),
       );
       await Future.microtask(() => ref.refresh(cacheSizeProvider));
@@ -366,28 +749,63 @@ class _ClearCacheTile extends ConsumerWidget {
   }
 }
 
-class _ClearDataTile extends ConsumerWidget {
+class _ClearDataButton extends ConsumerWidget {
   final WidgetRef ref;
 
-  const _ClearDataTile({required this.ref});
+  const _ClearDataButton({required this.ref});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      color: AppTheme.errorColor.withValues(alpha: 0.05),
-      child: ListTile(
-        title: Text(
-          'Clear All Data',
-          style: TextStyle(color: AppTheme.errorColor, fontWeight: FontWeight.bold),
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppTheme.errorColor.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.errorColor.withValues(alpha: 0.2)),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _showClearDialog(context, ref),
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              children: [
+                Icon(Icons.delete_sweep_rounded, color: AppTheme.errorColor, size: 24),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Clear All Data',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                          color: AppTheme.errorColor,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        'Reset app to default state',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppTheme.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
-        subtitle: const Text('Reset app to default state'),
-        onTap: () => _clearData(context, ref),
       ),
     );
   }
 
-  Future<void> _clearData(BuildContext context, WidgetRef ref) async {
+  void _showClearDialog(BuildContext context, WidgetRef ref) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -398,12 +816,13 @@ class _ClearDataTile extends ConsumerWidget {
             onPressed: () => Navigator.pop(context),
             child: const Text('Cancel'),
           ),
-          TextButton(
+          FilledButton(
             onPressed: () {
               Navigator.pop(context);
               _performClearData(context, ref);
             },
-            child: const Text('Clear', style: TextStyle(color: AppTheme.errorColor)),
+            style: FilledButton.styleFrom(backgroundColor: AppTheme.errorColor),
+            child: const Text('Clear'),
           ),
         ],
       ),
@@ -422,12 +841,113 @@ class _ClearDataTile extends ConsumerWidget {
         const SnackBar(
           content: Text('All data cleared'),
           backgroundColor: AppTheme.errorColor,
+          duration: Duration(seconds: 1),
         ),
       );
     } catch (e) {
       scaffold.showSnackBar(
         SnackBar(
           content: Text('Error: $e'),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
+    }
+  }
+}
+
+class _SeedCatalogButton extends ConsumerWidget {
+  final WidgetRef ref;
+
+  const _SeedCatalogButton({required this.ref});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppTheme.primaryColor.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.2)),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _showSeedDialog(context, ref),
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              children: [
+                Icon(Icons.auto_awesome_rounded, color: AppTheme.primaryColor, size: 24),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        "Seed Real Products",
+                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        "Replace all items with the real India catalog",
+                        style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showSeedDialog(BuildContext context, WidgetRef ref) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Seed Real Catalog?"),
+        content: const Text(
+          "This will REMOVE all current products and sales data, and replace them with the standardized Indian retail catalog with real images and prices.",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _performSeed(context, ref);
+            },
+            child: const Text("Wipe & Seed"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _performSeed(BuildContext context, WidgetRef ref) async {
+    final scaffold = ScaffoldMessenger.of(context);
+    scaffold.showSnackBar(const SnackBar(content: Text("Seeding catalog data...")));
+
+    try {
+      await DatabaseHelper().seedDatabase();
+      ref.invalidate(productsProvider);
+
+      scaffold.showSnackBar(
+        const SnackBar(
+          content: Text("Catalog seeded successfully!"),
+          backgroundColor: AppTheme.successColor,
+          duration: Duration(seconds: 1),
+        ),
+      );
+    } catch (e) {
+      scaffold.showSnackBar(
+        SnackBar(
+          content: Text("Error: $e"),
           backgroundColor: AppTheme.errorColor,
         ),
       );

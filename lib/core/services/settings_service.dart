@@ -96,3 +96,4 @@ class SettingsService {
     await prefs.setBool('analytics_enabled', enabled);
   }
 }
+

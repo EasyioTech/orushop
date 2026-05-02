@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:retaildost/core/services/settings_service.dart';
-import 'package:retaildost/core/database/database_helper.dart';
+import 'package:orushops/core/services/settings_service.dart';
+import 'package:orushops/core/database/database_helper.dart';
 
 class MockSharedPreferences extends Mock implements SharedPreferences {}
 
@@ -138,3 +138,4 @@ void main() {
     });
   });
 }
+

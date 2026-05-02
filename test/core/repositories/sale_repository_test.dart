@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:retaildost/core/models/sale.dart';
-import 'package:retaildost/core/repositories/sale_repository.dart';
+import 'package:orushops/core/models/sale.dart';
+import 'package:orushops/core/repositories/sale_repository.dart';
 
 void main() {
   group('SaleRepository', () {
@@ -116,3 +116,4 @@ void main() {
     });
   });
 }
+

@@ -1,11 +1,11 @@
 {
-    "name": "retaildost",
-    "short_name": "retaildost",
+    "name": "OruShops",
+    "short_name": "OruShops",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "OruShops - Offline-first mobile POS system",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
@@ -33,3 +33,4 @@
         }
     ]
 }
+

@@ -11,6 +11,7 @@ class MigrationV1 {
         quantity INTEGER NOT NULL DEFAULT 0,
         category TEXT NOT NULL,
         imageUrl TEXT,
+        imagePath TEXT,
         createdAt TEXT NOT NULL,
         updatedAt TEXT NOT NULL
       )
@@ -156,3 +157,4 @@ class MigrationV1 {
     await db.execute('DROP TABLE IF EXISTS app_settings');
   }
 }
+

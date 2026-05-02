@@ -1,4 +1,4 @@
-# Graph Report - retaildost  (2026-05-01)
+# Graph Report - OruShops  (2026-05-01)
 
 ## Corpus Check
 - 75 files · ~30,852 words

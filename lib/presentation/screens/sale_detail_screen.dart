@@ -346,3 +346,4 @@ class SaleDetailScreen extends StatelessWidget {
     );
   }
 }
+

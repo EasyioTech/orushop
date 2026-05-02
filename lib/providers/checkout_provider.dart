@@ -1,14 +1,43 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/models/cart_item.dart';
 import '../core/models/sale.dart';
-import '../core/models/sale_item.dart';
 import '../core/repositories/sale_repository.dart';
+import '../core/exceptions/backend_exception.dart';
 
-class CheckoutNotifier extends StateNotifier<Map<String, dynamic>?> {
+import 'package:orushops/providers/products_provider.dart';
+import 'package:orushops/providers/sale_provider.dart' show saleRepositoryProvider;
+
+class CheckoutState {
+  final bool isLoading;
+  final String? error;
+  final Map<String, dynamic>? result;
+
+  CheckoutState({
+    this.isLoading = false,
+    this.error,
+    this.result,
+  });
+
+  CheckoutState copyWith({
+    bool? isLoading,
+    String? error,
+    Map<String, dynamic>? result,
+  }) {
+    return CheckoutState(
+      isLoading: isLoading ?? this.isLoading,
+      error: error,
+      result: result ?? this.result,
+    );
+  }
+}
+
+class CheckoutNotifier extends StateNotifier<CheckoutState> {
   final SaleRepository _saleRepository;
+  final Ref _ref;
 
-  CheckoutNotifier(this._saleRepository) : super(null);
+  CheckoutNotifier(this._saleRepository, this._ref) : super(CheckoutState());
 
   Future<Map<String, dynamic>?> saveSale({
     required List<CartItem> items,
@@ -19,7 +48,8 @@ class CheckoutNotifier extends StateNotifier<Map<String, dynamic>?> {
     required Map<int, int> selectedBatches,
   }) async {
     try {
-      state = {'loading': true};
+      debugPrint('Checkout: Starting saveSale');
+      state = state.copyWith(isLoading: true, error: null);
 
       final sale = Sale(
         id: 0,
@@ -31,50 +61,53 @@ class CheckoutNotifier extends StateNotifier<Map<String, dynamic>?> {
         createdAt: DateTime.now(),
       );
 
-      final saleId = await _saleRepository.create(sale);
-      final saleWithId = sale.copyWith(id: saleId);
+      debugPrint('Checkout: Processing sale in repository');
+      final result = await _saleRepository.processCompleteSale(
+        sale: sale,
+        items: items,
+      );
+      debugPrint('Checkout: Repository processing complete');
 
-      for (final item in items) {
-        List<int> batchIds = <int>[];
-
-        if (selectedBatches.containsKey(item.productId)) {
-          batchIds = [selectedBatches[item.productId]!];
-        } else {
-          batchIds = await _saleRepository.deductFIFO(item.productId, item.quantity);
-        }
-
-        final saleItem = SaleItem(
-          id: 0,
-          saleId: saleId,
-          productId: item.productId,
-          quantity: item.quantity,
-          unitPrice: item.unitPrice.toDouble(),
-          totalPrice: (item.quantity * item.unitPrice).toDouble(),
-          batchIds: batchIds,
-        );
-        await _saleRepository.addItem(saleItem);
+      // Build productId → quantitySold map from the committed sale items
+      final soldItems = <int, int>{};
+      for (final saleItem in (result['items'] as List)) {
+        soldItems[saleItem.productId] =
+            (soldItems[saleItem.productId] ?? 0) + (saleItem.quantity as int);
       }
 
-      final saleItems = await _saleRepository.getSaleItems(saleId);
+      // Surgical in-place stock decrement — no full reload, no empty-screen flash
+      _ref.read(paginatedProductsProvider.notifier).decrementStock(soldItems);
 
-      state = {
-        'loading': false,
-        'sale': saleWithId,
-        'items': saleItems,
+      final checkoutResult = {
+        'sale': result['sale'],
+        'items': result['items'],
       };
-      return state;
+
+      state = state.copyWith(
+        isLoading: false,
+        result: checkoutResult,
+      );
+      
+      return checkoutResult;
+    } on InsufficientStockException catch (e) {
+      debugPrint('Insufficient stock: ${e.message}');
+      state = state.copyWith(isLoading: false, error: e.message);
+      return null;
+    } on TransactionException catch (e) {
+      debugPrint('Transaction failed: ${e.message}');
+      state = state.copyWith(isLoading: false, error: 'Payment recorded, but inventory update failed. Please check stock manually.');
+      return null;
     } catch (e) {
-      state = {'loading': false, 'error': e.toString()};
+      debugPrint('Checkout error caught in notifier: $e');
+      state = state.copyWith(isLoading: false, error: 'An unexpected error occurred: ${e.toString()}');
       return null;
     }
   }
 }
 
-final saleRepositoryProvider = Provider((ref) => SaleRepository());
-
-final checkoutProvider = StateNotifierProvider<CheckoutNotifier, Map<String, dynamic>?>(
+final checkoutProvider = StateNotifierProvider<CheckoutNotifier, CheckoutState>(
   (ref) {
     final saleRepository = ref.watch(saleRepositoryProvider);
-    return CheckoutNotifier(saleRepository);
+    return CheckoutNotifier(saleRepository, ref);
   },
 );

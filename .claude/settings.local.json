@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//tmp/**)",
+      "Bash(git diff:*)",
+      "Bash(grep -A3 \"Future<int> create\" lib/core/repositories/*.dart)",
+      "Bash(grep -n \"where 'category'\" /F/OruShops/retaildost/lib/core/repositories/*.dart)",
+      "Bash(head:*)",
+      "Bash(grep -B1 -A3 \".toMap\\(\\)\\\\|\\\\.toMap\\(\\) as\" lib/core/repositories/*.dart)",
+      "Bash(grep:*)"
+    ]
+  }
+}

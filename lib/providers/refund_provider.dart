@@ -97,3 +97,4 @@ final saleRefundsProvider = FutureProvider.family<List<Refund>, int>((ref, saleI
   final repository = ref.watch(refundRepositoryProvider);
   return repository.getBySaleId(saleId);
 });
+

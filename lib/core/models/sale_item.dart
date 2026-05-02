@@ -37,10 +37,13 @@ class SaleItem {
       quantity: map['quantity'] as int,
       unitPrice: (map['unitPrice'] as num).toDouble(),
       totalPrice: (map['totalPrice'] as num).toDouble(),
-      batchIds: (map['batchIds'] as String)
-          .split(',')
-          .map((id) => int.parse(id))
-          .toList(),
+      batchIds: (map['batchIds'] as String).isEmpty
+          ? []
+          : (map['batchIds'] as String)
+              .split(',')
+              .where((s) => s.isNotEmpty)
+              .map((id) => int.parse(id))
+              .toList(),
     );
   }
 
@@ -64,3 +67,4 @@ class SaleItem {
     );
   }
 }
+

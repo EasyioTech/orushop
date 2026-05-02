@@ -778,3 +778,4 @@ class _AlertsSection extends ConsumerWidget {
     );
   }
 }
+

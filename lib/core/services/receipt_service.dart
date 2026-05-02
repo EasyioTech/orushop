@@ -98,3 +98,4 @@ class ReceiptService {
     return buffer.toString();
   }
 }
+

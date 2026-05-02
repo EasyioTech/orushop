@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "412357819576",
+    "project_id": "orushops-110",
+    "storage_bucket": "orushops-110.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:412357819576:android:a06eeee71561b5178a084d",
+        "android_client_info": {
+          "package_name": "com.orushops.orushops"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "412357819576-9ot66ufvju30ailghsm8q2bp6qpos3qj.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB7aPMD23kKoOe3aCI5HEG5MgxXRJ21hZg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "412357819576-9ot66ufvju30ailghsm8q2bp6qpos3qj.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

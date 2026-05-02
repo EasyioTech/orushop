@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:retaildost/presentation/screens/settings_screen.dart';
+import 'package:orushops/presentation/screens/settings_screen.dart';
 
 void main() {
   group('SettingsScreen', () {
@@ -96,3 +96,4 @@ void main() {
     });
   });
 }
+

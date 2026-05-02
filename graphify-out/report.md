@@ -1,4 +1,4 @@
-# Graphify Report: RetailDost
+# Graphify Report: OruShops
 
 **Extraction Mode:** Standard
 **Date:** 2026-05-01 10:19:35
@@ -70,3 +70,4 @@ Manages global state and interaction with the database layer.
 - **Total Edges:** 12
 - **Inferred Edges:** 0
 - **Depth:** 4 layers
+

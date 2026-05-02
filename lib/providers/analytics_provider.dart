@@ -65,3 +65,4 @@ final paymentBreakdownProvider = FutureProvider.family<List<PaymentMethodBreakdo
     return repository.getPaymentMethodBreakdown(params.start, params.end);
   },
 );
+

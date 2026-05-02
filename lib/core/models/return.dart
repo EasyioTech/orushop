@@ -1,4 +1,4 @@
-﻿class Return {
+class Return {
   final int id;
   final int saleId;
   final double refundAmount;
@@ -49,3 +49,4 @@
     );
   }
 }
+

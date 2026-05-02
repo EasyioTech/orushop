@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:retaildost/core/models/refund.dart';
-import 'package:retaildost/core/repositories/refund_repository.dart';
+import 'package:orushops/core/models/refund.dart';
+import 'package:orushops/core/repositories/refund_repository.dart';
 
 void main() {
   group('RefundRepository', () {
@@ -135,3 +135,4 @@ void main() {
     });
   });
 }
+

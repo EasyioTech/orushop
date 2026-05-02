@@ -1,4 +1,5 @@
 import '../database/database_helper.dart';
+import '../database/table_constants.dart';
 import '../models/product.dart';
 
 class ProductRepository {
@@ -6,49 +7,66 @@ class ProductRepository {
 
   Future<int> create(Product product) async {
     final db = await _dbHelper.database;
-    return db.insert('products', product.toMap());
+    return db.insert(TableConstants.products, product.toMap());
   }
 
   Future<Product?> getById(int id) async {
     final db = await _dbHelper.database;
-    final result = await db.query(
-      'products',
-      where: 'id = ?',
-      whereArgs: [id],
-    );
+    final result = await db.rawQuery('''
+      SELECT p.*, 
+             (SELECT SUM(pb.quantity) FROM ${TableConstants.productBatches} pb WHERE pb.productId = p.id) as liveBatchQuantity
+      FROM ${TableConstants.products} p
+      WHERE p.id = ?
+    ''', [id]);
+    
     if (result.isEmpty) return null;
     return Product.fromMap(result.first);
   }
 
   Future<Product?> getBySku(String sku) async {
     final db = await _dbHelper.database;
-    final result = await db.query(
-      'products',
-      where: 'sku = ?',
-      whereArgs: [sku],
-    );
+    final result = await db.rawQuery('''
+      SELECT p.*, 
+             (SELECT SUM(pb.quantity) FROM ${TableConstants.productBatches} pb WHERE pb.productId = p.id) as liveBatchQuantity
+      FROM ${TableConstants.products} p
+      WHERE p.sku = ?
+    ''', [sku]);
+    
     if (result.isEmpty) return null;
     return Product.fromMap(result.first);
   }
 
   Future<List<Product>> getAll() async {
     final db = await _dbHelper.database;
-    final result = await db.query('products', orderBy: 'name ASC');
-    final products = <Product>[];
+    final result = await db.rawQuery('''
+      SELECT p.*, 
+             (SELECT SUM(pb.quantity) FROM ${TableConstants.productBatches} pb WHERE pb.productId = p.id) as liveBatchQuantity
+      FROM ${TableConstants.products} p
+      ORDER BY p.name ASC
+    ''');
+    
+    return result.map((map) => Product.fromMap(map)).toList();
+  }
 
-    for (final map in result) {
-      final product = Product.fromMap(map);
-      final batchTotal = await getTotalQuantity(product.id);
-      products.add(product.copyWith(liveBatchQuantity: batchTotal));
-    }
+  Future<List<Product>> getPaginated(int limit, int offset) async {
+    final db = await _dbHelper.database;
+    
+    // Optimized query to fetch products with their total batch quantity in one go
+    final result = await db.rawQuery('''
+      SELECT p.*, 
+             (SELECT SUM(pb.quantity) FROM ${TableConstants.productBatches} pb WHERE pb.productId = p.id) as liveBatchQuantity
+      FROM ${TableConstants.products} p
+      ORDER BY p.name ASC
+      LIMIT ? OFFSET ?
+    ''', [limit, offset]);
 
-    return products;
+    return result.map((map) => Product.fromMap(map)).toList();
   }
 
   Future<List<Product>> getByCategory(String category) async {
     final db = await _dbHelper.database;
     final result = await db.query(
-      'products',
+      TableConstants.products,
       where: 'category = ?',
       whereArgs: [category],
       orderBy: 'name ASC',
@@ -59,7 +77,7 @@ class ProductRepository {
   Future<List<Product>> searchByName(String query) async {
     final db = await _dbHelper.database;
     final result = await db.query(
-      'products',
+      TableConstants.products,
       where: 'name LIKE ?',
       whereArgs: ['%$query%'],
       orderBy: 'name ASC',
@@ -70,7 +88,7 @@ class ProductRepository {
   Future<int> update(Product product) async {
     final db = await _dbHelper.database;
     return db.update(
-      'products',
+      TableConstants.products,
       product.toMap(),
       where: 'id = ?',
       whereArgs: [product.id],
@@ -80,7 +98,7 @@ class ProductRepository {
   Future<int> delete(int id) async {
     final db = await _dbHelper.database;
     return db.delete(
-      'products',
+      TableConstants.products,
       where: 'id = ?',
       whereArgs: [id],
     );
@@ -89,7 +107,7 @@ class ProductRepository {
   Future<int> getTotalQuantity(int productId) async {
     final db = await _dbHelper.database;
     final result = await db.rawQuery(
-      'SELECT SUM(quantity) as total FROM product_batches WHERE productId = ?',
+      'SELECT SUM(quantity) as total FROM ${TableConstants.productBatches} WHERE productId = ?',
       [productId],
     );
     if (result.isEmpty) return 0;
@@ -101,8 +119,14 @@ class ProductRepository {
   Future<List<String>> getCategories() async {
     final db = await _dbHelper.database;
     final result = await db.rawQuery(
-      'SELECT DISTINCT category FROM products ORDER BY category ASC',
+      'SELECT DISTINCT category FROM ${TableConstants.products} ORDER BY category ASC',
     );
     return result.map((row) => row['category'] as String).toList();
   }
+
+  Future<int> deleteAll() async {
+    final db = await _dbHelper.database;
+    return db.delete(TableConstants.products);
+  }
 }
+

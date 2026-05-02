@@ -226,7 +226,7 @@ class _ReceiveOrderScreenState extends ConsumerState<ReceiveOrderScreen> {
                     child: Text('Order Items', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppTheme.textSecondary)),
                   ),
                   const SizedBox(height: 12),
-                  ..._orderItems.asMap().entries.map((e) => _buildItemReceiveForm(e.key, e.value)).toList(),
+                  ..._orderItems.asMap().entries.map((e) => _buildItemReceiveForm(e.key, e.value)),
                   const SizedBox(height: 32),
                   SizedBox(
                     width: double.infinity,
@@ -327,3 +327,4 @@ class _ReceiveOrderScreenState extends ConsumerState<ReceiveOrderScreen> {
     );
   }
 }
+

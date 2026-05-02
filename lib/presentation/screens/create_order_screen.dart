@@ -19,7 +19,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
   late TextEditingController _expectedDeliveryController;
   late TextEditingController _notesController;
 
-  List<_OrderItemEntry> _items = [];
+  final List<_OrderItemEntry> _items = [];
   DateTime? _selectedDate;
 
   @override
@@ -393,3 +393,4 @@ class _OrderItemEntry {
     required this.unitPrice,
   });
 }
+

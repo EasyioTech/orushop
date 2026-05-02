@@ -39,3 +39,4 @@ class HeldCartsNotifier extends StateNotifier<List<HeldCart>> {
 final heldCartsProvider = StateNotifierProvider<HeldCartsNotifier, List<HeldCart>>((ref) {
   return HeldCartsNotifier();
 });
+

@@ -17,3 +17,4 @@ class EntityTypes {
   static const String sale = 'sale';
   static const String settings = 'settings';
 }
+

@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../core/models/product.dart';
-import '../../core/database/database_helper.dart';
-import '../../core/repositories/product_repository.dart';
-import '../../core/theme/app_theme.dart';
-import '../../providers/products_provider.dart';
+import 'package:orushops/core/models/product.dart';
+import 'package:orushops/core/database/database_helper.dart';
+import 'package:orushops/core/repositories/product_repository.dart';
+import 'package:orushops/core/theme/app_theme.dart';
+import 'package:orushops/providers/products_provider.dart';
 
 class EditProductScreen extends ConsumerStatefulWidget {
   final Product product;
@@ -158,6 +158,13 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                 bottomLeft: Radius.circular(32),
                 bottomRight: Radius.circular(32),
               ),
+              boxShadow: [
+                BoxShadow(
+                  color: AppTheme.primaryColor.withValues(alpha: 0.3),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
+                ),
+              ],
             ),
             padding: EdgeInsets.only(
               top: MediaQuery.of(context).padding.top + 12,
@@ -185,7 +192,31 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                         ),
                       ),
                     ),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.red.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: IconButton(
+                        icon: const Icon(Icons.delete_outline_rounded, color: Colors.white, size: 22),
+                        onPressed: _deleteProduct,
+                      ),
+                    ),
                   ],
+                ),
+                const SizedBox(height: 12),
+                Padding(
+                  padding: const EdgeInsets.only(left: 48),
+                  child: Text(
+                    'Update details for ${widget.product.name}',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.8),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ],
             ),
@@ -194,54 +225,85 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(20),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  _buildSectionHeader('BASIC INFORMATION'),
                   Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(24),
                       boxShadow: [
-                        BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10),
+                        BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4)),
                       ],
                     ),
                     child: Column(
                       children: [
-                        _buildField('Product Name', _nameController, Icons.shopping_bag_outlined),
-                        const SizedBox(height: 20),
-                        _buildField('SKU', _skuController, Icons.qr_code_rounded),
-                        const SizedBox(height: 20),
-                        _buildField('Price (₹)', _priceController, Icons.payments_outlined, TextInputType.number),
-                        const SizedBox(height: 20),
-                        _buildField('Category', _categoryController, Icons.category_outlined),
-                        const SizedBox(height: 32),
-                        SizedBox(
-                          width: double.infinity,
-                          height: 64,
-                          child: ElevatedButton(
-                            onPressed: _updateProduct,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppTheme.primaryColor,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                            ),
-                            child: const Text('SAVE CHANGES', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                          ),
+                        _buildInputField(
+                          controller: _nameController,
+                          label: 'Product Name',
+                          icon: Icons.shopping_bag_outlined,
                         ),
-                        const SizedBox(height: 12),
-                        SizedBox(
-                          width: double.infinity,
-                          height: 56,
-                          child: ElevatedButton(
-                            onPressed: _deleteProduct,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.red,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                            ),
-                            child: const Text('DELETE PRODUCT', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white)),
-                          ),
+                        const SizedBox(height: 20),
+                        _buildInputField(
+                          controller: _skuController,
+                          label: 'SKU',
+                          icon: Icons.qr_code_rounded,
                         ),
                       ],
                     ),
                   ),
+                  const SizedBox(height: 32),
+                  
+                  _buildSectionHeader('PRICING & CATEGORY'),
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(24),
+                      boxShadow: [
+                        BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4)),
+                      ],
+                    ),
+                    child: Column(
+                      children: [
+                        _buildInputField(
+                          controller: _priceController,
+                          label: 'Selling Price',
+                          icon: Icons.payments_outlined,
+                          keyboardType: TextInputType.number,
+                          prefix: '₹ ',
+                        ),
+                        const SizedBox(height: 20),
+                        _buildInputField(
+                          controller: _categoryController,
+                          label: 'Category',
+                          icon: Icons.category_outlined,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 40),
+
+                  SizedBox(
+                    width: double.infinity,
+                    height: 64,
+                    child: ElevatedButton(
+                      onPressed: _updateProduct,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primaryColor,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                        elevation: 8,
+                        shadowColor: AppTheme.primaryColor.withValues(alpha: 0.4),
+                      ),
+                      child: const Text(
+                        'SAVE CHANGES',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 40),
                 ],
               ),
             ),
@@ -251,22 +313,50 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
     );
   }
 
-  Widget _buildField(String label, TextEditingController controller, IconData icon,
-      [TextInputType keyboardType = TextInputType.text]) {
+  Widget _buildSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4, bottom: 12),
+      child: Text(
+        title,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w900,
+          color: AppTheme.textSecondary.withValues(alpha: 0.6),
+          letterSpacing: 1.2,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInputField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    TextInputType keyboardType = TextInputType.text,
+    String? prefix,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppTheme.textSecondary.withValues(alpha: 0.7))),
+        Text(
+          label,
+          style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppTheme.textSecondary.withValues(alpha: 0.7), letterSpacing: 0.5),
+        ),
         const SizedBox(height: 8),
         TextField(
           controller: controller,
           keyboardType: keyboardType,
           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
           decoration: InputDecoration(
+            prefixText: prefix,
+            prefixStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
             prefixIcon: Icon(icon, size: 20, color: AppTheme.primaryColor),
             filled: true,
             fillColor: AppTheme.backgroundColor,
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide.none,
+            ),
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
           ),
         ),
@@ -274,3 +364,4 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
     );
   }
 }
+

@@ -2,11 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../core/models/product.dart';
-import '../../core/database/database_helper.dart';
-import '../../core/repositories/product_repository.dart';
-import '../../core/theme/app_theme.dart';
-import '../../providers/products_provider.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
+import 'package:orushops/core/models/product.dart';
+import 'package:orushops/core/database/database_helper.dart';
+import 'package:orushops/core/theme/app_theme.dart';
+import 'package:orushops/providers/products_provider.dart';
+import 'package:orushops/core/services/global_catalog_service.dart';
+import 'batch_scan_screen.dart';
 
 const List<String> _defaultCategories = [
   'Apparel',
@@ -30,8 +34,11 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
   final _costController = TextEditingController();
   final _initialQtyController = TextEditingController();
   final _scannerController = MobileScannerController();
+  final _imagePicker = ImagePicker();
   String _selectedCategory = _defaultCategories[0];
   bool _showScanner = false;
+  File? _productImage;
+  String? _externalImageUrl;
 
   @override
   void dispose() {
@@ -42,6 +49,51 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
     _initialQtyController.dispose();
     _scannerController.dispose();
     super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _skuController.addListener(() {
+      final sku = _skuController.text.trim();
+      if (sku.length >= 8) { // Standard barcode length
+        _lookupGlobalProduct(sku);
+      }
+    });
+  }
+
+  void _lookupGlobalProduct(String sku) {
+    final catalog = ref.read(globalCatalogServiceProvider);
+    final product = catalog.searchBySKU(sku);
+
+    if (product != null && _nameController.text.isEmpty) {
+      setState(() {
+        _nameController.text = product.name;
+        _priceController.text = product.typicalPrice.toString();
+        _costController.text = product.typicalCost.toString();
+        _externalImageUrl = product.imageUrl;
+        if (_defaultCategories.contains(product.category)) {
+          _selectedCategory = product.category;
+        }
+      });
+      
+      HapticFeedback.mediumImpact();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.auto_awesome, color: Colors.white, size: 20),
+              const SizedBox(width: 12),
+              Text('Auto-filled: ${product.name}'),
+            ],
+          ),
+          duration: const Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: AppTheme.primaryColor,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+    }
   }
 
   void _generateSKU() {
@@ -73,6 +125,18 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
 
     try {
       final now = DateTime.now();
+      String? imageUrl;
+      String? imagePath;
+
+      if (_productImage != null) {
+        final appDir = await getApplicationDocumentsDirectory();
+        final fileName = 'product_${DateTime.now().millisecondsSinceEpoch}.jpg';
+        final newImage = await _productImage!.copy('${appDir.path}/$fileName');
+        imagePath = newImage.path;
+      } else if (_externalImageUrl != null) {
+        imageUrl = _externalImageUrl;
+      }
+
       final product = Product(
         id: 0,
         name: name,
@@ -80,13 +144,15 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
         price: price,
         quantity: initialQty,
         category: _selectedCategory,
+        imageUrl: imageUrl,
+        imagePath: imagePath,
         createdAt: now,
         updatedAt: now,
       );
 
       final dbHelper = DatabaseHelper();
       final db = await dbHelper.database;
-      
+
       await db.transaction((txn) async {
         final productMap = product.toMap();
         productMap.remove('id');
@@ -136,6 +202,44 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
 
   void _openSKUScanner() {
     setState(() => _showScanner = true);
+  }
+
+  Future<void> _captureProductImage() async {
+    try {
+      final XFile? photo = await _imagePicker.pickImage(
+        source: ImageSource.camera,
+        imageQuality: 85,
+      );
+      if (photo != null) {
+        setState(() => _productImage = File(photo.path));
+        HapticFeedback.mediumImpact();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error capturing image: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _pickProductImage() async {
+    try {
+      final XFile? photo = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 85,
+      );
+      if (photo != null) {
+        setState(() => _productImage = File(photo.path));
+        HapticFeedback.mediumImpact();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error selecting image: $e')),
+        );
+      }
+    }
   }
 
   @override
@@ -235,6 +339,21 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
                         ),
                       ),
                     ),
+                    TextButton.icon(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const BatchScanScreen()),
+                        );
+                      },
+                      icon: const Icon(Icons.bolt_rounded, color: Colors.white, size: 20),
+                      label: const Text('BATCH', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      style: TextButton.styleFrom(
+                        backgroundColor: Colors.white24,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 12),
@@ -305,6 +424,141 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
                             ),
                           ],
                         ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+
+                  // Section 1.5: Product Image
+                  _buildSectionHeader('PRODUCT IMAGE'),
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(24),
+                      boxShadow: [
+                        BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4)),
+                      ],
+                    ),
+                    child: Column(
+                      children: [
+                        if (_productImage != null || _externalImageUrl != null)
+                          Column(
+                            children: [
+                              Container(
+                                width: double.infinity,
+                                height: 200,
+                                decoration: BoxDecoration(
+                                  color: AppTheme.primaryColor.withValues(alpha: 0.05),
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(16),
+                                  child: _productImage != null
+                                      ? Image.file(
+                                          _productImage!,
+                                          fit: BoxFit.cover,
+                                          width: double.infinity,
+                                          height: 200,
+                                        )
+                                      : Image.network(
+                                          _externalImageUrl!,
+                                          fit: BoxFit.cover,
+                                          width: double.infinity,
+                                          height: 200,
+                                          errorBuilder: (context, error, stackTrace) => const Center(
+                                            child: Icon(Icons.broken_image_outlined, size: 48, color: AppTheme.textSecondary),
+                                          ),
+                                        ),
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: _buildImageButton(
+                                      onPressed: _captureProductImage,
+                                      icon: Icons.camera_alt_rounded,
+                                      label: _productImage != null ? 'Retake' : 'Capture',
+                                      isPrimary: true,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: _buildImageButton(
+                                      onPressed: () => setState(() {
+                                        _productImage = null;
+                                        _externalImageUrl = null;
+                                      }),
+                                      icon: Icons.close_rounded,
+                                      label: 'Remove',
+                                      isPrimary: false,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          )
+                        else
+                          Column(
+                            children: [
+                              Container(
+                                width: double.infinity,
+                                height: 150,
+                                decoration: BoxDecoration(
+                                  color: AppTheme.backgroundColor,
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: AppTheme.primaryColor.withValues(alpha: 0.2),
+                                    width: 2,
+                                    style: BorderStyle.solid,
+                                  ),
+                                ),
+                                child: Center(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.image_not_supported_outlined,
+                                        size: 40,
+                                        color: AppTheme.primaryColor.withValues(alpha: 0.3),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        'No image selected',
+                                        style: TextStyle(
+                                          color: AppTheme.textSecondary.withValues(alpha: 0.6),
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: _buildImageButton(
+                                      onPressed: _captureProductImage,
+                                      icon: Icons.camera_alt_rounded,
+                                      label: 'Capture',
+                                      isPrimary: true,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: _buildImageButton(
+                                      onPressed: _pickProductImage,
+                                      icon: Icons.photo_library_rounded,
+                                      label: 'Gallery',
+                                      isPrimary: false,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
                       ],
                     ),
                   ),
@@ -500,5 +754,26 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
       ),
     );
   }
+
+  Widget _buildImageButton({
+    required VoidCallback onPressed,
+    required IconData icon,
+    required String label,
+    required bool isPrimary,
+  }) {
+    return ElevatedButton.icon(
+      onPressed: onPressed,
+      icon: Icon(icon, size: 20),
+      label: Text(label),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: isPrimary ? AppTheme.primaryColor : AppTheme.backgroundColor,
+        foregroundColor: isPrimary ? Colors.white : AppTheme.primaryColor,
+        elevation: 0,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        padding: const EdgeInsets.symmetric(vertical: 12),
+      ),
+    );
+  }
 }
+
 
