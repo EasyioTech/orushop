@@ -23,14 +23,12 @@ class CartScreen extends ConsumerStatefulWidget {
 class _CartScreenState extends ConsumerState<CartScreen> {
   String? _selectedPaymentMethod;
   int _quickDiscount = 0;
-  bool _isPaymentExpanded = false;
   bool _isDiscountExpanded = false;
 
   void _confirmSale(int subtotal, List<CartItem> items) async {
     if (items.isEmpty) return;
 
     if (_selectedPaymentMethod == null) {
-      setState(() => _isPaymentExpanded = true);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please select a payment mode to complete checkout'),
@@ -82,6 +80,14 @@ class _CartScreenState extends ConsumerState<CartScreen> {
 
     if (success != null) {
       HapticFeedback.heavyImpact();
+      
+      // Update local stock immediately
+      final soldItems = {for (var item in items) item.productId: item.quantity};
+      ref.read(paginatedProductsProvider.notifier).decrementStock(soldItems);
+      
+      // Clear search so items with 0 stock (now filtered) don't confuse search
+      ref.read(productSearchQueryProvider.notifier).state = '';
+      
       ref.read(cartProvider.notifier).clearCart();
       Map<String, dynamic>? ownerDetails;
       try {
@@ -137,24 +143,12 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     final checkoutState = ref.watch(checkoutProvider);
     final isLoading = checkoutState.isLoading;
 
-    // Check for stock errors across all items
-    bool hasStockError = false;
-    String? stockErrorMessage;
-    
-    for (final item in cartItems) {
-      final productAsync = ref.watch(productByIdProvider(item.productId));
-      if (productAsync.hasValue && productAsync.value != null) {
-        if (item.quantity > productAsync.value!.displayQuantity) {
-          hasStockError = true;
-          stockErrorMessage = 'Insufficient stock for ${item.productName}';
-          break;
-        }
-      }
-    }
+    // Stock validation is now handled inside _processSale on button click
+    // This allows the user to see the checkout button even if there are potential stock issues
 
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
-      bottomNavigationBar: cartItems.isEmpty ? null : _buildBottomActions(subtotal, cartItems, isLoading, hasStockError),
+      bottomNavigationBar: cartItems.isEmpty ? null : _buildBottomActions(subtotal, cartItems, isLoading, false),
       body: CustomScrollView(
         slivers: [
           // Header
@@ -182,32 +176,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                 ),
               const SizedBox(width: 8),
             ],
-            bottom: hasStockError 
-              ? PreferredSize(
-                  preferredSize: const Size.fromHeight(40),
-                  child: Container(
-                    width: double.infinity,
-                    color: AppTheme.errorColor.withValues(alpha: 0.1),
-                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 20),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.warning_amber_rounded, color: AppTheme.errorColor, size: 18),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            stockErrorMessage ?? 'Some items are out of stock',
-                            style: const TextStyle(
-                              color: AppTheme.errorColor,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                )
-              : null,
+            bottom: null,
           ),
 
           // Content
@@ -416,50 +385,42 @@ class _CartScreenState extends ConsumerState<CartScreen> {
           
           Divider(color: AppTheme.borderColor.withValues(alpha: 0.3), height: 16),
 
-          // 3. Payment Mode (Dropdown)
-          _buildExpandableSection(
-            title: 'Payment Mode',
-            isExpanded: _isPaymentExpanded,
-            onToggle: () => setState(() => _isPaymentExpanded = !_isPaymentExpanded),
-            selectedValue: _selectedPaymentMethod ?? 'Select mode',
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  _PaymentButton(
-                    label: 'Cash',
-                    icon: Icons.payments_rounded,
-                    activeColor: const Color(0xFF16A34A), // More relatable vibrant green for Cash
-                    isSelected: _selectedPaymentMethod == 'Cash',
-                    onTap: () => setState(() {
-                      _selectedPaymentMethod = 'Cash';
-                      _isPaymentExpanded = false;
-                    }),
-                  ),
-                  const SizedBox(width: 8),
-                  _PaymentButton(
-                    label: 'UPI',
-                    icon: Icons.qr_code_scanner_rounded,
-                    isSelected: _selectedPaymentMethod == 'UPI',
-                    onTap: () => setState(() {
-                      _selectedPaymentMethod = 'UPI';
-                      _isPaymentExpanded = false;
-                    }),
-                  ),
-                  const SizedBox(width: 8),
-                  _PaymentButton(
-                    label: 'Card',
-                    icon: Icons.credit_card_rounded,
-                    activeColor: const Color(0xFF2563EB), // Clear understandable blue for Card
-                    isSelected: _selectedPaymentMethod == 'Card',
-                    onTap: () => setState(() {
-                      _selectedPaymentMethod = 'Card';
-                      _isPaymentExpanded = false;
-                    }),
-                  ),
-                ],
+          // 3. Payment Mode (Always visible)
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Payment Mode', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppTheme.textSecondary)),
+              const SizedBox(height: 12),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    _PaymentButton(
+                      label: 'Cash',
+                      icon: Icons.payments_rounded,
+                      activeColor: const Color(0xFF16A34A),
+                      isSelected: _selectedPaymentMethod == 'Cash',
+                      onTap: () => setState(() => _selectedPaymentMethod = 'Cash'),
+                    ),
+                    const SizedBox(width: 8),
+                    _PaymentButton(
+                      label: 'UPI',
+                      icon: Icons.qr_code_scanner_rounded,
+                      isSelected: _selectedPaymentMethod == 'UPI',
+                      onTap: () => setState(() => _selectedPaymentMethod = 'UPI'),
+                    ),
+                    const SizedBox(width: 8),
+                    _PaymentButton(
+                      label: 'Card',
+                      icon: Icons.credit_card_rounded,
+                      activeColor: const Color(0xFF2563EB),
+                      isSelected: _selectedPaymentMethod == 'Card',
+                      onTap: () => setState(() => _selectedPaymentMethod = 'Card'),
+                    ),
+                  ],
+                ),
               ),
-            ),
+            ],
           ),
           const SizedBox(height: 16),
 
@@ -495,18 +456,9 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                     ),
                   ),
                   const SizedBox(width: 12),
-                  if (hasStockError)
-                    Container(
-                      margin: const EdgeInsets.only(right: 12),
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: AppTheme.errorColor.withValues(alpha: 0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.inventory_2_outlined, color: AppTheme.errorColor, size: 20),
-                    ),
+                  const SizedBox(width: 12),
                   ElevatedButton(
-                    onPressed: (isLoading || hasStockError) ? null : () => _confirmSale(subtotal, cartItems),
+                    onPressed: isLoading ? null : () => _confirmSale(subtotal, cartItems),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppTheme.primaryColor,
                       foregroundColor: Colors.white,

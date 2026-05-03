@@ -168,10 +168,11 @@ class _OnboardingScreen9State extends State<OnboardingScreen9>
   ) {
     return AnimatedBuilder(
       animation: ctrl,
-      builder: (context, child) => Transform.translate(
+      builder: (context, animChild) => Transform.translate(
         offset: Offset(0, slide.value),
-        child: Opacity(opacity: fade.value, child: child),
+        child: Opacity(opacity: fade.value, child: animChild),
       ),
+      child: child,
     );
   }
 
@@ -199,7 +200,17 @@ class _OnboardingScreen9State extends State<OnboardingScreen9>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  const SizedBox(height: 32),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    children: [
+                      IconButton(
+                        onPressed: widget.onBack,
+                        icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+                        color: AppTheme.textSecondary,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
 
                   // ── Checkmark circle ──────────────────────────────
                   ScaleTransition(
@@ -347,7 +358,7 @@ class _OnboardingScreen9State extends State<OnboardingScreen9>
                     _UnlockedCard(),
                   ),
 
-                  const Spacer(),
+                  const SizedBox(height: 28),
 
                   // ── CTA button ────────────────────────────────────
                   _animated(

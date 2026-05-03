@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'dart:io';
 
-import 'package:orushops/core/database/database_helper.dart';
+import 'package:orushops/core/services/product_crud_service.dart';
 import 'package:orushops/core/theme/app_theme.dart';
 import 'package:orushops/providers/products_provider.dart';
 import 'package:orushops/providers/batch_provider.dart';
@@ -274,7 +274,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                   ),
                 ),
                 SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(20, 10, 20, 100),
+                  padding: const EdgeInsets.only(bottom: 100),
                   sliver: filtered.isEmpty
                       ? SliverToBoxAdapter(
                           child: Column(
@@ -488,6 +488,7 @@ class _InventoryItemCard extends ConsumerStatefulWidget {
 
 class _InventoryItemCardState extends ConsumerState<_InventoryItemCard> {
   void _openEdit() {
+    HapticFeedback.lightImpact();
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -573,16 +574,8 @@ class _InventoryItemCardState extends ConsumerState<_InventoryItemCard> {
 
   Future<void> _deleteProduct(BuildContext context, WidgetRef ref) async {
     try {
-      final dbHelper = DatabaseHelper();
-      final db = await dbHelper.database;
-      await db.transaction((txn) async {
-        await txn.delete(
-          'product_batches',
-          where: 'productId = ?',
-          whereArgs: [widget.product.id],
-        );
-        await txn.delete('products', where: 'id = ?', whereArgs: [widget.product.id]);
-      });
+      final service = ProductCrudService();
+      await service.deleteProduct(widget.product.id);
       if (context.mounted) {
         ref.invalidate(productsProvider);
         ref.invalidate(expiredBatchesProvider);
@@ -609,21 +602,17 @@ class _InventoryItemCardState extends ConsumerState<_InventoryItemCard> {
   Widget build(BuildContext context) {
     final bool isLowStock = widget.product.quantity < 10;
     final bool isOutOfStock = widget.product.quantity == 0;
-
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-      child: Material(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onLongPress: () => _showProductMenu(context, ref),
-          onTap: _openEdit,
-          child: Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              border: Border.all(color: AppTheme.borderColor.withValues(alpha: 0.5)),
-              borderRadius: BorderRadius.circular(24),
+    return Material(
+      color: Colors.white,
+      child: InkWell(
+        onLongPress: () => _showProductMenu(context, ref),
+        onTap: _openEdit,
+        child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            decoration: const BoxDecoration(
+              border: Border(
+                bottom: BorderSide(color: AppTheme.dividerColor, width: 1),
+              ),
             ),
             child: Row(
               children: [
@@ -726,39 +715,22 @@ class _InventoryItemCardState extends ConsumerState<_InventoryItemCard> {
                 const SizedBox(width: 12),
                 GestureDetector(
                   behavior: HitTestBehavior.opaque,
-                  onTap: () {
-                    HapticFeedback.mediumImpact();
-                    widget.onAddStock();
-                  },
+                  onTap: _openEdit,
                   child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color:
-                            (isOutOfStock
-                                    ? AppTheme.errorColor
-                                    : (isLowStock
-                                          ? AppTheme.warningColor
-                                          : AppTheme.primaryColor))
-                                .withValues(alpha: 0.05),
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: Icon(
-                        Icons.add,
-                        color: isOutOfStock
-                            ? AppTheme.errorColor
-                            : (isLowStock
-                                  ? AppTheme.warningColor
-                                  : AppTheme.primaryColor),
-                        size: 20,
-                      ),
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryColor.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(14),
                     ),
+                    child: const Icon(
+                      Icons.edit_rounded,
+                      color: AppTheme.primaryColor,
+                      size: 20,
+                    ),
+                  ),
                 ),
               ],
             ),
-          ),
         ),
       ),
     );
@@ -1059,18 +1031,13 @@ class _AddStockBottomSheetState extends ConsumerState<_AddStockBottomSheet> {
     }
 
     try {
-      final dbHelper = DatabaseHelper();
-      final db = await dbHelper.database;
-
-      await db.transaction((txn) async {
-        await txn.insert('product_batches', {
-          'productId': widget.product.id,
-          'quantity': qty,
-          'costPrice': cost,
-          'expiryDate': _expiry.toIso8601String(),
-          'createdAt': DateTime.now().toIso8601String(),
-        });
-      });
+      final service = ProductCrudService();
+      await service.addStock(
+        productId: widget.product.id,
+        quantity: qty,
+        costPrice: cost,
+        expiryDate: _expiry,
+      );
 
       HapticFeedback.mediumImpact();
       if (mounted) {
@@ -1079,9 +1046,12 @@ class _AddStockBottomSheetState extends ConsumerState<_AddStockBottomSheet> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: AppTheme.errorColor,
+          ),
+        );
       }
     }
   }

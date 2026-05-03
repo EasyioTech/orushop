@@ -65,23 +65,25 @@ class ProductRepository {
 
   Future<List<Product>> getByCategory(String category) async {
     final db = await _dbHelper.database;
-    final result = await db.query(
-      TableConstants.products,
-      where: 'category = ?',
-      whereArgs: [category],
-      orderBy: 'name ASC',
-    );
+    final result = await db.rawQuery('''
+      SELECT p.*,
+             (SELECT SUM(pb.quantity) FROM ${TableConstants.productBatches} pb WHERE pb.productId = p.id) as liveBatchQuantity
+      FROM ${TableConstants.products} p
+      WHERE p.category = ?
+      ORDER BY p.name ASC
+    ''', [category]);
     return result.map((map) => Product.fromMap(map)).toList();
   }
 
   Future<List<Product>> searchByName(String query) async {
     final db = await _dbHelper.database;
-    final result = await db.query(
-      TableConstants.products,
-      where: 'name LIKE ?',
-      whereArgs: ['%$query%'],
-      orderBy: 'name ASC',
-    );
+    final result = await db.rawQuery('''
+      SELECT p.*,
+             (SELECT SUM(pb.quantity) FROM ${TableConstants.productBatches} pb WHERE pb.productId = p.id) as liveBatchQuantity
+      FROM ${TableConstants.products} p
+      WHERE p.name LIKE ?
+      ORDER BY p.name ASC
+    ''', ['%$query%']);
     return result.map((map) => Product.fromMap(map)).toList();
   }
 

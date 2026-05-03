@@ -36,17 +36,42 @@ class _OnboardingScreen7State extends State<OnboardingScreen7> {
       primaryButtonText: 'Continue',
       isPrimaryButtonEnabled: _isValid,
       onPrimaryAction: widget.onNext,
-      content: TextField(
-        controller: _phoneController,
-        onChanged: _validate,
-        keyboardType: TextInputType.phone,
-        decoration: InputDecoration(
-          hintText: '(555) 123-4567',
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: const BorderSide(color: AppTheme.accentColor, width: 2),
+      content: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Phone Number',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.textPrimary,
+                ),
           ),
-        ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _phoneController,
+            onChanged: _validate,
+            keyboardType: TextInputType.phone,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+            decoration: InputDecoration(
+              hintText: '(555) 123-4567',
+              contentPadding: const EdgeInsets.all(16),
+              filled: true,
+              fillColor: const Color(0xFFF5F5F5),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

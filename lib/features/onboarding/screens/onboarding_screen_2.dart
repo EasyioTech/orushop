@@ -7,7 +7,6 @@ import '../widgets/onboarding_page.dart';
 class OnboardingScreen2 extends StatelessWidget {
   final VoidCallback onNext;
   final VoidCallback onBack;
-  final VoidCallback onEmailSelected;
   final VoidCallback onPhoneSelected;
   final VoidCallback onGoogleSelected;
   final VoidCallback onAppleSelected;
@@ -16,7 +15,6 @@ class OnboardingScreen2 extends StatelessWidget {
     super.key,
     required this.onNext,
     required this.onBack,
-    required this.onEmailSelected,
     required this.onPhoneSelected,
     required this.onGoogleSelected,
     required this.onAppleSelected,
@@ -26,11 +24,12 @@ class OnboardingScreen2 extends StatelessWidget {
   Widget build(BuildContext context) {
     return OnboardingPage(
       currentStep: 2,
-      totalSteps: 17,
+      totalSteps: 6,
       title: 'Login or sign up',
       description:
           'Please select your preferred method\nto continue setting up your account',
       illustration: SvgPicture.asset('images/launching.svg', fit: BoxFit.contain),
+      blendIllustration: false,
       onNext: onNext,
       onBack: onBack,
       showBackButton: true,
@@ -42,19 +41,11 @@ class OnboardingScreen2 extends StatelessWidget {
       contentFlex: 5,
       content: Column(
         children: [
-          const SizedBox(height: 8),
-          _AuthButton(
-            icon: Icons.email_outlined,
-            label: 'Continue with Email',
-            onTap: onEmailSelected,
-            isPrimary: true,
-          ),
-          const SizedBox(height: 12),
           _AuthButton(
             icon: Icons.phone_android_rounded,
             label: 'Continue with Phone',
             onTap: onPhoneSelected,
-            isPrimary: false,
+            isPrimary: true,
           ),
           const SizedBox(height: 16),
           Row(
@@ -112,22 +103,25 @@ class OnboardingScreen2 extends StatelessWidget {
               height: 1.4,
             ),
             children: [
-              const TextSpan(text: 'If you are creating a new account, '),
+              const TextSpan(text: 'By continuing, you agree to our '),
               TextSpan(
-                text: 'Create Account',
+                text: 'Terms of Service',
                 style: const TextStyle(
                   color: AppTheme.accentColor,
                   fontWeight: FontWeight.w600,
                   decoration: TextDecoration.underline,
                 ),
-                recognizer: TapGestureRecognizer()..onTap = onEmailSelected,
               ),
               const TextSpan(text: ' and '),
               TextSpan(
                 text: 'Privacy Policy',
-                style: const TextStyle(decoration: TextDecoration.underline),
+                style: const TextStyle(
+                  color: AppTheme.accentColor,
+                  fontWeight: FontWeight.w600,
+                  decoration: TextDecoration.underline,
+                ),
               ),
-              const TextSpan(text: ' will apply.'),
+              const TextSpan(text: '.'),
             ],
           ),
         ),

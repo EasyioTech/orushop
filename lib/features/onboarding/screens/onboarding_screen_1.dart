@@ -14,7 +14,7 @@ class OnboardingScreen1 extends StatelessWidget {
   Widget build(BuildContext context) {
     return OnboardingPage(
       currentStep: 1,
-      totalSteps: 17,
+      totalSteps: 6,
       title: 'Welcome to OruShops',
       description: 'The smartest offline-first POS system for your retail business. Empower your store with real-time data and seamless checkouts.',
       illustration: Image.asset(

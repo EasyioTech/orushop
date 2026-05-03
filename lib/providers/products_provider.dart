@@ -2,12 +2,24 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/models/product.dart';
 import '../core/repositories/product_repository.dart';
+import '../core/repositories/batch_repository.dart';
 
 final productRepositoryProvider = Provider((ref) => ProductRepository());
+final batchRepositoryProvider = Provider((ref) => BatchRepository());
 
 final productsProvider = FutureProvider<List<Product>>((ref) async {
   final repository = ref.watch(productRepositoryProvider);
-  return await repository.getAll();
+  final batchRepo = ref.watch(batchRepositoryProvider);
+  final products = await repository.getAll();
+
+  // Sync batches for any products with mismatched quantities
+  for (final product in products) {
+    if (product.displayQuantity != (product.liveBatchQuantity ?? 0)) {
+      await batchRepo.syncBatchesForProduct(product.id, product.quantity);
+    }
+  }
+
+  return products;
 });
 
 final productSearchProvider =
@@ -68,9 +80,9 @@ class PaginationNotifier extends StateNotifier<List<Product>> {
       for (final product in state)
         if (soldItems.containsKey(product.id))
           product.copyWith(
-            quantity: (product.quantity - soldItems[product.id]!).clamp(0, product.quantity),
+            quantity: (product.quantity - soldItems[product.id]!).clamp(0, 999999),
             liveBatchQuantity: product.liveBatchQuantity != null
-                ? (product.liveBatchQuantity! - soldItems[product.id]!).clamp(0, product.liveBatchQuantity!)
+                ? (product.liveBatchQuantity! - soldItems[product.id]!).clamp(0, 999999)
                 : null,
           )
         else

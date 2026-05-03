@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
   static const Color primaryColor = Color(0xFF1E293B); // Premium Navy
@@ -41,74 +40,74 @@ class AppTheme {
         foregroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
-        titleTextStyle: GoogleFonts.notoSans(
+        titleTextStyle: const TextStyle(
           fontSize: 18,
           fontWeight: FontWeight.w600,
           color: Colors.white,
         ),
       ),
       textTheme: TextTheme(
-        displayLarge: GoogleFonts.notoSans(
+        displayLarge: const TextStyle(
           fontSize: 32,
           fontWeight: FontWeight.bold,
           color: textPrimary,
         ),
-        displayMedium: GoogleFonts.notoSans(
+        displayMedium: const TextStyle(
           fontSize: 28,
           fontWeight: FontWeight.bold,
           color: textPrimary,
         ),
-        displaySmall: GoogleFonts.notoSans(
+        displaySmall: const TextStyle(
           fontSize: 24,
           fontWeight: FontWeight.bold,
           color: textPrimary,
         ),
-        headlineMedium: GoogleFonts.notoSans(
+        headlineMedium: const TextStyle(
           fontSize: 20,
           fontWeight: FontWeight.w600,
           color: textPrimary,
         ),
-        headlineSmall: GoogleFonts.notoSans(
+        headlineSmall: const TextStyle(
           fontSize: 18,
           fontWeight: FontWeight.w600,
           color: textPrimary,
         ),
-        titleLarge: GoogleFonts.notoSans(
+        titleLarge: const TextStyle(
           fontSize: 16,
           fontWeight: FontWeight.w600,
           color: textPrimary,
         ),
-        titleMedium: GoogleFonts.notoSans(
+        titleMedium: const TextStyle(
           fontSize: 14,
           fontWeight: FontWeight.w500,
           color: textPrimary,
         ),
-        titleSmall: GoogleFonts.notoSans(
+        titleSmall: const TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w500,
           color: textSecondary,
         ),
-        bodyLarge: GoogleFonts.notoSans(
+        bodyLarge: const TextStyle(
           fontSize: 16,
           fontWeight: FontWeight.w400,
           color: textPrimary,
         ),
-        bodyMedium: GoogleFonts.notoSans(
+        bodyMedium: const TextStyle(
           fontSize: 14,
           fontWeight: FontWeight.w400,
           color: textPrimary,
         ),
-        bodySmall: GoogleFonts.notoSans(
+        bodySmall: const TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w400,
           color: textSecondary,
         ),
-        labelLarge: GoogleFonts.notoSans(
+        labelLarge: const TextStyle(
           fontSize: 14,
           fontWeight: FontWeight.w500,
           color: Colors.white,
         ),
-        labelMedium: GoogleFonts.notoSans(
+        labelMedium: const TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w500,
           color: Colors.white,
@@ -133,7 +132,7 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
-          textStyle: GoogleFonts.notoSans(
+          textStyle: const TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w700,
             letterSpacing: 0.5,
@@ -148,7 +147,7 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
-          textStyle: GoogleFonts.notoSans(
+          textStyle: const TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
           ),
@@ -158,7 +157,7 @@ class AppTheme {
         style: TextButton.styleFrom(
           foregroundColor: primaryColor,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          textStyle: GoogleFonts.notoSans(
+          textStyle: const TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
           ),
@@ -188,15 +187,15 @@ class AppTheme {
           borderRadius: BorderRadius.circular(8),
           borderSide: const BorderSide(color: errorColor, width: 2),
         ),
-        hintStyle: GoogleFonts.notoSans(
+        hintStyle: const TextStyle(
           fontSize: 14,
           color: textSecondary,
         ),
-        labelStyle: GoogleFonts.notoSans(
+        labelStyle: const TextStyle(
           fontSize: 14,
           color: textPrimary,
         ),
-        errorStyle: GoogleFonts.notoSans(
+        errorStyle: const TextStyle(
           fontSize: 12,
           color: errorColor,
         ),

@@ -92,4 +92,5 @@ class AuthService {
   Future<void> updateDisplayName(String name) async {
     await _auth.currentUser?.updateDisplayName(name);
   }
+
 }

@@ -102,5 +102,39 @@ class BatchRepository {
     );
     return result.map((map) => ProductBatch.fromMap(map)).toList();
   }
+
+  Future<void> syncBatchesForProduct(int productId, int productQuantity) async {
+    final db = await _dbHelper.database;
+    await db.transaction((txn) async {
+      final batchResult = await txn.query(
+        TableConstants.productBatches,
+        where: 'productId = ?',
+        whereArgs: [productId],
+      );
+
+      final currentBatchTotal = batchResult.fold<int>(0, (sum, b) => sum + (b['quantity'] as int? ?? 0));
+
+      if (currentBatchTotal == 0 && productQuantity > 0) {
+        await txn.insert(TableConstants.productBatches, {
+          'productId': productId,
+          'quantity': productQuantity,
+          'costPrice': 0,
+          'expiryDate': DateTime.now().add(const Duration(days: 365)).toIso8601String(),
+          'createdAt': DateTime.now().toIso8601String(),
+        });
+      } else if (currentBatchTotal != productQuantity) {
+        final difference = productQuantity - currentBatchTotal;
+        if (difference > 0) {
+          await txn.insert(TableConstants.productBatches, {
+            'productId': productId,
+            'quantity': difference,
+            'costPrice': 0,
+            'expiryDate': DateTime.now().add(const Duration(days: 365)).toIso8601String(),
+            'createdAt': DateTime.now().toIso8601String(),
+          });
+        }
+      }
+    });
+  }
 }
 

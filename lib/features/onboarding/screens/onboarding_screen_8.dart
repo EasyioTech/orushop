@@ -49,17 +49,42 @@ class _OnboardingScreen8State extends State<OnboardingScreen8> {
           ),
         ],
       ),
-      content: TextField(
-        controller: _codeController,
-        onChanged: _validate,
-        keyboardType: TextInputType.number,
-        decoration: InputDecoration(
-          hintText: 'Code',
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: const BorderSide(color: AppTheme.accentColor, width: 2),
+      content: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Verification Code',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.textPrimary,
+                ),
           ),
-        ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _codeController,
+            onChanged: _validate,
+            keyboardType: TextInputType.number,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+            decoration: InputDecoration(
+              hintText: 'Code',
+              contentPadding: const EdgeInsets.all(16),
+              filled: true,
+              fillColor: const Color(0xFFF5F5F5),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

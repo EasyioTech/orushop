@@ -11,7 +11,6 @@ class OnboardingState {
   final String language;
   final String? role;
   final String? emailOrPhone;
-  final String? password;
   final String? cashierCode;
   final String? plan;
   final bool isCompleted;
@@ -20,7 +19,6 @@ class OnboardingState {
     this.language = 'en',
     this.role,
     this.emailOrPhone,
-    this.password,
     this.cashierCode,
     this.plan,
     this.isCompleted = false,
@@ -28,23 +26,23 @@ class OnboardingState {
 
   OnboardingState copyWith({
     String? language,
-    String? role,
-    String? emailOrPhone,
-    String? password,
-    String? cashierCode,
-    String? plan,
+    Object? role = _sentinel,
+    Object? emailOrPhone = _sentinel,
+    Object? cashierCode = _sentinel,
+    Object? plan = _sentinel,
     bool? isCompleted,
   }) {
     return OnboardingState(
       language: language ?? this.language,
-      role: role ?? this.role,
-      emailOrPhone: emailOrPhone ?? this.emailOrPhone,
-      password: password ?? this.password,
-      cashierCode: cashierCode ?? this.cashierCode,
-      plan: plan ?? this.plan,
+      role: role == _sentinel ? this.role : role as String?,
+      emailOrPhone: emailOrPhone == _sentinel ? this.emailOrPhone : emailOrPhone as String?,
+      cashierCode: cashierCode == _sentinel ? this.cashierCode : cashierCode as String?,
+      plan: plan == _sentinel ? this.plan : plan as String?,
       isCompleted: isCompleted ?? this.isCompleted,
     );
   }
+
+  static const _sentinel = Object();
 }
 
 class OnboardingNotifier extends StateNotifier<OnboardingState> {
@@ -86,31 +84,12 @@ class OnboardingNotifier extends StateNotifier<OnboardingState> {
     state = state.copyWith(emailOrPhone: value);
   }
 
-  void setPassword(String value) {
-    state = state.copyWith(password: value);
-  }
-
   void setCashierCode(String value) {
     state = state.copyWith(cashierCode: value);
   }
 
   void setPlan(String value) {
     state = state.copyWith(plan: value);
-  }
-
-  Future<void> signUpWithEmail(String email, String password, {bool complete = true}) async {
-    try {
-      final userCredential = await _authService.signUpWithEmail(email, password);
-      if (userCredential.user != null) {
-        await _handleRevenueCatLogin(userCredential.user!.uid);
-        if (complete) {
-          if (_prefs != null) await _prefs.setBool('onboarding_completed', true);
-          state = state.copyWith(isCompleted: true);
-        }
-      }
-    } catch (e) {
-      rethrow;
-    }
   }
 
   Future<void> signInWithEmail(String email, String password, {bool complete = true}) async {
@@ -132,7 +111,11 @@ class OnboardingNotifier extends StateNotifier<OnboardingState> {
     try {
       final userCredential = await _authService.signInWithGoogle();
       if (userCredential != null && userCredential.user != null) {
-        await _handleRevenueCatLogin(userCredential.user!.uid);
+        final user = userCredential.user!;
+        if (user.displayName != null && user.displayName!.isNotEmpty) {
+          await _authService.updateDisplayName(user.displayName!);
+        }
+        await _handleRevenueCatLogin(user.uid);
         if (complete) {
           if (_prefs != null) await _prefs.setBool('onboarding_completed', true);
           state = state.copyWith(isCompleted: true);
@@ -147,7 +130,11 @@ class OnboardingNotifier extends StateNotifier<OnboardingState> {
     try {
       final userCredential = await _authService.signInWithApple();
       if (userCredential != null && userCredential.user != null) {
-        await _handleRevenueCatLogin(userCredential.user!.uid);
+        final user = userCredential.user!;
+        if (user.displayName != null && user.displayName!.isNotEmpty) {
+          await _authService.updateDisplayName(user.displayName!);
+        }
+        await _handleRevenueCatLogin(user.uid);
         if (complete) {
           if (_prefs != null) await _prefs.setBool('onboarding_completed', true);
           state = state.copyWith(isCompleted: true);
@@ -194,13 +181,6 @@ class OnboardingNotifier extends StateNotifier<OnboardingState> {
     }
     
     state = state.copyWith(isCompleted: true);
-  }
-
-  Future<void> updateUserDetails({required String firstName, required String lastName}) async {
-    final fullName = '$firstName $lastName'.trim();
-    if (fullName.isNotEmpty) {
-      await _authService.updateDisplayName(fullName);
-    }
   }
 
   Future<void> resetOnboarding() async {

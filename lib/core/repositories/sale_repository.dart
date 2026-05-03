@@ -135,7 +135,7 @@ class SaleRepository {
 
         final List<SaleItem> processedItems = [];
 
-        // 2. Process each item
+          // 2. Process each item
         for (final item in items) {
           // Fetch batches inside transaction with a row-level lock (implicit in txn)
           final List<Map<String, dynamic>> batchMaps = await txn.query(
@@ -145,12 +145,52 @@ class SaleRepository {
             orderBy: 'expiryDate ASC', // FIFO logic
           );
 
-          final batches = batchMaps.map((m) => ProductBatch.fromMap(m)).toList();
+          var batches = batchMaps.map((m) => ProductBatch.fromMap(m)).toList();
 
           // Strict Stock Validation
-          final totalAvailable = batches.fold<int>(0, (sum, b) => sum + b.quantity);
-          if (totalAvailable < item.quantity) {
-            throw InsufficientStockException(item.productName, item.quantity, totalAvailable);
+          var totalAvailableInBatches = batches.fold<int>(0, (sum, b) => sum + b.quantity);
+          
+          // FALLBACK: If batches don't have enough but products table does, sync them
+          if (totalAvailableInBatches < item.quantity) {
+            final List<Map<String, dynamic>> productResult = await txn.query(
+              TableConstants.products,
+              columns: ['quantity'],
+              where: 'id = ?',
+              whereArgs: [item.productId],
+            );
+            
+            if (productResult.isNotEmpty) {
+              final productTotal = productResult.first['quantity'] as int;
+              if (productTotal >= item.quantity) {
+                debugPrint('SaleRepository: Stock discrepancy detected for ${item.productName}. Batches: $totalAvailableInBatches, Product Total: $productTotal. Creating auto-batch.');
+                
+                // Create a "System Correction" batch to fill the gap
+                final gap = productTotal - totalAvailableInBatches;
+                final batchId = await txn.insert(TableConstants.productBatches, {
+                  'productId': item.productId,
+                  'quantity': gap,
+                  'costPrice': 0.0,
+                  'expiryDate': DateTime.now().add(const Duration(days: 365 * 10)).toIso8601String(),
+                  'createdAt': DateTime.now().toIso8601String(),
+                });
+                
+                // Re-fetch or manually add to the list
+                final newBatch = ProductBatch(
+                  id: batchId,
+                  productId: item.productId,
+                  quantity: gap,
+                  costPrice: 0.0,
+                  expiryDate: DateTime.now().add(const Duration(days: 365 * 10)),
+                  createdAt: DateTime.now(),
+                );
+                batches.add(newBatch);
+                totalAvailableInBatches += gap;
+              }
+            }
+          }
+
+          if (totalAvailableInBatches < item.quantity) {
+            throw InsufficientStockException(item.productName, item.quantity, totalAvailableInBatches);
           }
 
           final usedBatchIds = <int>[];

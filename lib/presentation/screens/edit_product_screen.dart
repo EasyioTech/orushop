@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orushops/core/models/product.dart';
-import 'package:orushops/core/database/database_helper.dart';
-import 'package:orushops/core/repositories/product_repository.dart';
+import 'package:orushops/core/services/product_crud_service.dart';
 import 'package:orushops/core/theme/app_theme.dart';
 import 'package:orushops/providers/products_provider.dart';
 
@@ -66,11 +65,11 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
         updatedAt: DateTime.now(),
       );
 
-      final repo = ProductRepository();
-      await repo.update(updated);
+      final service = ProductCrudService();
+      await service.updateProduct(updated);
 
-      if (!mounted) return;
       HapticFeedback.mediumImpact();
+      if (!mounted) return;
       ref.invalidate(productsProvider);
       Navigator.pop(context, true);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -110,16 +109,11 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
     if (confirmed != true) return;
 
     try {
-      final dbHelper = DatabaseHelper();
-      final db = await dbHelper.database;
+      final service = ProductCrudService();
+      await service.deleteProduct(widget.product.id);
 
-      await db.transaction((txn) async {
-        await txn.delete('product_batches', where: 'productId = ?', whereArgs: [widget.product.id]);
-        await txn.delete('products', where: 'id = ?', whereArgs: [widget.product.id]);
-      });
-
-      if (!mounted) return;
       HapticFeedback.mediumImpact();
+      if (!mounted) return;
       ref.invalidate(productsProvider);
       Navigator.pop(context, true);
       ScaffoldMessenger.of(context).showSnackBar(

@@ -12,6 +12,7 @@ class FullscreenOnboardingPage extends StatelessWidget {
   final String? secondaryButtonText;
   final VoidCallback? onSecondaryAction;
   final bool isPrimaryButtonEnabled;
+  final bool isLoading;
   final VoidCallback onBack;
   final bool showBackButton;
   final Widget? footer;
@@ -28,6 +29,7 @@ class FullscreenOnboardingPage extends StatelessWidget {
     this.secondaryButtonText,
     this.onSecondaryAction,
     this.isPrimaryButtonEnabled = true,
+    this.isLoading = false,
     required this.onBack,
     this.showBackButton = true,
     this.footer,
@@ -154,13 +156,22 @@ class FullscreenOnboardingPage extends StatelessWidget {
                           ),
                           elevation: 0,
                         ),
-                        child: Text(
-                          primaryButtonText,
-                          style: const TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
+                        child: isLoading
+                            ? const SizedBox(
+                                height: 24,
+                                width: 24,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2.5,
+                                ),
+                              )
+                            : Text(
+                                primaryButtonText,
+                                style: const TextStyle(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                       ),
                     ),
                     if (secondaryButtonText != null && onSecondaryAction != null) ...[

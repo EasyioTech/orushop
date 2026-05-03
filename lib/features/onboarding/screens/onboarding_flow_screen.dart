@@ -4,13 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orushops/providers/onboarding_provider.dart';
 import 'onboarding_screen_1.dart';
 import 'onboarding_screen_2.dart';
-import 'onboarding_screen_3.dart';
-import 'onboarding_screen_4.dart';
-import 'onboarding_screen_5.dart';
 import 'onboarding_screen_7.dart';
 import 'onboarding_screen_8.dart';
 import 'onboarding_screen_9.dart';
-import 'onboarding_screen_10.dart';
 import 'onboarding_screen_17.dart';
 
 class OnboardingFlowScreen extends ConsumerStatefulWidget {
@@ -29,11 +25,19 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
     setState(() => _isLoading = true);
     try {
       await authMethod();
-      _pageController.jumpToPage(7);
+      _pageController.jumpToPage(4); // Jump to Success Screen (Screen 9)
     } catch (e) {
       if (mounted) {
+        String message = e.toString();
+        if (message.contains('email-already-in-use') || message.contains('already in use')) {
+          message = 'This email is already associated with an account. Please sign in via the Login screen or use a different account.';
+        }
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Authentication failed: $e')),
+          SnackBar(
+            content: Text(message),
+            backgroundColor: Colors.redAccent,
+            duration: const Duration(seconds: 5),
+          ),
         );
       }
     } finally {
@@ -71,19 +75,11 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
 
   void _goBack() {
     if (!mounted) return;
-    if (_currentPage == 7) {
-      // Read provider only when mounted and stable
-      final emailOrPhone =
-          ref.read(onboardingProvider).emailOrPhone ?? '';
-      if (emailOrPhone.contains('@')) {
-        _pageController.jumpToPage(4); // Back to Email Confirm
-      } else if (emailOrPhone.isNotEmpty) {
-        _pageController.jumpToPage(6); // Back to Phone Confirm
-      } else {
-        _pageController.jumpToPage(1); // Back to Selection
-      }
-    } else if (_currentPage == 2 || _currentPage == 5) {
-      _pageController.jumpToPage(1); // Back to Selection
+    if (_currentPage == 4) {
+      // Back from Success to Selection (since social/phone auth landed here)
+      _pageController.jumpToPage(1);
+    } else if (_currentPage == 2) {
+      _pageController.jumpToPage(1); // Back to Selection from Phone Path
     } else if (_currentPage > 0) {
       // Use jumpToPage on back-gesture paths to avoid animated scroll
       // notifications firing on a deactivated page widget.
@@ -113,8 +109,7 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
                 OnboardingScreen2(
                   onNext: _nextPage,
                   onBack: _previousPage,
-                  onEmailSelected: () => _pageController.jumpToPage(2),
-                  onPhoneSelected: () => _pageController.jumpToPage(5),
+                  onPhoneSelected: () => _pageController.jumpToPage(2),
                   onGoogleSelected: () => _handleSocialAuth(
                     () => ref.read(onboardingProvider.notifier).signInWithGoogle(complete: false),
                   ),
@@ -122,71 +117,16 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
                     () => ref.read(onboardingProvider.notifier).signInWithApple(complete: false),
                   ),
                 ),
-                // Email Path (Indices 2, 3, 4)
-                OnboardingScreen3(
-                  onNext: _nextPage,
-                  onBack: () => _pageController.jumpToPage(1),
-                  currentLanguage: 'en',
-                ),
-                OnboardingScreen4(
-                  onNext: _nextPage,
-                  onBack: _previousPage,
-                ),
-                OnboardingScreen5(
-                  onNext: () async {
-                    final messenger = ScaffoldMessenger.of(context);
-                    setState(() => _isLoading = true);
-                    try {
-                      final state = ref.read(onboardingProvider);
-                      await ref.read(onboardingProvider.notifier).signUpWithEmail(
-                        state.emailOrPhone!,
-                        state.password!,
-                        complete: false,
-                      );
-                      _pageController.jumpToPage(7);
-                    } catch (e) {
-                      if (!mounted) return;
-                      messenger.showSnackBar(
-                        SnackBar(content: Text('Sign up failed: $e')),
-                      );
-                    } finally {
-                      if (mounted) setState(() => _isLoading = false);
-                    }
-                  },
-                  onBack: _previousPage,
-                ),
-                // Phone Path (Indices 5, 6)
+                // Phone Path (Indices 2, 3)
                 OnboardingScreen7(
                   onNext: _nextPage,
                   onBack: () => _pageController.jumpToPage(1),
                 ),
                 OnboardingScreen8(
-                  onNext: () => _pageController.jumpToPage(7),
+                  onNext: () => _pageController.jumpToPage(4),
                   onBack: _previousPage,
                 ),
-                // Essential Personal Info (Index 7)
-                OnboardingScreen10(
-                  onNext: (firstName, lastName) async {
-                    setState(() => _isLoading = true);
-                    final messenger = ScaffoldMessenger.of(context);
-                    try {
-                      await ref.read(onboardingProvider.notifier).updateUserDetails(
-                            firstName: firstName,
-                            lastName: lastName,
-                          );
-                      _nextPage();
-                    } catch (e) {
-                      if (!mounted) return;
-                      messenger.showSnackBar(
-                        SnackBar(content: Text('Failed to update details: $e')),
-                      );
-                    } finally {
-                      if (mounted) setState(() => _isLoading = false);
-                    }
-                  },
-                  onBack: _goBack,
-                ),
-                // Success & Upsell (Indices 8, 9)
+                // Success & Upsell (Indices 4, 5)
                 OnboardingScreen9(
                   onNext: _nextPage,
                   onBack: _previousPage,
