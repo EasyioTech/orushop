@@ -602,59 +602,59 @@ class _InventoryItemCardState extends ConsumerState<_InventoryItemCard> {
   Widget build(BuildContext context) {
     final bool isLowStock = widget.product.quantity < 10;
     final bool isOutOfStock = widget.product.quantity == 0;
-    return Material(
-      color: Colors.white,
-      child: InkWell(
-        onLongPress: () => _showProductMenu(context, ref),
-        onTap: _openEdit,
-        child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            decoration: const BoxDecoration(
-              border: Border(
-                bottom: BorderSide(color: AppTheme.dividerColor, width: 1),
-              ),
-            ),
+    
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppTheme.borderColor.withValues(alpha: 0.4), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(20),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onLongPress: () => _showProductMenu(context, ref),
+          onTap: _openEdit,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                // 1. Product Image / Icon
+                // 1. Product Image
                 Container(
-                  width: 64,
-                  height: 64,
+                  width: 60,
+                  height: 60,
                   decoration: BoxDecoration(
                     color: AppTheme.backgroundColor,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppTheme.borderColor.withValues(alpha: 0.5), width: 1),
+                    borderRadius: BorderRadius.circular(14),
                   ),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: AppTheme.dividerColor,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(16),
-                      child: widget.product.imageUrl != null && widget.product.imageUrl!.isNotEmpty
-                          ? Image.network(
-                              widget.product.imageUrl!,
-                              fit: BoxFit.contain,
-                              width: 64,
-                              height: 64,
-                              alignment: Alignment.center,
-                              errorBuilder: (context, error, stackTrace) => _buildPlaceholderIcon(),
-                            )
-                          : widget.product.imagePath != null && widget.product.imagePath!.isNotEmpty
-                              ? Image.file(
-                                  File(widget.product.imagePath!),
-                                  fit: BoxFit.contain,
-                                  width: 64,
-                                  height: 64,
-                                  alignment: Alignment.center,
-                                  errorBuilder: (context, error, stackTrace) => _buildPlaceholderIcon(),
-                                )
-                              : _buildPlaceholderIcon(),
-                    ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(14),
+                    child: widget.product.imageUrl != null && widget.product.imageUrl!.isNotEmpty
+                        ? Image.network(
+                            widget.product.imageUrl!,
+                            fit: BoxFit.contain,
+                            errorBuilder: (context, error, stackTrace) => _buildPlaceholderIcon(),
+                          )
+                        : widget.product.imagePath != null && widget.product.imagePath!.isNotEmpty
+                            ? Image.file(
+                                File(widget.product.imagePath!),
+                                fit: BoxFit.contain,
+                                errorBuilder: (context, error, stackTrace) => _buildPlaceholderIcon(),
+                              )
+                            : _buildPlaceholderIcon(),
                   ),
                 ),
-                const SizedBox(width: 14),
+                const SizedBox(width: 16),
+                
                 // 2. Product Info
                 Expanded(
                   child: Column(
@@ -665,72 +665,62 @@ class _InventoryItemCardState extends ConsumerState<_InventoryItemCard> {
                         style: const TextStyle(
                           fontWeight: FontWeight.w800,
                           fontSize: 16,
-                          letterSpacing: -0.4,
                           color: AppTheme.textPrimary,
+                          letterSpacing: -0.5,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 4),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 4,
-                        crossAxisAlignment: WrapCrossAlignment.center,
+                      Row(
                         children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppTheme.backgroundColor,
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              widget.product.sku,
-                              style: TextStyle(
-                                color: AppTheme.textSecondary,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 0.5,
-                              ),
+                          Text(
+                            'Stock: ',
+                            style: TextStyle(
+                              color: AppTheme.textSecondary.withValues(alpha: 0.6),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
-                          if (isOutOfStock)
-                            const _StatusBadge(
-                              label: 'OUT OF STOCK',
-                              color: AppTheme.errorColor,
-                            )
-                          else if (isLowStock)
-                            const _StatusBadge(
-                              label: 'LOW STOCK',
-                              color: AppTheme.warningColor,
+                          Text(
+                            '${widget.product.quantity}',
+                            style: TextStyle(
+                              color: isOutOfStock 
+                                ? AppTheme.errorColor 
+                                : (isLowStock ? AppTheme.warningColor : AppTheme.successColor),
+                              fontSize: 14,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          if (isOutOfStock || isLowStock)
+                            _StatusBadge(
+                              label: isOutOfStock ? 'OUT' : 'LOW',
+                              color: isOutOfStock ? AppTheme.errorColor : AppTheme.warningColor,
                             ),
                         ],
                       ),
                     ],
                   ),
                 ),
-                // 3. Add Stock Button
-                const SizedBox(width: 12),
-                GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: _openEdit,
-                  child: Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: AppTheme.primaryColor.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: const Icon(
-                      Icons.edit_rounded,
-                      color: AppTheme.primaryColor,
-                      size: 20,
-                    ),
+                
+                // 3. Edit Button
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryColor.withValues(alpha: 0.08),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.edit_rounded,
+                    color: AppTheme.primaryColor,
+                    size: 18,
                   ),
                 ),
               ],
             ),
+          ),
         ),
       ),
     );

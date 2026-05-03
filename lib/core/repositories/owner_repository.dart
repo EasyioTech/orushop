@@ -57,6 +57,19 @@ class OwnerRepository {
     }
   }
 
+  Future<void> saveShopDetails(Map<String, dynamic> data) async {
+    if (_userId.isEmpty) throw Exception('User not authenticated');
+
+    try {
+      await _firestore.collection('owners').doc(_userId).set(
+        data,
+        SetOptions(merge: true),
+      );
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   Future<void> updateEnableUpi(bool enabled) async {
     if (_userId.isEmpty) throw Exception('User not authenticated');
 

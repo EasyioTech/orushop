@@ -147,48 +147,46 @@ class SaleRepository {
 
           var batches = batchMaps.map((m) => ProductBatch.fromMap(m)).toList();
 
-          // Strict Stock Validation
+          // Calculate what we have in batches
           var totalAvailableInBatches = batches.fold<int>(0, (sum, b) => sum + b.quantity);
           
-          // FALLBACK: If batches don't have enough but products table does, sync them
-          if (totalAvailableInBatches < item.quantity) {
-            final List<Map<String, dynamic>> productResult = await txn.query(
-              TableConstants.products,
-              columns: ['quantity'],
-              where: 'id = ?',
-              whereArgs: [item.productId],
-            );
+          // FETCH source-of-truth quantity from products table
+          final List<Map<String, dynamic>> productResult = await txn.query(
+            TableConstants.products,
+            columns: ['quantity'],
+            where: 'id = ?',
+            whereArgs: [item.productId],
+          );
+          
+          final productTotal = productResult.isNotEmpty ? (productResult.first['quantity'] as int) : 0;
+          
+          // AUTOMATIC SYNC: If batches are missing but product table says we have stock,
+          // or if product table has more than batches, create a correction batch.
+          if (productTotal > totalAvailableInBatches) {
+            final gap = productTotal - totalAvailableInBatches;
+            debugPrint('SaleRepository: Stock discrepancy detected for ${item.productName}. Batches: $totalAvailableInBatches, Product Total: $productTotal. Creating auto-batch for gap: $gap');
             
-            if (productResult.isNotEmpty) {
-              final productTotal = productResult.first['quantity'] as int;
-              if (productTotal >= item.quantity) {
-                debugPrint('SaleRepository: Stock discrepancy detected for ${item.productName}. Batches: $totalAvailableInBatches, Product Total: $productTotal. Creating auto-batch.');
-                
-                // Create a "System Correction" batch to fill the gap
-                final gap = productTotal - totalAvailableInBatches;
-                final batchId = await txn.insert(TableConstants.productBatches, {
-                  'productId': item.productId,
-                  'quantity': gap,
-                  'costPrice': 0.0,
-                  'expiryDate': DateTime.now().add(const Duration(days: 365 * 10)).toIso8601String(),
-                  'createdAt': DateTime.now().toIso8601String(),
-                });
-                
-                // Re-fetch or manually add to the list
-                final newBatch = ProductBatch(
-                  id: batchId,
-                  productId: item.productId,
-                  quantity: gap,
-                  costPrice: 0.0,
-                  expiryDate: DateTime.now().add(const Duration(days: 365 * 10)),
-                  createdAt: DateTime.now(),
-                );
-                batches.add(newBatch);
-                totalAvailableInBatches += gap;
-              }
-            }
+            final batchId = await txn.insert(TableConstants.productBatches, {
+              'productId': item.productId,
+              'quantity': gap,
+              'costPrice': 0.0,
+              'expiryDate': DateTime.now().add(const Duration(days: 3650)).toIso8601String(),
+              'createdAt': DateTime.now().toIso8601String(),
+            });
+            
+            final newBatch = ProductBatch(
+              id: batchId,
+              productId: item.productId,
+              quantity: gap,
+              costPrice: 0.0,
+              expiryDate: DateTime.now().add(const Duration(days: 3650)),
+              createdAt: DateTime.now(),
+            );
+            batches.add(newBatch);
+            totalAvailableInBatches += gap;
           }
 
+          // Final Validation against synced total
           if (totalAvailableInBatches < item.quantity) {
             throw InsufficientStockException(item.productName, item.quantity, totalAvailableInBatches);
           }

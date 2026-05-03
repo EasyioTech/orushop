@@ -56,21 +56,6 @@ class AuthService {
     }
   }
 
-  Future<UserCredential> signInWithEmail(String email, String password) async {
-    try {
-      return await _auth.signInWithEmailAndPassword(email: email, password: password);
-    } catch (e) {
-      rethrow;
-    }
-  }
-
-  Future<UserCredential> signUpWithEmail(String email, String password) async {
-    try {
-      return await _auth.createUserWithEmailAndPassword(email: email, password: password);
-    } catch (e) {
-      rethrow;
-    }
-  }
 
   Future<UserCredential> signInAnonymously() async {
     try {
@@ -85,9 +70,6 @@ class AuthService {
     await _auth.signOut();
   }
 
-  Future<void> resetPassword(String email) async {
-    await _auth.sendPasswordResetEmail(email: email);
-  }
 
   Future<void> updateDisplayName(String name) async {
     await _auth.currentUser?.updateDisplayName(name);

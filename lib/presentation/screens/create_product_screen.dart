@@ -172,7 +172,11 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
       if (!mounted) return;
       HapticFeedback.mediumImpact();
       ref.invalidate(productsProvider);
-      Navigator.pop(context, true);
+
+      // Wait briefly for provider to rebuild before navigation
+      await Future.delayed(const Duration(milliseconds: 300));
+
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(
@@ -187,6 +191,7 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
       );
+      Navigator.pop(context, true);
     } catch (e) {
       HapticFeedback.heavyImpact();
       if (!mounted) return;

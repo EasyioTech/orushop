@@ -8,6 +8,10 @@ import 'onboarding_screen_7.dart';
 import 'onboarding_screen_8.dart';
 import 'onboarding_screen_9.dart';
 import 'onboarding_screen_17.dart';
+import 'onboarding_shop_basic_details_screen.dart';
+import 'onboarding_shop_additional_details_screen.dart';
+import 'onboarding_features_screen.dart';
+import 'onboarding_categories_screen.dart';
 
 class OnboardingFlowScreen extends ConsumerStatefulWidget {
   const OnboardingFlowScreen({super.key});
@@ -25,7 +29,7 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
     setState(() => _isLoading = true);
     try {
       await authMethod();
-      _pageController.jumpToPage(4); // Jump to Success Screen (Screen 9)
+      _pageController.jumpToPage(4); // Jump to Shop Basic Details
     } catch (e) {
       if (mounted) {
         String message = e.toString();
@@ -75,20 +79,30 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
 
   void _goBack() {
     if (!mounted) return;
-    if (_currentPage == 4) {
-      // Back from Success to Selection (since social/phone auth landed here)
+    if (_currentPage == 8) {
+      // Back from Success to Categories
+      _pageController.jumpToPage(_currentPage - 1);
+    } else if (_currentPage == 6) {
+      // Back from Features to Additional Shop Details
+      _pageController.jumpToPage(_currentPage - 1);
+    } else if (_currentPage == 5) {
+      // Back from Additional to Basic Shop Details
+      _pageController.jumpToPage(_currentPage - 1);
+    } else if (_currentPage == 4) {
+      // Back from Basic Shop Details to Selection (since social/phone auth landed here)
       _pageController.jumpToPage(1);
     } else if (_currentPage == 2) {
       _pageController.jumpToPage(1); // Back to Selection from Phone Path
     } else if (_currentPage > 0) {
-      // Use jumpToPage on back-gesture paths to avoid animated scroll
-      // notifications firing on a deactivated page widget.
       _pageController.jumpToPage(_currentPage - 1);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    // Watch onboarding state to ensure children get fresh data if they read it in initState
+    ref.watch(onboardingProvider);
+    
     return PopScope(
       canPop: _currentPage == 0,
       onPopInvokedWithResult: (didPop, result) {
@@ -126,10 +140,27 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
                   onNext: () => _pageController.jumpToPage(4),
                   onBack: _previousPage,
                 ),
-                // Success & Upsell (Indices 4, 5)
+                // Shop Setup Path (Indices 4, 5, 6, 7)
+                OnboardingShopBasicDetailsScreen(
+                  onNext: _nextPage,
+                  onBack: _goBack,
+                ),
+                OnboardingShopAdditionalDetailsScreen(
+                  onNext: _nextPage,
+                  onBack: _goBack,
+                ),
+                OnboardingFeaturesScreen(
+                  onNext: _nextPage,
+                  onBack: _goBack,
+                ),
+                OnboardingCategoriesScreen(
+                  onNext: _nextPage,
+                  onBack: _goBack,
+                ),
+                // Success & Upsell (Indices 8, 9)
                 OnboardingScreen9(
                   onNext: _nextPage,
-                  onBack: _previousPage,
+                  onBack: _goBack,
                 ),
                 OnboardingScreen17(
                   onNext: (planId) async {
@@ -143,7 +174,7 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
                       if (mounted) setState(() => _isLoading = false);
                     }
                   },
-                  onBack: _previousPage,
+                  onBack: _goBack,
                 ),
               ],
             ),

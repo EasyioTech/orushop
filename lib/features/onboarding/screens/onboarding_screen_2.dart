@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/gestures.dart';
+
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:orushops/core/theme/app_theme.dart';
 import '../widgets/onboarding_page.dart';

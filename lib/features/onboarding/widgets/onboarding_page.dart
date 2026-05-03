@@ -46,186 +46,174 @@ class OnboardingPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final double safeTop = MediaQuery.of(context).padding.top;
+    
     return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
+      backgroundColor: Colors.white,
       body: Stack(
         children: [
           Column(
             children: [
-          // Top Illustration Area
-          Expanded(
-            flex: illustrationFlex,
-            child: Container(
-              width: double.infinity,
-              color: Colors.white,
-              child: SafeArea(
-                bottom: false,
-                child: Center(
-                  child: illustration != null
-                      ? (blendIllustration
-                            ? ShaderMask(
-                                shaderCallback: (rect) {
-                                  return const RadialGradient(
-                                    center: Alignment.center,
-                                    radius: 0.5,
-                                    colors: [Colors.white, Colors.transparent],
-                                    stops: [0.6, 1.0],
-                                  ).createShader(rect);
-                                },
-                                blendMode: BlendMode.dstIn,
-                                child: illustration!,
-                              )
-                            : illustration!)
-                      : const SizedBox.shrink(),
-                ),
-              ),
-            ),
-          ),
-
-          // Bottom Content Area
-          Expanded(
-            flex: contentFlex,
-            child: Container(
-              width: double.infinity,
-              decoration: const BoxDecoration(
-                color: AppTheme.surfaceColor,
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(32),
-                  topRight: Radius.circular(32),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black12,
-                    blurRadius: 20,
-                    offset: Offset(0, -5),
-                  ),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(32),
-                  topRight: Radius.circular(32),
-                ),
-                child: Stack(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(28, 40, 28, 24),
-                      child: Column(
-                        children: [
-                          SingleChildScrollView(
-                            physics: const BouncingScrollPhysics(),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                if (showIndicator) ...[
-                                  OnboardingStepIndicator(
-                                    currentStep: currentStep,
-                                    totalSteps: totalSteps,
-                                  ),
-                                  const SizedBox(height: 12),
-                                ],
-                                Text(
-                                  title,
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .headlineMedium
-                                      ?.copyWith(
-                                        color: AppTheme.primaryColor,
-                                        fontWeight: FontWeight.w800,
-                                        letterSpacing: -0.5,
-                                      ),
-                                  textAlign: TextAlign.center,
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  description,
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .bodyMedium
-                                      ?.copyWith(
-                                        color: AppTheme.textSecondary,
-                                        height: 1.4,
-                                      ),
-                                  textAlign: TextAlign.center,
-                                ),
-                                const SizedBox(height: 12),
-
-                                // Main Content (forms, buttons, etc.)
-                                content,
-
-                                if (footer != null) ...[
-                                  const SizedBox(height: 8),
-                                  footer!,
-                                ],
-                              ],
+              Expanded(
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  child: Column(
+                    children: [
+                      // Top Illustration Area
+                      if (illustration != null)
+                        Container(
+                          width: double.infinity,
+                          height: MediaQuery.of(context).size.height * (illustrationFlex / 12), // Reduced default height slightly
+                          color: Colors.white,
+                          child: SafeArea(
+                            bottom: false,
+                            child: Center(
+                              child: blendIllustration
+                                  ? ShaderMask(
+                                      shaderCallback: (rect) {
+                                        return const RadialGradient(
+                                          center: Alignment.center,
+                                          radius: 0.5,
+                                          colors: [Colors.white, Colors.transparent],
+                                          stops: [0.6, 1.0],
+                                        ).createShader(rect);
+                                      },
+                                      blendMode: BlendMode.dstIn,
+                                      child: illustration!,
+                                    )
+                                  : illustration!,
                             ),
                           ),
-                          const SizedBox(height: 16),
+                        )
+                      else if (showBackButton)
+                        // Space for floating back button if no illustration
+                        SizedBox(height: safeTop + 70),
 
-                          // Action Buttons
-                          if (showBackButton || showNextButton) ...[
-                            const SizedBox(height: 4),
-                            Row(
-                              children: [
-                                if (showBackButton && showBottomBackButton) ...[
-                                  IconButton(
-                                    onPressed: () {
-                                      FocusScope.of(context).unfocus();
-                                      onBack?.call();
-                                    },
-                                    icon: const Icon(
-                                      Icons.arrow_back_ios_new_rounded,
-                                    ),
-                                    style: IconButton.styleFrom(
-                                      backgroundColor: AppTheme.dividerColor,
-                                      padding: const EdgeInsets.all(16),
-                                    ),
+                      // Content Area
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            if (showIndicator) ...[
+                              OnboardingStepIndicator(
+                                currentStep: currentStep,
+                                totalSteps: totalSteps,
+                              ),
+                              const SizedBox(height: 16),
+                            ],
+                            Text(
+                              title,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .headlineMedium
+                                  ?.copyWith(
+                                    color: AppTheme.primaryColor,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: -0.5,
+                                    fontSize: 28,
                                   ),
-                                  const SizedBox(width: 16),
-                                ],
-                                if (showNextButton)
-                                  Expanded(
-                                    child: SizedBox(
-                                      height: 56,
-                                      child: ElevatedButton(
-                                        onPressed: () {
-                                          FocusScope.of(context).unfocus();
-                                          onNext();
-                                        },
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: AppTheme.accentColor,
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              16,
-                                            ),
-                                          ),
-                                        ),
-                                        child: Text(
-                                          nextButtonText,
-                                          style: const TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                              ],
+                              textAlign: TextAlign.center,
                             ),
+                            const SizedBox(height: 8),
+                            Text(
+                              description,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyMedium
+                                  ?.copyWith(
+                                    color: AppTheme.textSecondary,
+                                    height: 1.4,
+                                    fontSize: 15,
+                                  ),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 24),
+
+                            // Main Content (forms, buttons, etc.)
+                            content,
+
+                            if (footer != null) ...[
+                              const SizedBox(height: 24),
+                              footer!,
+                            ],
                           ],
-                        ],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-            ),
+
+              // Sticky Action Buttons at the bottom
+              if (showBackButton || showNextButton)
+                Container(
+                  padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.03),
+                        blurRadius: 10,
+                        offset: const Offset(0, -4),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      if (showBackButton && showBottomBackButton) ...[
+                        IconButton(
+                          onPressed: () {
+                            FocusScope.of(context).unfocus();
+                            onBack?.call();
+                          },
+                          icon: const Icon(
+                            Icons.arrow_back_ios_new_rounded,
+                          ),
+                          style: IconButton.styleFrom(
+                            backgroundColor: const Color(0xFFF2F2F7),
+                            padding: const EdgeInsets.all(16),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                      ],
+                      if (showNextButton)
+                        Expanded(
+                          child: SizedBox(
+                            height: 56,
+                            child: ElevatedButton(
+                              onPressed: () {
+                                FocusScope.of(context).unfocus();
+                                onNext();
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppTheme.accentColor,
+                                foregroundColor: Colors.white,
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                              ),
+                              child: Text(
+                                nextButtonText,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+            ],
           ),
-        ],
-      ),
-      if (showBackButton)
+
+          // Floating Back Button (Top Left)
+          if (showBackButton)
             Positioned(
-              top: MediaQuery.of(context).padding.top + 12,
+              top: safeTop + 12,
               left: 12,
               child: GestureDetector(
                 onTap: () {
@@ -254,9 +242,10 @@ class OnboardingPage extends StatelessWidget {
                 ),
               ),
             ),
+          
           if (headerAction != null)
             Positioned(
-              top: MediaQuery.of(context).padding.top + 12,
+              top: safeTop + 12,
               right: 12,
               child: headerAction!,
             ),

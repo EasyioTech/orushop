@@ -46,26 +46,6 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     final state = ref.read(checkoutProvider);
     if (state.isLoading) return;
 
-    // Final stock validation before checkout
-    for (final item in items) {
-      try {
-        final product = await ref.read(productByIdProvider(item.productId).future);
-        if (product != null && item.quantity > product.displayQuantity) {
-          if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Insufficient stock for ${item.productName}. Available: ${product.displayQuantity}'),
-              backgroundColor: AppTheme.errorColor,
-            ),
-          );
-          return;
-        }
-      } catch (e) {
-        // If product check fails, we might still want to proceed or block. 
-        // Blocking is safer for inventory integrity.
-      }
-    }
-
     HapticFeedback.mediumImpact();
     final success = await ref.read(checkoutProvider.notifier).saveSale(
           items: items,

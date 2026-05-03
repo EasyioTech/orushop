@@ -5,39 +5,42 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'shared_prefs_provider.dart';
 import 'package:orushops/core/services/auth_service.dart';
 import 'package:orushops/core/services/revenue_cat_service.dart';
+import 'package:orushops/features/onboarding/models/shop_models.dart';
+import 'package:orushops/core/repositories/owner_repository.dart';
+import 'package:orushops/core/repositories/owner_provider.dart';
 
 
 class OnboardingState {
   final String language;
   final String? role;
-  final String? emailOrPhone;
   final String? cashierCode;
   final String? plan;
+  final ShopDetails? shopDetails;
   final bool isCompleted;
 
   OnboardingState({
     this.language = 'en',
     this.role,
-    this.emailOrPhone,
     this.cashierCode,
     this.plan,
+    this.shopDetails,
     this.isCompleted = false,
   });
 
   OnboardingState copyWith({
     String? language,
     Object? role = _sentinel,
-    Object? emailOrPhone = _sentinel,
     Object? cashierCode = _sentinel,
     Object? plan = _sentinel,
+    Object? shopDetails = _sentinel,
     bool? isCompleted,
   }) {
     return OnboardingState(
       language: language ?? this.language,
       role: role == _sentinel ? this.role : role as String?,
-      emailOrPhone: emailOrPhone == _sentinel ? this.emailOrPhone : emailOrPhone as String?,
       cashierCode: cashierCode == _sentinel ? this.cashierCode : cashierCode as String?,
       plan: plan == _sentinel ? this.plan : plan as String?,
+      shopDetails: shopDetails == _sentinel ? this.shopDetails : shopDetails as ShopDetails?,
       isCompleted: isCompleted ?? this.isCompleted,
     );
   }
@@ -49,11 +52,13 @@ class OnboardingNotifier extends StateNotifier<OnboardingState> {
   final SharedPreferences? _prefs;
   final AuthService _authService;
   final RevenueCatService _revenueCatService;
+  final OwnerRepository _ownerRepository;
 
   OnboardingNotifier(
     this._prefs,
     this._authService,
     this._revenueCatService,
+    this._ownerRepository,
   ) : super(OnboardingState()) {
     if (_prefs != null) _loadOnboarding();
   }
@@ -80,9 +85,6 @@ class OnboardingNotifier extends StateNotifier<OnboardingState> {
     state = state.copyWith(role: role);
   }
 
-  void setEmailOrPhone(String value) {
-    state = state.copyWith(emailOrPhone: value);
-  }
 
   void setCashierCode(String value) {
     state = state.copyWith(cashierCode: value);
@@ -92,18 +94,77 @@ class OnboardingNotifier extends StateNotifier<OnboardingState> {
     state = state.copyWith(plan: value);
   }
 
-  Future<void> signInWithEmail(String email, String password, {bool complete = true}) async {
-    try {
-      final userCredential = await _authService.signInWithEmail(email, password);
-      if (userCredential.user != null) {
-        await _handleRevenueCatLogin(userCredential.user!.uid);
-        if (complete) {
-          if (_prefs != null) await _prefs.setBool('onboarding_completed', true);
-          state = state.copyWith(isCompleted: true);
-        }
+  void setShopDetails(ShopDetails details) {
+    state = state.copyWith(shopDetails: details);
+  }
+
+  void updateShopDetails({
+    String? shopName,
+    String? ownerName,
+    String? phoneNumber,
+    String? shopAddress,
+    String? gstNumber,
+    ShopType? shopType,
+    String? otherDetails,
+  }) {
+    if (state.shopDetails == null) {
+      // If no details exist, we create a temporary one with default values for missing required fields
+      // This is safe because the flow ensures all required fields are filled by the end.
+      state = state.copyWith(
+        shopDetails: ShopDetails(
+          shopName: shopName ?? '',
+          ownerName: ownerName ?? '',
+          phoneNumber: phoneNumber ?? '',
+          shopAddress: shopAddress ?? '',
+          shopType: shopType ?? ShopType.other,
+          gstNumber: gstNumber,
+          otherDetails: otherDetails,
+          productCategories: ShopTypeConfig.getConfig(shopType ?? ShopType.other).defaultCategories,
+          features: ShopTypeConfig.getConfig(shopType ?? ShopType.other).features.copy(),
+        ),
+      );
+    } else {
+      final oldType = state.shopDetails!.shopType;
+      final newType = shopType ?? oldType;
+      
+      // If shop type changed, we should reset features and categories to new type defaults
+      ShopFeatures updatedFeatures = state.shopDetails!.features;
+      List<String> updatedCategories = state.shopDetails!.productCategories;
+      if (shopType != null && shopType != oldType) {
+        final config = ShopTypeConfig.getConfig(shopType);
+        updatedFeatures = config.features.copy();
+        updatedCategories = config.defaultCategories;
       }
-    } catch (e) {
-      rethrow;
+
+      state = state.copyWith(
+        shopDetails: state.shopDetails!.copyWith(
+          shopName: shopName,
+          ownerName: ownerName,
+          phoneNumber: phoneNumber,
+          shopAddress: shopAddress,
+          gstNumber: gstNumber,
+          shopType: newType,
+          otherDetails: otherDetails,
+          features: updatedFeatures,
+          productCategories: updatedCategories,
+        ),
+      );
+    }
+  }
+
+  void updateShopCategories(List<String> categories) {
+    if (state.shopDetails != null) {
+      state = state.copyWith(
+        shopDetails: state.shopDetails!.copyWith(productCategories: categories),
+      );
+    }
+  }
+
+  void updateShopFeatures(ShopFeatures features) {
+    if (state.shopDetails != null) {
+      state = state.copyWith(
+        shopDetails: state.shopDetails!.copyWith(features: features),
+      );
     }
   }
 
@@ -179,6 +240,15 @@ class OnboardingNotifier extends StateNotifier<OnboardingState> {
       await _prefs.setBool('onboarding_completed', true);
       await _prefs.setString('language', state.language);
     }
+
+    // Save Shop Details to Firestore
+    if (state.shopDetails != null) {
+      try {
+        await _ownerRepository.saveShopDetails(state.shopDetails!.toMap());
+      } catch (e) {
+        debugPrint('Failed to save shop details to Firestore: $e');
+      }
+    }
     
     state = state.copyWith(isCompleted: true);
   }
@@ -193,7 +263,8 @@ final onboardingProvider = StateNotifierProvider<OnboardingNotifier, OnboardingS
   final prefs = ref.watch(sharedPreferencesProvider);
   final authService = ref.watch(authServiceProvider);
   final revenueCatService = RevenueCatService.instance;
+  final ownerRepository = ref.watch(ownerRepositoryProvider);
 
-  return OnboardingNotifier(prefs, authService, revenueCatService);
+  return OnboardingNotifier(prefs, authService, revenueCatService, ownerRepository);
 });
 

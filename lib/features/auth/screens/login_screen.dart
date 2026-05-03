@@ -29,25 +29,15 @@ class LoginScreen extends ConsumerStatefulWidget {
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
-  final _emailController    = TextEditingController();
-  final _passwordController = TextEditingController();
   bool _isLoading       = false;
   bool _isGoogleLoading = false;
   final bool _isAppleLoading  = false;
-  bool _obscurePassword = true;
   bool _isValid         = false;
 
-  @override
-  void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
-    super.dispose();
-  }
 
   void _validate() {
     setState(() {
-      _isValid = _emailController.text.isNotEmpty &&
-          _passwordController.text.isNotEmpty;
+      _isValid = true;
     });
   }
 
@@ -56,11 +46,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       return 'Authentication requires an internet connection. Please connect and try again.';
     }
     final msg = e.toString();
-    if (msg.contains('invalid-credential') ||
-        msg.contains('wrong-password') ||
-        msg.contains('user-not-found')) {
-      return 'Email or password is incorrect. Try using Google sign-in.';
-    }
     if (msg.contains('too-many-requests')) {
       return 'Too many attempts. Please wait a moment and try again.';
     }
@@ -81,28 +66,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     ));
   }
 
-  Future<void> _handleEmailLogin() async {
-    FocusScope.of(context).unfocus();
-    if (!_isValid) return;
-
-    final isOffline = ref.read(isOfflineProvider);
-    if (isOffline) {
-      _showSnack(_friendlyError(null, true));
-      return;
-    }
-
-    setState(() => _isLoading = true);
-    try {
-      await ref.read(onboardingProvider.notifier).signInWithEmail(
-            _emailController.text.trim(),
-            _passwordController.text,
-          );
-    } catch (e) {
-      _showSnack(_friendlyError(e, false));
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
 
   Future<void> _handleGoogleLogin() async {
     FocusScope.of(context).unfocus();
@@ -129,36 +92,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     _showSnack('Apple Sign-In coming soon.');
   }
 
-  InputDecoration _field({
-    required String hint,
-    required IconData icon,
-    Widget? suffix,
-  }) =>
-      InputDecoration(
-        hintText: hint,
-        hintStyle: TextStyle(
-          color: AppTheme.textSecondary.withValues(alpha: 0.55),
-          fontSize: 15,
-        ),
-        prefixIcon: Icon(icon, size: 20, color: AppTheme.textSecondary),
-        suffixIcon: suffix,
-        filled: true,
-        fillColor: const Color(0xFFF2F2F7),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide.none,
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide.none,
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: AppTheme.accentColor, width: 2),
-        ),
-      );
 
   @override
   Widget build(BuildContext context) {
@@ -219,122 +152,27 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                     const SizedBox(height: 24),
 
-                    // ── Email ──────────────────────────────────────
-                    _Label(text: 'Email address'),
-                    const SizedBox(height: 8),
-                    TextField(
-                      controller: _emailController,
-                      onChanged: (_) => _validate(),
-                      keyboardType: TextInputType.emailAddress,
-                      textInputAction: TextInputAction.next,
-                      style: const TextStyle(
-                          fontSize: 15, fontWeight: FontWeight.w500),
-                      decoration: _field(
-                        hint: 'you@example.com',
-                        icon: Icons.email_outlined,
-                      ),
+                    const SizedBox(height: 32),
+
+                    // ── Social rectangle button ────────────────────
+                    _SocialRectButton(
+                      onTap: anyLoading ? null : _handleGoogleLogin,
+                      isLoading: _isGoogleLoading,
+                      label: 'Continue with Google',
+                      iconSvg: _googleSvg,
                     ),
 
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 12),
 
-                    // ── Password ───────────────────────────────────
-                    _Label(text: 'Password'),
-                    const SizedBox(height: 8),
-                    TextField(
-                      controller: _passwordController,
-                      onChanged: (_) => _validate(),
-                      obscureText: _obscurePassword,
-                      textInputAction: TextInputAction.done,
-                      onSubmitted: (_) => _handleEmailLogin(),
-                      style: const TextStyle(
-                          fontSize: 15, fontWeight: FontWeight.w500),
-                      decoration: _field(
-                        hint: '••••••••',
-                        icon: Icons.lock_outline_rounded,
-                        suffix: IconButton(
-                          icon: Icon(
-                            _obscurePassword
-                                ? Icons.visibility_off_outlined
-                                : Icons.visibility_outlined,
-                            size: 20,
-                            color: AppTheme.textSecondary,
-                          ),
-                          onPressed: () => setState(
-                              () => _obscurePassword = !_obscurePassword),
-                        ),
-                      ),
-                    ),
-
-                    // ── Forgot password ────────────────────────────
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: TextButton(
-                        onPressed: () {},
-                        style: TextButton.styleFrom(
-                          padding: EdgeInsets.zero,
-                          minimumSize: const Size(0, 36),
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        ),
-                        child: const Text(
-                          'Forgot password?',
-                          style: TextStyle(
-                            color: AppTheme.accentColor,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
+                    _SocialRectButton(
+                      onTap: anyLoading ? null : _handleAppleLogin,
+                      isLoading: _isAppleLoading,
+                      label: 'Continue with Apple',
+                      iconSvg: _appleSvg,
                     ),
 
                     const SizedBox(height: 8),
 
-                    // ── "or continue with" divider ─────────────────
-                    Row(
-                      children: [
-                        Expanded(
-                            child: Divider(
-                                color: const Color(0xFFE5E5EA), height: 1)),
-                        Padding(
-                          padding:
-                              const EdgeInsets.symmetric(horizontal: 14),
-                          child: Text(
-                            'or continue with',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: AppTheme.textSecondary.withValues(alpha: 0.7),
-                            ),
-                          ),
-                        ),
-                        Expanded(
-                            child: Divider(
-                                color: const Color(0xFFE5E5EA), height: 1)),
-                      ],
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // ── Google + Apple side by side ────────────────
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _SocialRectButton(
-                            onTap: anyLoading ? null : _handleGoogleLogin,
-                            isLoading: _isGoogleLoading,
-                            label: 'Google',
-                            iconSvg: _googleSvg,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: _SocialRectButton(
-                            onTap: anyLoading ? null : _handleAppleLogin,
-                            isLoading: _isAppleLoading,
-                            label: 'Apple',
-                            iconSvg: _appleSvg,
-                          ),
-                        ),
-                      ],
-                    ),
                   ],
                 ),
               ),
@@ -346,40 +184,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  SizedBox(
-                    width: double.infinity,
-                    height: 56,
-                    child: ElevatedButton(
-                      onPressed:
-                          (_isValid && !anyLoading) ? _handleEmailLogin : null,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF007AFF),
-                        foregroundColor: Colors.white,
-                        disabledBackgroundColor:
-                            const Color(0xFF007AFF).withValues(alpha: 0.45),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        elevation: 0,
-                      ),
-                      child: _isLoading
-                          ? const SizedBox(
-                              width: 22,
-                              height: 22,
-                              child: CircularProgressIndicator(
-                                color: Colors.white,
-                                strokeWidth: 2.5,
-                              ),
-                            )
-                          : const Text(
-                              'Sign in to OruShops',
-                              style: TextStyle(
-                                fontSize: 17,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                    ),
-                  ),
                   const SizedBox(height: 14),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -419,25 +223,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 }
 }
 
-// ── Field label ────────────────────────────────────────────────────
-class _Label extends StatelessWidget {
-  final String text;
-  const _Label({required this.text});
-
-  @override
-  Widget build(BuildContext context) => Align(
-        alignment: Alignment.centerLeft,
-        child: Text(
-          text,
-          style: const TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: Color(0xFF1C1C1E),
-            letterSpacing: 0.1,
-          ),
-        ),
-      );
-}
 
 // ── Social rectangle button ────────────────────────────────────────
 // Full-width outlined pill with real SVG brand icon + label
