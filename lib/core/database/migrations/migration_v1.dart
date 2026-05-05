@@ -38,6 +38,7 @@ class MigrationV1 {
         paymentMethod TEXT NOT NULL,
         transactionId TEXT,
         customerPhone TEXT,
+        customerName TEXT,
         status TEXT NOT NULL DEFAULT 'completed',
         createdAt TEXT NOT NULL,
         syncedAt TEXT

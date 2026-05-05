@@ -5,6 +5,9 @@ import '../core/models/cart_item.dart';
 import '../core/models/sale.dart';
 import '../core/repositories/sale_repository.dart';
 import '../core/exceptions/backend_exception.dart';
+import '../core/models/khata_customer.dart';
+import '../core/models/khata_entry.dart';
+import 'khata_provider.dart';
 
 import 'package:orushops/providers/products_provider.dart';
 import 'package:orushops/providers/sale_provider.dart' show saleRepositoryProvider;
@@ -46,6 +49,10 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
     required int finalAmount,
     required String paymentMethod,
     required Map<int, int> selectedBatches,
+    String? customerPhone,
+    String? customerName,
+    double? amountPaid,
+    String? receivedPaymentMode, // New: Cash or Other for partial payment
   }) async {
     try {
       debugPrint('Checkout: Starting saveSale');
@@ -57,7 +64,9 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
         discountAmount: discountAmount.toDouble(),
         finalAmount: finalAmount.toDouble(),
         paymentMethod: paymentMethod,
-        status: 'completed',
+        customerPhone: customerPhone,
+        customerName: customerName,
+        status: paymentMethod == 'Khata' ? 'pending' : 'completed',
         createdAt: DateTime.now(),
       );
 
@@ -67,6 +76,56 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
         items: items,
       );
       debugPrint('Checkout: Repository processing complete');
+
+      // ── Khata Integration ──────────────────────────────────────────────────
+      if (paymentMethod == 'Khata' && customerPhone != null) {
+        final khataRepo = _ref.read(khataRepositoryProvider);
+        var customer = await khataRepo.getCustomerByPhone(customerPhone);
+        
+        int customerId;
+        if (customer == null) {
+          final now = DateTime.now();
+          customerId = await khataRepo.addCustomer(KhataCustomer(
+            id: 0,
+            name: customerName ?? 'Customer',
+            phone: customerPhone,
+            createdAt: now,
+            updatedAt: now,
+          ));
+        } else {
+          customerId = customer.id;
+          // Update name if we have a better one now
+          if (customerName != null && (customer.name == 'Customer' || customer.name.isEmpty)) {
+            await khataRepo.updateCustomer(customer.copyWith(name: customerName));
+          }
+        }
+
+        final committedSale = result['sale'] as Sale;
+        final totalAmount = finalAmount.toDouble();
+        final receivedAmount = amountPaid ?? 0.0;
+        
+        // 1. Record the FULL amount as Credit (Sales entry)
+        await khataRepo.addEntry(
+          customerId: customerId,
+          type: KhataEntryType.credit,
+          amount: totalAmount,
+          description: 'Bill #${committedSale.id}',
+          linkedSaleId: committedSale.id,
+        );
+
+        // 2. Record the payment separately if received
+        if (receivedAmount > 0) {
+          await khataRepo.recordPayment(
+            customerId: customerId,
+            amount: receivedAmount,
+            paymentMethod: receivedPaymentMode ?? 'Cash',
+            notes: 'Payment for Bill #${committedSale.id}',
+          );
+        }
+        
+        // Refresh khata state
+        _ref.invalidate(khataListProvider);
+      }
 
       // Build productId → quantitySold map from the committed sale items
       final soldItems = <int, int>{};

@@ -8,7 +8,15 @@ import 'package:orushops/core/services/revenue_cat_service.dart';
 import 'package:orushops/features/onboarding/models/shop_models.dart';
 import 'package:orushops/core/repositories/owner_repository.dart';
 import 'package:orushops/core/repositories/owner_provider.dart';
+import 'package:orushops/core/repositories/category_repository.dart';
 
+
+class OnboardingException implements Exception {
+  final String message;
+  const OnboardingException(this.message);
+  @override
+  String toString() => message;
+}
 
 class OnboardingState {
   final String language;
@@ -17,6 +25,8 @@ class OnboardingState {
   final String? plan;
   final ShopDetails? shopDetails;
   final bool isCompleted;
+  /// Phone number entered during OTP auth (screen 7). Carried forward to Basic Details.
+  final String? pendingPhone;
 
   OnboardingState({
     this.language = 'en',
@@ -25,6 +35,7 @@ class OnboardingState {
     this.plan,
     this.shopDetails,
     this.isCompleted = false,
+    this.pendingPhone,
   });
 
   OnboardingState copyWith({
@@ -34,6 +45,7 @@ class OnboardingState {
     Object? plan = _sentinel,
     Object? shopDetails = _sentinel,
     bool? isCompleted,
+    Object? pendingPhone = _sentinel,
   }) {
     return OnboardingState(
       language: language ?? this.language,
@@ -42,6 +54,7 @@ class OnboardingState {
       plan: plan == _sentinel ? this.plan : plan as String?,
       shopDetails: shopDetails == _sentinel ? this.shopDetails : shopDetails as ShopDetails?,
       isCompleted: isCompleted ?? this.isCompleted,
+      pendingPhone: pendingPhone == _sentinel ? this.pendingPhone : pendingPhone as String?,
     );
   }
 
@@ -53,12 +66,14 @@ class OnboardingNotifier extends StateNotifier<OnboardingState> {
   final AuthService _authService;
   final RevenueCatService _revenueCatService;
   final OwnerRepository _ownerRepository;
+  final CategoryRepository _categoryRepository;
 
   OnboardingNotifier(
     this._prefs,
     this._authService,
     this._revenueCatService,
     this._ownerRepository,
+    this._categoryRepository,
   ) : super(OnboardingState()) {
     if (_prefs != null) _loadOnboarding();
   }
@@ -92,6 +107,10 @@ class OnboardingNotifier extends StateNotifier<OnboardingState> {
 
   void setPlan(String value) {
     state = state.copyWith(plan: value);
+  }
+
+  void setPendingPhone(String phone) {
+    state = state.copyWith(pendingPhone: phone);
   }
 
   void setShopDetails(ShopDetails details) {
@@ -219,21 +238,17 @@ class OnboardingNotifier extends StateNotifier<OnboardingState> {
     }
   }
 
+  /// Completes onboarding. Throws [OnboardingException] on recoverable failures
+  /// so the UI can surface them to the user.
   Future<void> completeOnboarding() async {
-    // Ensure the user is authenticated so they don't see the login screen again
+    // Phone OTP and social auth both sign in before reaching this point.
+    // If somehow the user is still unauthenticated, fail explicitly — do NOT
+    // silently create an anonymous account that will be unrecoverable after
+    // app reinstall.
     if (_authService.currentUser == null) {
-      try {
-        await _authService.signInAnonymously();
-      } catch (e) {
-        debugPrint('Anonymous sign-in failed during onboarding completion: $e');
-      }
-    }
-    
-    // Final check to ensure auth state has propagated
-    int retry = 0;
-    while (_authService.currentUser == null && retry < 5) {
-      await Future.delayed(const Duration(milliseconds: 200));
-      retry++;
+      throw OnboardingException(
+        'Could not verify your account. Please go back and sign in again.',
+      );
     }
 
     if (_prefs != null) {
@@ -241,15 +256,29 @@ class OnboardingNotifier extends StateNotifier<OnboardingState> {
       await _prefs.setString('language', state.language);
     }
 
-    // Save Shop Details to Firestore
+    // Save shop details to Firestore — rethrow as OnboardingException so the
+    // UI can show a retry prompt instead of silently losing data.
     if (state.shopDetails != null) {
       try {
         await _ownerRepository.saveShopDetails(state.shopDetails!.toMap());
       } catch (e) {
         debugPrint('Failed to save shop details to Firestore: $e');
+        throw OnboardingException(
+          'Could not save your shop details. Check your internet connection and try again.',
+        );
+      }
+
+      // Seed categories into SQLite — also surfaces failure.
+      try {
+        await _categoryRepository.seedFromShopType(state.shopDetails!.shopType);
+      } catch (e) {
+        debugPrint('Failed to seed categories: $e');
+        throw OnboardingException(
+          'Could not set up your product categories. Please try again.',
+        );
       }
     }
-    
+
     state = state.copyWith(isCompleted: true);
   }
 
@@ -257,14 +286,33 @@ class OnboardingNotifier extends StateNotifier<OnboardingState> {
     if (_prefs != null) await _prefs.setBool('onboarding_completed', false);
     state = OnboardingState(language: state.language);
   }
+
+  /// Called by the phone OTP flow to send/resend OTP.
+  /// Returns the verificationId for use in [verifyOtp].
+  Future<String> sendOtp(String phone) async {
+    return await _authService.sendOtp(phone);
+  }
+
+  /// Verifies the OTP and signs in. Returns true on success.
+  Future<bool> verifyOtp(String verificationId, String otp) async {
+    final credential = await _authService.verifyOtp(verificationId, otp);
+    if (credential?.user != null) {
+      await _handleRevenueCatLogin(credential!.user!.uid);
+      return true;
+    }
+    return false;
+  }
 }
+
+final categoryRepositoryProvider = Provider<CategoryRepository>((ref) => CategoryRepository());
 
 final onboardingProvider = StateNotifierProvider<OnboardingNotifier, OnboardingState>((ref) {
   final prefs = ref.watch(sharedPreferencesProvider);
   final authService = ref.watch(authServiceProvider);
   final revenueCatService = RevenueCatService.instance;
   final ownerRepository = ref.watch(ownerRepositoryProvider);
+  final categoryRepository = ref.watch(categoryRepositoryProvider);
 
-  return OnboardingNotifier(prefs, authService, revenueCatService, ownerRepository);
+  return OnboardingNotifier(prefs, authService, revenueCatService, ownerRepository, categoryRepository);
 });
 

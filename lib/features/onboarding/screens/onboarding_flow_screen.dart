@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:orushops/providers/onboarding_provider.dart';
+import 'package:orushops/providers/onboarding_provider.dart' show onboardingProvider, OnboardingException;
 import 'onboarding_screen_1.dart';
 import 'onboarding_screen_2.dart';
 import 'onboarding_screen_7.dart';
@@ -25,25 +25,28 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
   int _currentPage = 0;
   bool _isLoading = false;
 
+  // OTP flow state — set by screen 7, consumed by screen 8
+  String? _otpVerificationId;
+  String? _otpPhone;
+
   Future<void> _handleSocialAuth(Future<void> Function() authMethod) async {
+    final messenger = ScaffoldMessenger.of(context);
     setState(() => _isLoading = true);
     try {
       await authMethod();
-      _pageController.jumpToPage(4); // Jump to Shop Basic Details
+      if (mounted) _pageController.jumpToPage(4);
     } catch (e) {
-      if (mounted) {
-        String message = e.toString();
-        if (message.contains('email-already-in-use') || message.contains('already in use')) {
-          message = 'This email is already associated with an account. Please sign in via the Login screen or use a different account.';
-        }
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(message),
-            backgroundColor: Colors.redAccent,
-            duration: const Duration(seconds: 5),
-          ),
-        );
+      String message = e.toString();
+      if (message.contains('email-already-in-use') || message.contains('already in use')) {
+        message = 'This email is already associated with an account. Please sign in via the Login screen or use a different account.';
       }
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.redAccent,
+          duration: const Duration(seconds: 5),
+        ),
+      );
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -79,9 +82,12 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
 
   void _goBack() {
     if (!mounted) return;
-    if (_currentPage == 8) {
+    if (_currentPage == 9) {
+      // Back from Upsell to Success — don't skip, just go back one
+      _pageController.jumpToPage(8);
+    } else if (_currentPage == 8) {
       // Back from Success to Categories
-      _pageController.jumpToPage(_currentPage - 1);
+      _pageController.jumpToPage(7);
     } else if (_currentPage == 6) {
       // Back from Features to Additional Shop Details
       _pageController.jumpToPage(_currentPage - 1);
@@ -133,10 +139,18 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
                 ),
                 // Phone Path (Indices 2, 3)
                 OnboardingScreen7(
-                  onNext: _nextPage,
+                  onOtpSent: (verificationId, phone) {
+                    setState(() {
+                      _otpVerificationId = verificationId;
+                      _otpPhone = phone;
+                    });
+                    _pageController.jumpToPage(3);
+                  },
                   onBack: () => _pageController.jumpToPage(1),
                 ),
                 OnboardingScreen8(
+                  verificationId: _otpVerificationId ?? '',
+                  phone: _otpPhone ?? '',
                   onNext: () => _pageController.jumpToPage(4),
                   onBack: _previousPage,
                 ),
@@ -164,12 +178,29 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
                 ),
                 OnboardingScreen17(
                   onNext: (planId) async {
+                    final messenger = ScaffoldMessenger.of(context);
                     setState(() => _isLoading = true);
                     try {
                       if (planId != null) {
                         ref.read(onboardingProvider.notifier).setPlan(planId);
                       }
                       await ref.read(onboardingProvider.notifier).completeOnboarding();
+                    } on OnboardingException catch (e) {
+                      messenger.showSnackBar(
+                        SnackBar(
+                          content: Text(e.message),
+                          backgroundColor: Colors.redAccent,
+                          duration: const Duration(seconds: 6),
+                        ),
+                      );
+                    } catch (e) {
+                      messenger.showSnackBar(
+                        const SnackBar(
+                          content: Text('Something went wrong. Please try again.'),
+                          backgroundColor: Colors.redAccent,
+                          duration: Duration(seconds: 5),
+                        ),
+                      );
                     } finally {
                       if (mounted) setState(() => _isLoading = false);
                     }

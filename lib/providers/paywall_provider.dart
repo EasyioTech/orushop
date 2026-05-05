@@ -2,13 +2,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import '../core/services/revenue_cat_service.dart';
 
-final revenueCatServiceProvider = Provider<RevenueCatService>((ref) => RevenueCatService.instance);
-
-final offeringsProvider = FutureProvider<Offerings?>((ref) async {
-  final service = ref.watch(revenueCatServiceProvider);
-  return service.getOfferings();
-});
-
 final paywallProvider = StateNotifierProvider<PaywallNotifier, PaywallState>((ref) {
   final service = ref.watch(revenueCatServiceProvider);
   return PaywallNotifier(service);

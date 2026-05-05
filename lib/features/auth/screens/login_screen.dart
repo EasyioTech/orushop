@@ -29,17 +29,9 @@ class LoginScreen extends ConsumerStatefulWidget {
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
-  bool _isLoading       = false;
+  final bool _isLoading = false;
   bool _isGoogleLoading = false;
   final bool _isAppleLoading  = false;
-  bool _isValid         = false;
-
-
-  void _validate() {
-    setState(() {
-      _isValid = true;
-    });
-  }
 
   String _friendlyError(dynamic e, bool isOffline) {
     if (isOffline) {

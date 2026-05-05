@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orushops/core/theme/app_theme.dart';
 import 'package:orushops/providers/onboarding_provider.dart';
@@ -32,10 +33,20 @@ class _OnboardingShopBasicDetailsScreenState extends ConsumerState<OnboardingSho
   @override
   void initState() {
     super.initState();
-    final details = ref.read(onboardingProvider).shopDetails;
+    final state = ref.read(onboardingProvider);
+    final details = state.shopDetails;
+
+    // Pre-fill phone: prefer already-saved details, then the verified OTP phone
+    // (pendingPhone is in E.164 format like +919876543210 — strip the +91 prefix for display)
+    String prefilledPhone = details?.phoneNumber ?? '';
+    if (prefilledPhone.isEmpty && state.pendingPhone != null) {
+      final p = state.pendingPhone!;
+      prefilledPhone = p.startsWith('+91') ? p.substring(3) : p;
+    }
+
     _shopNameCtrl = TextEditingController(text: details?.shopName);
     _ownerNameCtrl = TextEditingController(text: details?.ownerName);
-    _phoneCtrl = TextEditingController(text: details?.phoneNumber);
+    _phoneCtrl = TextEditingController(text: prefilledPhone);
     _addressCtrl = TextEditingController(text: details?.shopAddress);
   }
 
@@ -49,13 +60,20 @@ class _OnboardingShopBasicDetailsScreenState extends ConsumerState<OnboardingSho
   }
 
   bool _validateForm() {
+    final phone = _phoneCtrl.text.trim();
+    final isDigitsOnly = RegExp(r'^\d+$').hasMatch(phone);
+
     setState(() {
-      _shopNameError = _shopNameCtrl.text.isEmpty ? 'Shop name is required' : null;
-      _ownerNameError = _ownerNameCtrl.text.isEmpty ? 'Owner name is required' : null;
-      _phoneError = _phoneCtrl.text.isEmpty
+      _shopNameError = _shopNameCtrl.text.trim().isEmpty ? 'Shop name is required' : null;
+      _ownerNameError = _ownerNameCtrl.text.trim().isEmpty ? 'Owner name is required' : null;
+      _phoneError = phone.isEmpty
           ? 'Phone number is required'
-          : (_phoneCtrl.text.length < 10 ? 'Phone must be at least 10 digits' : null);
-      _addressError = _addressCtrl.text.isEmpty ? 'Address is required' : null;
+          : !isDigitsOnly
+              ? 'Enter digits only (no spaces or dashes)'
+              : phone.length != 10
+                  ? 'Enter a valid 10-digit mobile number'
+                  : null;
+      _addressError = _addressCtrl.text.trim().isEmpty ? 'Address is required' : null;
     });
 
     return _shopNameError == null &&
@@ -109,10 +127,12 @@ class _OnboardingShopBasicDetailsScreenState extends ConsumerState<OnboardingSho
             _buildTextField(
               controller: _phoneCtrl,
               label: 'Phone Number',
-              hint: 'Enter 10-digit phone number',
+              hint: '10-digit mobile number',
               error: _phoneError,
               required: true,
               keyboardType: TextInputType.phone,
+              digitsOnly: true,
+              maxLength: 10,
             ),
             const SizedBox(height: 16),
             _buildTextField(
@@ -135,6 +155,8 @@ class _OnboardingShopBasicDetailsScreenState extends ConsumerState<OnboardingSho
     String? error,
     bool required = false,
     int maxLines = 1,
+    int? maxLength,
+    bool digitsOnly = false,
     TextInputType keyboardType = TextInputType.text,
   }) {
     return Column(
@@ -160,9 +182,14 @@ class _OnboardingShopBasicDetailsScreenState extends ConsumerState<OnboardingSho
         TextField(
           controller: controller,
           maxLines: maxLines,
+          maxLength: maxLength,
           keyboardType: keyboardType,
+          inputFormatters: digitsOnly
+              ? [FilteringTextInputFormatter.digitsOnly]
+              : null,
           style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
           decoration: InputDecoration(
+            counterText: '',
             hintText: hint,
             hintStyle: TextStyle(
               color: AppTheme.textSecondary.withValues(alpha: 0.5),

@@ -12,6 +12,8 @@ import 'create_product_screen.dart';
 import 'edit_product_screen.dart';
 import 'inventory_history_screen.dart';
 import 'batch_scan_screen.dart';
+import 'package:orushops/core/models/product.dart';
+import 'package:orushops/features/onboarding/models/shop_models.dart';
 
 class InventoryScreen extends ConsumerStatefulWidget {
   const InventoryScreen({super.key});
@@ -24,6 +26,8 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
   String _searchQuery = '';
+  String _selectedCategory = 'All';
+  String _selectedSubcategory = 'All';
 
   @override
   void dispose() {
@@ -92,8 +96,10 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
           final filtered = products
               .where(
                 (p) =>
-                    p.name.toLowerCase().contains(_searchQuery) ||
-                    p.sku.toLowerCase().contains(_searchQuery),
+                    (p.name.toLowerCase().contains(_searchQuery) ||
+                     p.sku.toLowerCase().contains(_searchQuery)) &&
+                    (_selectedCategory == 'All' || p.category == _selectedCategory) &&
+                    (_selectedSubcategory == 'All' || p.subcategory == _selectedSubcategory),
               )
               .toList();
 
@@ -229,7 +235,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                       child: TextField(
                         controller: _searchController,
                         focusNode: _searchFocusNode,
-                        autofocus: false, // Explicitly disable autofocus
+                        autofocus: false,
                         style: const TextStyle(
                           fontSize: 16,
                           color: AppTheme.textPrimary,
@@ -239,9 +245,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                         decoration: InputDecoration(
                           hintText: 'Search by name or SKU...',
                           hintStyle: TextStyle(
-                            color: AppTheme.textSecondary.withValues(
-                              alpha: 0.5,
-                            ),
+                            color: AppTheme.textSecondary.withValues(alpha: 0.5),
                           ),
                           prefixIcon: const Icon(
                             Icons.search_rounded,
@@ -258,18 +262,25 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                             borderRadius: BorderRadius.circular(18),
                             borderSide: BorderSide.none,
                           ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(18),
-                            borderSide: BorderSide.none,
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(18),
-                            borderSide: BorderSide.none,
-                          ),
                         ),
                         onChanged: (v) =>
                             setState(() => _searchQuery = v.toLowerCase()),
                       ),
+                    ),
+                  ),
+                ),
+
+                // Category & Subcategory Pills
+                SliverToBoxAdapter(
+                  child: Container(
+                    color: AppTheme.backgroundColor,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildCategoryPills(ref),
+                        _buildSubcategoryPills(ref),
+                        const SizedBox(height: 8),
+                      ],
                     ),
                   ),
                 ),
@@ -346,6 +357,104 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildCategoryPills(WidgetRef ref) {
+    final categoriesAsync = ref.watch(productCategoriesProvider);
+    return categoriesAsync.when(
+      data: (categories) {
+        final allCategories = ['All', ...categories];
+        return Container(
+          height: 40,
+          margin: const EdgeInsets.symmetric(vertical: 8),
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            itemCount: allCategories.length,
+            itemBuilder: (context, index) {
+              final cat = allCategories[index];
+              final isSelected = _selectedCategory == cat;
+              return Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: FilterChip(
+                  label: Text(cat),
+                  selected: isSelected,
+                  onSelected: (selected) {
+                    setState(() {
+                      _selectedCategory = cat;
+                      _selectedSubcategory = 'All';
+                    });
+                  },
+                  selectedColor: AppTheme.primaryColor.withValues(alpha: 0.2),
+                  checkmarkColor: AppTheme.primaryColor,
+                  labelStyle: TextStyle(
+                    color: isSelected ? AppTheme.primaryColor : AppTheme.textSecondary,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  ),
+                  backgroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                    side: BorderSide(color: isSelected ? AppTheme.primaryColor : Colors.grey.shade200),
+                  ),
+                ),
+              );
+            },
+          ),
+        );
+      },
+      loading: () => const SizedBox(height: 40),
+      error: (e, s) => const SizedBox.shrink(),
+    );
+  }
+
+  Widget _buildSubcategoryPills(WidgetRef ref) {
+    if (_selectedCategory == 'All') return const SizedBox.shrink();
+    final categoriesAsync = ref.watch(shopCategoriesProvider);
+    return categoriesAsync.when(
+      data: (categories) {
+        final categoryObj = categories.firstWhere(
+          (c) => c.name == _selectedCategory,
+          orElse: () => categories.first,
+        );
+        if (categoryObj.subcategories.isEmpty) return const SizedBox.shrink();
+        final allSubcats = ['All', ...categoryObj.subcategories];
+        return Container(
+          height: 32,
+          margin: const EdgeInsets.only(bottom: 8),
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            itemCount: allSubcats.length,
+            itemBuilder: (context, index) {
+              final subcat = allSubcats[index];
+              final isSelected = _selectedSubcategory == subcat;
+              return Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: ChoiceChip(
+                  label: Text(subcat, style: const TextStyle(fontSize: 12)),
+                  selected: isSelected,
+                  onSelected: (selected) {
+                    setState(() => _selectedSubcategory = subcat);
+                  },
+                  selectedColor: AppTheme.primaryColor.withValues(alpha: 0.1),
+                  labelStyle: TextStyle(
+                    color: isSelected ? AppTheme.primaryColor : AppTheme.textSecondary,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  ),
+                  backgroundColor: Colors.transparent,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    side: BorderSide(color: isSelected ? AppTheme.primaryColor.withValues(alpha: 0.3) : Colors.grey.shade200),
+                  ),
+                ),
+              );
+            },
+          ),
+        );
+      },
+      loading: () => const SizedBox(height: 32),
+      error: (e, s) => const SizedBox.shrink(),
     );
   }
 
@@ -598,6 +707,98 @@ class _InventoryItemCardState extends ConsumerState<_InventoryItemCard> {
     }
   }
 
+  Widget _buildProductInfoTags(Product product, List<ShopCategory> categories) {
+    // Find the category config for this product
+    final category = categories.firstWhere(
+      (c) => c.name == product.category,
+      orElse: () => ShopCategory(name: product.category, productFields: ProductFieldConfig.basic()),
+    );
+    final fields = category.productFields;
+    final List<Widget> tags = [];
+
+    void addTag(String label, String value, IconData icon) {
+      if (value.isEmpty) return;
+      tags.add(
+        Container(
+          margin: const EdgeInsets.only(right: 8, top: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          decoration: BoxDecoration(
+            color: AppTheme.primaryColor.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(
+              color: AppTheme.primaryColor.withValues(alpha: 0.1),
+              width: 0.5,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 10, color: AppTheme.primaryColor),
+              const SizedBox(width: 4),
+              Text(
+                '$label: $value',
+                style: const TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (fields.hasBrand && product.brand != null && product.brand!.isNotEmpty) {
+      addTag('Brand', product.brand!, Icons.branding_watermark_outlined);
+    }
+    
+    if (fields.hasWeight && product.weight != null && product.weight!.isNotEmpty) {
+      addTag('Weight', product.weight!, Icons.scale_outlined);
+    }
+
+    if (fields.hasSizeVariant && product.size != null && product.size!.isNotEmpty) {
+      addTag('Size', product.size!, Icons.straighten_outlined);
+    }
+
+    if (fields.hasColorVariant && product.color != null && product.color!.isNotEmpty) {
+      addTag('Color', product.color!, Icons.palette_outlined);
+    }
+
+    if (fields.hasExpiryDate && product.expiryDate != null && product.expiryDate!.isNotEmpty) {
+      addTag('Exp', product.expiryDate!.split('T')[0], Icons.event_busy_outlined);
+    }
+
+    if (fields.hasBatchNumber && product.batchNumber != null && product.batchNumber!.isNotEmpty) {
+      addTag('Batch', product.batchNumber!, Icons.batch_prediction_outlined);
+    }
+
+    if (fields.hasSerialNumber && product.serialNumber != null && product.serialNumber!.isNotEmpty) {
+      addTag('SN', product.serialNumber!, Icons.numbers_outlined);
+    }
+
+    if (fields.hasImei && product.imei != null && product.imei!.isNotEmpty) {
+      addTag('IMEI', product.imei!, Icons.smartphone_outlined);
+    }
+
+    if (fields.hasWarranty && product.warranty != null && product.warranty!.isNotEmpty) {
+      addTag('Warranty', product.warranty!, Icons.verified_user_outlined);
+    }
+
+    if (fields.hasHsnCode && product.hsnCode != null && product.hsnCode!.isNotEmpty) {
+      addTag('HSN', product.hsnCode!, Icons.article_outlined);
+    }
+
+    if (tags.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Wrap(
+        children: tags,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final bool isLowStock = widget.product.quantity < 10;
@@ -699,6 +900,11 @@ class _InventoryItemCardState extends ConsumerState<_InventoryItemCard> {
                               color: isOutOfStock ? AppTheme.errorColor : AppTheme.warningColor,
                             ),
                         ],
+                      ),
+                      ref.watch(shopCategoriesProvider).when(
+                        data: (categories) => _buildProductInfoTags(widget.product as Product, categories),
+                        loading: () => const SizedBox.shrink(),
+                        error: (error, stackTrace) => const SizedBox.shrink(),
                       ),
                     ],
                   ),

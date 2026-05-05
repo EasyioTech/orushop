@@ -105,6 +105,8 @@ class ReceiptActionService {
               ),
               pw.SizedBox(height: 16),
               pw.Text('Payment: ${sale.paymentMethod}'),
+              if (sale.customerPhone?.isNotEmpty ?? false)
+                pw.Text('Customer: ${sale.customerPhone}'),
               pw.SizedBox(height: 24),
               pw.Text('Thank You!', style: pw.TextStyle(fontSize: 14)),
             ],

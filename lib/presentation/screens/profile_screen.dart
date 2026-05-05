@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../../core/database/database_helper.dart';
 
 import '../../core/services/auth_service.dart';
 import '../../core/services/revenue_cat_service.dart';
@@ -254,6 +255,18 @@ class _ProfileContent extends ConsumerWidget {
                   ),
                 ],
               ),
+              // Maintenance Section
+              _Section(
+                title: 'Maintenance',
+                children: [
+                  _ActionTile(
+                    icon: Icons.cleaning_services_outlined,
+                    label: 'Clear App Data',
+                    subtitle: 'Reset local database and settings',
+                    onTap: () => _showClearDataDialog(context, ref),
+                  ),
+                ],
+              ),
               // Danger Zone
               _Section(
                 title: 'Danger Zone',
@@ -405,6 +418,72 @@ class _ProfileContent extends ConsumerWidget {
       );
     }
   }
+  
+  void _showClearDataDialog(BuildContext context, WidgetRef ref) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Clear All Data?'),
+        content: const Text(
+          'This will wipe all local data including sales, inventory, and khata entries. This is useful for fixing "broken data" issues. This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _performClearData(context, ref);
+            },
+            child: const Text('Clear Everything', style: TextStyle(color: AppTheme.errorColor)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _performClearData(BuildContext context, WidgetRef ref) async {
+    final scaffold = ScaffoldMessenger.of(context);
+    scaffold.showSnackBar(
+      const SnackBar(content: Text('Clearing data...')),
+    );
+
+    try {
+      // 1. Clear Database
+      await DatabaseHelper().clearAllData();
+      
+      // 2. Clear SharedPreferences (optional, maybe keep onboarding?)
+      final prefs = await SharedPreferences.getInstance();
+      // We might want to keep onboarding_completed so the user doesn't have to redo it, 
+      // but if the data is "broken", maybe we should reset everything.
+      // For now, let's just clear everything except onboarding.
+      final keys = prefs.getKeys();
+      for (final key in keys) {
+        if (key != 'onboarding_completed') {
+          await prefs.remove(key);
+        }
+      }
+
+      if (context.mounted) {
+        scaffold.showSnackBar(
+          const SnackBar(
+            content: Text('All local data cleared successfully'),
+            backgroundColor: AppTheme.successColor,
+          ),
+        );
+      }
+    } catch (e) {
+      scaffold.showSnackBar(
+        SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
+    }
+  }
+
 }
 
 class _Section extends StatelessWidget {

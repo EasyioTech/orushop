@@ -70,18 +70,7 @@ class OwnerRepository {
     }
   }
 
-  Future<void> updateEnableUpi(bool enabled) async {
-    if (_userId.isEmpty) throw Exception('User not authenticated');
 
-    try {
-      await _firestore.collection('owners').doc(_userId).set(
-        {'enableUpi': enabled},
-        SetOptions(merge: true),
-      );
-    } catch (e) {
-      rethrow;
-    }
-  }
 
   Stream<Map<String, dynamic>?> ownerDetailsStream() {
     if (_userId.isEmpty) return Stream.value(null);

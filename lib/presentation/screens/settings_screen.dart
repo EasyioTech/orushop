@@ -125,43 +125,6 @@ class SettingsScreen extends ConsumerWidget {
                     ),
                   ],
                 ),
-                // Sales Settings
-                _SettingsSection(
-                  title: 'Sales & Payments',
-                  children: [
-                    _ToggleSettingTile(
-                      icon: Icons.payment_rounded,
-                      label: 'Enable UPI',
-                      subtitle: 'Accept UPI payments',
-                      value: ownerDetailsAsync.value?['enableUpi'] ?? false,
-                      onChanged: (value) async {
-                        try {
-                          await OwnerRepository().updateEnableUpi(value);
-                          ref.invalidate(ownerDetailsStreamProvider);
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  value ? 'UPI enabled' : 'UPI disabled',
-                                ),
-                                duration: const Duration(seconds: 1),
-                              ),
-                            );
-                          }
-                        } catch (e) {
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Error: $e'),
-                                backgroundColor: AppTheme.errorColor,
-                              ),
-                            );
-                          }
-                        }
-                      },
-                    ),
-                  ],
-                ),
                 // Procurement
                 _SettingsSection(
                   title: 'Procurement',
@@ -185,6 +148,7 @@ class SettingsScreen extends ConsumerWidget {
                 _SettingsSection(
                   title: 'Data Management',
                   children: [
+                    _FactoryResetButton(ref: ref),
                     _SeedCatalogButton(ref: ref),
                     _ActionButton(
                       icon: Icons.cloud_sync_rounded,
@@ -426,77 +390,6 @@ class _EditableSettingTile extends StatelessWidget {
               icon: const Icon(Icons.edit_rounded, size: 20),
               onPressed: onEdit,
               color: AppTheme.primaryColor,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ToggleSettingTile extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String subtitle;
-  final bool value;
-  final ValueChanged<bool> onChanged;
-
-  const _ToggleSettingTile({
-    required this.icon,
-    required this.label,
-    required this.subtitle,
-    required this.value,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Row(
-          children: [
-            Icon(icon, color: AppTheme.primaryColor, size: 24),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13,
-                      color: AppTheme.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    subtitle,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: AppTheme.textSecondary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Switch(
-              value: value,
-              onChanged: onChanged,
-              activeThumbColor: AppTheme.primaryColor,
             ),
           ],
         ),
@@ -855,6 +748,106 @@ class _ClearDataButton extends ConsumerWidget {
   }
 }
 
+class _FactoryResetButton extends ConsumerWidget {
+  final WidgetRef ref;
+  const _FactoryResetButton({required this.ref});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppTheme.errorColor.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.errorColor.withValues(alpha: 0.2)),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _showResetDialog(context, ref),
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              children: [
+                Icon(Icons.delete_forever_rounded, color: AppTheme.errorColor, size: 24),
+                const SizedBox(width: 16),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "Factory Reset",
+                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: AppTheme.errorColor),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        "Clear all data, products, and sales (Irreversible)",
+                        style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showResetDialog(BuildContext context, WidgetRef ref) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Factory Reset?"),
+        content: const Text(
+          "This will PERMANENTLY DELETE all your data including products, batches, sales, and khata records. This action cannot be undone.",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppTheme.errorColor),
+            onPressed: () {
+              Navigator.pop(context);
+              _performReset(context, ref);
+            },
+            child: const Text("Delete Everything"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _performReset(BuildContext context, WidgetRef ref) async {
+    final scaffold = ScaffoldMessenger.of(context);
+    scaffold.showSnackBar(const SnackBar(content: Text("Clearing database...")));
+
+    try {
+      await DatabaseHelper().clearAllData();
+      ref.invalidate(productsProvider);
+      
+      scaffold.showSnackBar(
+        const SnackBar(
+          content: Text("All data cleared successfully!"),
+          backgroundColor: AppTheme.successColor,
+          duration: Duration(seconds: 1),
+        ),
+      );
+    } catch (e) {
+      scaffold.showSnackBar(
+        SnackBar(
+          content: Text("Error: $e"),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
+    }
+  }
+}
+
 class _SeedCatalogButton extends ConsumerWidget {
   final WidgetRef ref;
 
@@ -885,12 +878,12 @@ class _SeedCatalogButton extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
-                        "Seed Real Products",
+                        "Replenish Catalog",
                         style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
                       ),
                       const SizedBox(height: 4),
                       const Text(
-                        "Replace all items with the real India catalog",
+                        "Reload standard product database",
                         style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
                       ),
                     ],
@@ -908,9 +901,9 @@ class _SeedCatalogButton extends ConsumerWidget {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text("Seed Real Catalog?"),
+        title: const Text("Replenish Catalog?"),
         content: const Text(
-          "This will REMOVE all current products and sales data, and replace them with the standardized Indian retail catalog with real images and prices.",
+          "This will reset your products to the default catalog. Existing products and sales data will be wiped.",
         ),
         actions: [
           TextButton(

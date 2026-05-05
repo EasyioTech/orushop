@@ -38,26 +38,37 @@ class ConnectivityService {
 
   Future<NetworkStatus> _getNetworkStatus() async {
     if (kIsWeb) {
-      // Web can't use dart:io sockets; trust connectivity_plus
-      final result = await _connectivity.checkConnectivity();
-      return result == ConnectivityResult.none
-          ? NetworkStatus.offline
-          : NetworkStatus.online;
+      return NetworkStatus.online;
     }
-    try {
-      final result = await InternetAddress.lookup('google.com')
-          .timeout(const Duration(seconds: 5));
-      if (result.isNotEmpty && result.first.rawAddress.isNotEmpty) {
-        return NetworkStatus.online;
+
+    // Try multiple reliable hosts to avoid regional blocks or single-host failure
+    final hosts = ['google.com', 'cloudflare.com', 'opendns.com'];
+    bool hasLookupSuccess = false;
+
+    for (final host in hosts) {
+      try {
+        final result = await InternetAddress.lookup(host)
+            .timeout(const Duration(seconds: 3));
+        if (result.isNotEmpty && result.first.rawAddress.isNotEmpty) {
+          hasLookupSuccess = true;
+          break;
+        }
+      } catch (_) {
+        // Continue to next host
+        continue;
       }
-      return NetworkStatus.limited;
-    } on SocketException {
-      return NetworkStatus.offline;
-    } on TimeoutException {
-      return NetworkStatus.limited;
-    } catch (_) {
+    }
+
+    if (hasLookupSuccess) {
+      return NetworkStatus.online;
+    }
+
+    final connectivityResult = await _connectivity.checkConnectivity();
+    if (connectivityResult == ConnectivityResult.none) {
       return NetworkStatus.offline;
     }
+
+    return NetworkStatus.limited;
   }
 
   Future<NetworkStatus> checkNow() async {

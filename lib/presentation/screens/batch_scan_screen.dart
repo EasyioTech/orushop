@@ -27,6 +27,7 @@ class _BatchScanScreenState extends ConsumerState<BatchScanScreen> {
   final MobileScannerController _scannerController = MobileScannerController();
   bool _isProcessing = false;
   String? _lastScannedName;
+  String? _lastScannedSKU;
   DateTime? _lastScanTime;
 
   @override
@@ -36,15 +37,16 @@ class _BatchScanScreenState extends ConsumerState<BatchScanScreen> {
   }
 
   void _onDetect(BarcodeCapture capture) {
-    // Throttling scans to allow rapid but controlled entry
+    if (_isProcessing) return;
+
     final List<Barcode> barcodes = capture.barcodes;
     for (final barcode in barcodes) {
-      final sku = barcode.rawValue ?? '';
+      final sku = (barcode.rawValue ?? '').trim();
       if (sku.isEmpty) continue;
 
       final now = DateTime.now();
       if (_lastScanTime != null && 
-          now.difference(_lastScanTime!) < const Duration(milliseconds: 800)) {
+          now.difference(_lastScanTime!) < const Duration(milliseconds: 1500)) {
         continue;
       }
 
@@ -55,21 +57,27 @@ class _BatchScanScreenState extends ConsumerState<BatchScanScreen> {
   }
 
   Future<void> _processSKU(String sku) async {
-    setState(() => _isProcessing = true);
+    if (mounted) {
+      setState(() {
+        _isProcessing = true;
+        _lastScannedSKU = sku;
+        _lastScannedName = null; // Clear previous name while searching
+      });
+    }
     
     final catalog = ref.read(globalCatalogServiceProvider);
-    final product = catalog.searchBySKU(sku);
+    final product = await catalog.searchBySKU(sku);
 
     if (product != null) {
       _addItemToList(product);
+      // Short feedback delay for found items
+      await Future.delayed(const Duration(milliseconds: 600));
+      if (mounted) setState(() => _isProcessing = false);
     } else {
       HapticFeedback.vibrate();
-      _showQuickAddDialog(sku);
+      await _showQuickAddDialog(sku);
+      if (mounted) setState(() => _isProcessing = false);
     }
-
-    // Short feedback delay
-    await Future.delayed(const Duration(milliseconds: 400));
-    if (mounted) setState(() => _isProcessing = false);
   }
 
   void _addItemToList(GlobalProduct product) {
@@ -91,9 +99,11 @@ class _BatchScanScreenState extends ConsumerState<BatchScanScreen> {
     HapticFeedback.lightImpact();
   }
 
-  void _showQuickAddDialog(String sku) {
+  Future<void> _showQuickAddDialog(String sku) async {
+    _scannerController.stop();
     final TextEditingController nameController = TextEditingController();
-    showDialog(
+    
+    await showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
@@ -106,7 +116,7 @@ class _BatchScanScreenState extends ConsumerState<BatchScanScreen> {
             const SizedBox(height: 16),
             TextField(
               controller: nameController,
-              autofocus: false,
+              autofocus: true,
               decoration: const InputDecoration(
                 labelText: 'Product Name',
                 hintText: 'Enter name for this item',
@@ -139,6 +149,8 @@ class _BatchScanScreenState extends ConsumerState<BatchScanScreen> {
         ],
       ),
     );
+    
+    _scannerController.start();
   }
 
   Future<void> _saveAll() async {
@@ -275,7 +287,7 @@ class _BatchScanScreenState extends ConsumerState<BatchScanScreen> {
                   ),
                 ),
 
-                if (_lastScannedName != null)
+                if (_lastScannedName != null || _isProcessing)
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: Container(
@@ -283,15 +295,23 @@ class _BatchScanScreenState extends ConsumerState<BatchScanScreen> {
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.95),
                         borderRadius: BorderRadius.circular(12),
-                        boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 10)],
+                        boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 10)],
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.check_circle_rounded, color: AppTheme.successColor, size: 20),
+                          _isProcessing 
+                            ? const SizedBox(
+                                width: 20, 
+                                height: 20, 
+                                child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.primaryColor)
+                              )
+                            : const Icon(Icons.check_circle_rounded, color: AppTheme.successColor, size: 20),
                           const SizedBox(width: 10),
                           Expanded(
                             child: Text(
-                              'Found: $_lastScannedName',
+                              _isProcessing 
+                                ? 'Looking up SKU: ${_lastScannedSKU ?? ""}' 
+                                : 'Found: $_lastScannedName',
                               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,

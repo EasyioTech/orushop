@@ -267,14 +267,16 @@ class ShopDetails {
     required this.features,
   });
 
+  static const _sentinel = Object();
+
   ShopDetails copyWith({
     String? shopName,
     String? ownerName,
     String? phoneNumber,
     String? shopAddress,
-    String? gstNumber,
+    Object? gstNumber = _sentinel,
     ShopType? shopType,
-    String? otherDetails,
+    Object? otherDetails = _sentinel,
     List<String>? productCategories,
     ShopFeatures? features,
   }) {
@@ -283,9 +285,9 @@ class ShopDetails {
       ownerName: ownerName ?? this.ownerName,
       phoneNumber: phoneNumber ?? this.phoneNumber,
       shopAddress: shopAddress ?? this.shopAddress,
-      gstNumber: gstNumber ?? this.gstNumber,
+      gstNumber: gstNumber == _sentinel ? this.gstNumber : gstNumber as String?,
       shopType: shopType ?? this.shopType,
-      otherDetails: otherDetails ?? this.otherDetails,
+      otherDetails: otherDetails == _sentinel ? this.otherDetails : otherDetails as String?,
       productCategories: productCategories ?? this.productCategories,
       features: features ?? this.features,
     );
@@ -304,4 +306,69 @@ class ShopDetails {
       'features': features.toMap(),
     };
   }
+}
+
+/// Per-shop-type product field configuration.
+/// Controls which fields are shown when adding a product in a category.
+class ProductFieldConfig {
+  final bool hasExpiryDate;
+  final bool hasBatchNumber;
+  final bool hasSerialNumber;
+  final bool hasImei;
+  final bool hasMrp;
+  final bool hasHsnCode;
+  final bool hasTaxRate;
+  final bool hasBrand;
+  final bool hasManufacturer;
+  final bool hasSchedule;      // Drug schedule (H, H1, X) — medical
+  final bool hasUnit;
+  final bool hasWeight;
+  final bool hasSizeVariant;
+  final bool hasColorVariant;
+  final bool hasWarranty;
+  final bool hasRecipe;
+  final bool hasIsbn;          // Books
+  final String defaultUnit;
+  final List<String> unitOptions;
+  final double defaultTaxRate;
+  final List<String> sizeOptions;
+
+  const ProductFieldConfig({
+    this.hasExpiryDate = false,
+    this.hasBatchNumber = false,
+    this.hasSerialNumber = false,
+    this.hasImei = false,
+    this.hasMrp = true,
+    this.hasHsnCode = false,
+    this.hasTaxRate = false,
+    this.hasBrand = false,
+    this.hasManufacturer = false,
+    this.hasSchedule = false,
+    this.hasUnit = false,
+    this.hasWeight = false,
+    this.hasSizeVariant = false,
+    this.hasColorVariant = false,
+    this.hasWarranty = false,
+    this.hasRecipe = false,
+    this.hasIsbn = false,
+    this.defaultUnit = 'Piece',
+    this.unitOptions = const ['Piece'],
+    this.defaultTaxRate = 18.0,
+    this.sizeOptions = const [],
+  });
+
+  factory ProductFieldConfig.basic() => const ProductFieldConfig();
+}
+
+/// A product category with optional subcategories and field config.
+class ShopCategory {
+  final String name;
+  final List<String> subcategories;
+  final ProductFieldConfig productFields;
+
+  const ShopCategory({
+    required this.name,
+    this.subcategories = const [],
+    required this.productFields,
+  });
 }

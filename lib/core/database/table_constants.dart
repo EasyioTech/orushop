@@ -15,4 +15,8 @@ class TableConstants {
   static const String khataCustomers = 'khata_customers';
   static const String khataEntries = 'khata_entries';
   static const String khataPayments = 'khata_payments';
+
+  // Catalog (v4)
+  static const String productCategories = 'product_categories';
+  static const String productSubcategories = 'product_subcategories';
 }

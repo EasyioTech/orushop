@@ -11,6 +11,8 @@ import 'package:orushops/providers/held_carts_provider.dart';
 import 'package:orushops/providers/products_provider.dart';
 import 'package:orushops/providers/navigation_provider.dart';
 import 'package:orushops/core/repositories/owner_provider.dart';
+import 'package:orushops/core/models/khata_customer.dart';
+import 'package:orushops/providers/khata_provider.dart';
 import 'receipt_screen.dart';
 
 class CartScreen extends ConsumerStatefulWidget {
@@ -22,8 +24,13 @@ class CartScreen extends ConsumerStatefulWidget {
 
 class _CartScreenState extends ConsumerState<CartScreen> {
   String? _selectedPaymentMethod;
+  String? _customerPhone;
+  String? _customerName;
   int _quickDiscount = 0;
   bool _isDiscountExpanded = false;
+    double _amountPaid = 0;
+  String _receivedPaymentMode = 'Cash';
+  List<KhataCustomer> _customerSuggestions = [];
 
   void _confirmSale(int subtotal, List<CartItem> items) async {
     if (items.isEmpty) return;
@@ -38,7 +45,146 @@ class _CartScreenState extends ConsumerState<CartScreen> {
       return;
     }
 
+    if (_selectedPaymentMethod == 'Khata' && (_customerPhone == null || _customerPhone!.isEmpty)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Customer phone and name are required for Khata payment'),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
+      _showCustomerDetailsDialog();
+      return;
+    }
+
     await _processSale(subtotal, items);
+  }
+
+  void _onPhoneChanged(String query) async {
+    if (query.length < 3) {
+      setState(() => _customerSuggestions = []);
+      return;
+    }
+    
+    final repo = ref.read(khataRepositoryProvider);
+    final results = await repo.getAllCustomers(search: query);
+    setState(() {
+      _customerSuggestions = results;
+    });
+  }
+
+  void _showCustomerDetailsDialog() {
+    final phoneController = TextEditingController(text: _customerPhone);
+    final nameController = TextEditingController(text: _customerName);
+    
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          title: const Text('Customer Details', style: TextStyle(fontWeight: FontWeight.w800)),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('Enter customer details to track this sale.', style: TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: phoneController,
+                  decoration: InputDecoration(
+                    labelText: 'Phone Number',
+                    hintText: 'e.g. 9876543210',
+                    prefixIcon: const Icon(Icons.phone_android_rounded),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2),
+                    ),
+                  ),
+                  keyboardType: TextInputType.phone,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  onChanged: (val) async {
+                    if (val.length >= 3) {
+                      final repo = ref.read(khataRepositoryProvider);
+                      final results = await repo.getAllCustomers(search: val);
+                      setDialogState(() {
+                        _customerSuggestions = results;
+                      });
+                    } else {
+                      setDialogState(() {
+                        _customerSuggestions = [];
+                      });
+                    }
+                  },
+                ),
+                if (_customerSuggestions.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    constraints: const BoxConstraints(maxHeight: 150),
+                    decoration: BoxDecoration(
+                      color: AppTheme.backgroundColor,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppTheme.borderColor.withValues(alpha: 0.5)),
+                    ),
+                    child: ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: _customerSuggestions.length,
+                      itemBuilder: (context, index) {
+                        final customer = _customerSuggestions[index];
+                        return ListTile(
+                          dense: true,
+                          title: Text(customer.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                          subtitle: Text(customer.phone),
+                          onTap: () {
+                            phoneController.text = customer.phone;
+                            nameController.text = customer.name;
+                            setDialogState(() {
+                              _customerSuggestions = [];
+                            });
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 12),
+                TextField(
+                  controller: nameController,
+                  decoration: InputDecoration(
+                    labelText: 'Customer Name',
+                    hintText: 'e.g. John Doe',
+                    prefixIcon: const Icon(Icons.person_outline_rounded),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                  ),
+                  textCapitalization: TextCapitalization.words,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel', style: TextStyle(color: AppTheme.textSecondary)),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                setState(() {
+                  _customerPhone = phoneController.text;
+                  _customerName = nameController.text;
+                  _customerSuggestions = [];
+                });
+                Navigator.pop(context);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryColor,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text('Save Details'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _processSale(int subtotal, List<CartItem> items) async {
@@ -54,6 +200,10 @@ class _CartScreenState extends ConsumerState<CartScreen> {
           finalAmount: finalAmount,
           paymentMethod: _selectedPaymentMethod!,
           selectedBatches: {},
+          customerPhone: _customerPhone,
+          customerName: _customerName,
+          amountPaid: _selectedPaymentMethod == 'Khata' ? _amountPaid : null,
+          receivedPaymentMode: _selectedPaymentMethod == 'Khata' ? _receivedPaymentMode : null,
         );
 
     if (!mounted) return;
@@ -234,51 +384,83 @@ class _CartScreenState extends ConsumerState<CartScreen> {
   }
 
   Widget _buildCustomerSection(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      margin: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppTheme.borderColor.withValues(alpha: 0.3)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: AppTheme.primaryColor.withValues(alpha: 0.08),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(Icons.person_rounded, color: AppTheme.primaryColor, size: 20),
+    final hasCustomer = _customerPhone != null && _customerPhone!.isNotEmpty;
+    final displayName = _customerName != null && _customerName!.isNotEmpty 
+        ? _customerName 
+        : (hasCustomer ? 'Customer' : 'Walk-in Customer');
+
+    return InkWell(
+      onTap: _showCustomerDetailsDialog,
+      borderRadius: BorderRadius.circular(24),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        margin: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: hasCustomer
+                ? AppTheme.primaryColor.withValues(alpha: 0.3)
+                : AppTheme.borderColor.withValues(alpha: 0.3)
           ),
-          const SizedBox(width: 14),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Walk-in Customer',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 15,
-                    color: AppTheme.textPrimary,
-                    letterSpacing: -0.2,
-                  ),
-                ),
-                Text(
-                  'Tap to change details',
-                  style: TextStyle(
-                    color: AppTheme.textSecondary,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: hasCustomer
+                    ? AppTheme.primaryColor.withValues(alpha: 0.1)
+                    : AppTheme.primaryColor.withValues(alpha: 0.08),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                hasCustomer
+                    ? Icons.person_rounded 
+                    : Icons.person_outline_rounded, 
+                color: AppTheme.primaryColor, 
+                size: 20
+              ),
             ),
-          ),
-          Icon(Icons.search_rounded, size: 20, color: AppTheme.textSecondary.withValues(alpha: 0.5)),
-        ],
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    displayName!,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 15,
+                      color: AppTheme.textPrimary,
+                      letterSpacing: -0.2,
+                    ),
+                  ),
+                  if (hasCustomer)
+                    Text(
+                      _customerPhone!,
+                      style: const TextStyle(
+                        color: AppTheme.textSecondary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  Text(
+                    hasCustomer
+                        ? 'Tap to edit details'
+                        : 'Tap to add customer details',
+                    style: const TextStyle(
+                      color: AppTheme.textSecondary,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.edit_rounded, size: 18, color: AppTheme.textSecondary.withValues(alpha: 0.5)),
+          ],
+        ),
       ),
     );
   }
@@ -397,9 +579,123 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                       isSelected: _selectedPaymentMethod == 'Card',
                       onTap: () => setState(() => _selectedPaymentMethod = 'Card'),
                     ),
+                    const SizedBox(width: 8),
+                    _PaymentButton(
+                      label: 'Khata',
+                      icon: Icons.book_rounded,
+                      activeColor: const Color(0xFFD97706),
+                      isSelected: _selectedPaymentMethod == 'Khata',
+                      onTap: () {
+                        setState(() => _selectedPaymentMethod = 'Khata');
+                        if (_customerPhone == null || _customerPhone!.isEmpty) {
+                          _showCustomerDetailsDialog();
+                        }
+                      },
+                    ),
+                    const SizedBox(width: 8),
+                    _PaymentButton(
+                      label: 'Other',
+                      icon: Icons.more_horiz_rounded,
+                      activeColor: AppTheme.textSecondary,
+                      isSelected: _selectedPaymentMethod == 'Other',
+                      onTap: () => setState(() => _selectedPaymentMethod = 'Other'),
+                    ),
                   ],
                 ),
               ),
+              if (_selectedPaymentMethod == 'Khata') ...[
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryColor.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.1)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.payments_outlined, size: 16, color: AppTheme.primaryColor),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'Amount Received Today?',
+                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppTheme.primaryColor),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            flex: 3,
+                            child: TextField(
+                              decoration: InputDecoration(
+                                hintText: '0',
+                                prefixText: '₹ ',
+                                filled: true,
+                                fillColor: Colors.white,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide.none,
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              ),
+                              keyboardType: TextInputType.number,
+                              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                              onChanged: (val) {
+                                setState(() {
+                                  _amountPaid = double.tryParse(val) ?? 0;
+                                });
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            flex: 2,
+                            child: Container(
+                              height: 40,
+                              padding: const EdgeInsets.symmetric(horizontal: 8),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: DropdownButtonHideUnderline(
+                                child: DropdownButton<String>(
+                                  value: _receivedPaymentMode,
+                                  isExpanded: true,
+                                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppTheme.textPrimary),
+                                  items: ['Cash', 'UPI', 'Card', 'Other'].map((String value) {
+                                    return DropdownMenuItem<String>(
+                                      value: value,
+                                      child: Text(value),
+                                    );
+                                  }).toList(),
+                                  onChanged: (val) {
+                                    if (val != null) setState(() => _receivedPaymentMode = val);
+                                  },
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              const Text('Remaining', style: TextStyle(fontSize: 9, color: AppTheme.textSecondary)),
+                              Text(
+                                '₹${finalAmount - _amountPaid}',
+                                style: const TextStyle(fontWeight: FontWeight.w800, color: AppTheme.errorColor, fontSize: 13),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ],
           ),
           const SizedBox(height: 16),

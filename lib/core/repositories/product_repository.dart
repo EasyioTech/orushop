@@ -14,7 +14,9 @@ class ProductRepository {
     final db = await _dbHelper.database;
     final result = await db.rawQuery('''
       SELECT p.*, 
-             (SELECT SUM(pb.quantity) FROM ${TableConstants.productBatches} pb WHERE pb.productId = p.id) as liveBatchQuantity
+             (SELECT SUM(pb.quantity) FROM ${TableConstants.productBatches} pb WHERE pb.productId = p.id) as liveBatchQuantity,
+             (SELECT MIN(pb.expiryDate) FROM ${TableConstants.productBatches} pb WHERE pb.productId = p.id AND pb.quantity > 0) as expiryDate,
+             (SELECT pb.batchNumber FROM ${TableConstants.productBatches} pb WHERE pb.productId = p.id AND pb.quantity > 0 ORDER BY pb.expiryDate ASC LIMIT 1) as batchNumber
       FROM ${TableConstants.products} p
       WHERE p.id = ?
     ''', [id]);
@@ -27,7 +29,9 @@ class ProductRepository {
     final db = await _dbHelper.database;
     final result = await db.rawQuery('''
       SELECT p.*, 
-             (SELECT SUM(pb.quantity) FROM ${TableConstants.productBatches} pb WHERE pb.productId = p.id) as liveBatchQuantity
+             (SELECT SUM(pb.quantity) FROM ${TableConstants.productBatches} pb WHERE pb.productId = p.id) as liveBatchQuantity,
+             (SELECT MIN(pb.expiryDate) FROM ${TableConstants.productBatches} pb WHERE pb.productId = p.id AND pb.quantity > 0) as expiryDate,
+             (SELECT pb.batchNumber FROM ${TableConstants.productBatches} pb WHERE pb.productId = p.id AND pb.quantity > 0 ORDER BY pb.expiryDate ASC LIMIT 1) as batchNumber
       FROM ${TableConstants.products} p
       WHERE p.sku = ?
     ''', [sku]);
@@ -40,7 +44,9 @@ class ProductRepository {
     final db = await _dbHelper.database;
     final result = await db.rawQuery('''
       SELECT p.*, 
-             (SELECT SUM(pb.quantity) FROM ${TableConstants.productBatches} pb WHERE pb.productId = p.id) as liveBatchQuantity
+             (SELECT SUM(pb.quantity) FROM ${TableConstants.productBatches} pb WHERE pb.productId = p.id) as liveBatchQuantity,
+             (SELECT MIN(pb.expiryDate) FROM ${TableConstants.productBatches} pb WHERE pb.productId = p.id AND pb.quantity > 0) as expiryDate,
+             (SELECT pb.batchNumber FROM ${TableConstants.productBatches} pb WHERE pb.productId = p.id AND pb.quantity > 0 ORDER BY pb.expiryDate ASC LIMIT 1) as batchNumber
       FROM ${TableConstants.products} p
       ORDER BY p.name ASC
     ''');
@@ -54,7 +60,9 @@ class ProductRepository {
     // Optimized query to fetch products with their total batch quantity in one go
     final result = await db.rawQuery('''
       SELECT p.*, 
-             (SELECT SUM(pb.quantity) FROM ${TableConstants.productBatches} pb WHERE pb.productId = p.id) as liveBatchQuantity
+             (SELECT SUM(pb.quantity) FROM ${TableConstants.productBatches} pb WHERE pb.productId = p.id) as liveBatchQuantity,
+             (SELECT MIN(pb.expiryDate) FROM ${TableConstants.productBatches} pb WHERE pb.productId = p.id AND pb.quantity > 0) as expiryDate,
+             (SELECT pb.batchNumber FROM ${TableConstants.productBatches} pb WHERE pb.productId = p.id AND pb.quantity > 0 ORDER BY pb.expiryDate ASC LIMIT 1) as batchNumber
       FROM ${TableConstants.products} p
       ORDER BY p.name ASC
       LIMIT ? OFFSET ?
@@ -67,7 +75,9 @@ class ProductRepository {
     final db = await _dbHelper.database;
     final result = await db.rawQuery('''
       SELECT p.*,
-             (SELECT SUM(pb.quantity) FROM ${TableConstants.productBatches} pb WHERE pb.productId = p.id) as liveBatchQuantity
+             (SELECT SUM(pb.quantity) FROM ${TableConstants.productBatches} pb WHERE pb.productId = p.id) as liveBatchQuantity,
+             (SELECT MIN(pb.expiryDate) FROM ${TableConstants.productBatches} pb WHERE pb.productId = p.id AND pb.quantity > 0) as expiryDate,
+             (SELECT pb.batchNumber FROM ${TableConstants.productBatches} pb WHERE pb.productId = p.id AND pb.quantity > 0 ORDER BY pb.expiryDate ASC LIMIT 1) as batchNumber
       FROM ${TableConstants.products} p
       WHERE p.category = ?
       ORDER BY p.name ASC
@@ -79,7 +89,9 @@ class ProductRepository {
     final db = await _dbHelper.database;
     final result = await db.rawQuery('''
       SELECT p.*,
-             (SELECT SUM(pb.quantity) FROM ${TableConstants.productBatches} pb WHERE pb.productId = p.id) as liveBatchQuantity
+             (SELECT SUM(pb.quantity) FROM ${TableConstants.productBatches} pb WHERE pb.productId = p.id) as liveBatchQuantity,
+             (SELECT MIN(pb.expiryDate) FROM ${TableConstants.productBatches} pb WHERE pb.productId = p.id AND pb.quantity > 0) as expiryDate,
+             (SELECT pb.batchNumber FROM ${TableConstants.productBatches} pb WHERE pb.productId = p.id AND pb.quantity > 0 ORDER BY pb.expiryDate ASC LIMIT 1) as batchNumber
       FROM ${TableConstants.products} p
       WHERE p.name LIKE ?
       ORDER BY p.name ASC

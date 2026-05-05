@@ -267,6 +267,13 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
                   'Payment: ${widget.sale.paymentMethod}',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
+                if (widget.sale.customerPhone?.isNotEmpty ?? false) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    'Customer: ${widget.sale.customerPhone}',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
                 if (widget.sale.paymentMethod.toLowerCase() == 'upi' && widget.upiId != null) ...[
                   const SizedBox(height: 24),
                   const Divider(),

@@ -33,15 +33,16 @@ class _OnboardingScreen17State extends State<OnboardingScreen17> {
       ),
       content: Column(
         children: [
-          _buildFeatureRow(Icons.message_outlined, "In-app messaging", "Send real-time updates to keep your audience engaged."),
-          _buildFeatureRow(Icons.person_outline, "Personalization", "User interface that adapts to your specific needs."),
-          _buildFeatureRow(Icons.bar_chart, "Analytics and reporting", "Gain insights into audience behavior."),
+          _buildFeatureRow(Icons.receipt_long_outlined, "Unlimited bills & invoices", "Generate GST-ready bills and share via WhatsApp instantly."),
+          _buildFeatureRow(Icons.inventory_2_outlined, "Advanced inventory alerts", "Low-stock notifications and expiry tracking for all products."),
+          _buildFeatureRow(Icons.bar_chart, "Sales reports & analytics", "Daily, weekly, and monthly sales summaries with profit insights."),
+          _buildFeatureRow(Icons.people_outline, "Customer ledger (Khata)", "Track credit, payments, and dues for each customer."),
           const SizedBox(height: 32),
           _buildPlanTile(
             title: "Annual",
-            subtitle: "30-day free trial",
-            price: "\$47.99/year",
-            monthlyPrice: "\$4.00/month",
+            subtitle: "Save 33% — best value",
+            price: "₹999/year",
+            monthlyPrice: "₹83/month",
             selected: _isAnnual,
             onTap: () => setState(() => _isAnnual = true),
           ),
@@ -49,8 +50,8 @@ class _OnboardingScreen17State extends State<OnboardingScreen17> {
           _buildPlanTile(
             title: "Monthly",
             subtitle: "Cancel anytime",
-            price: "\$5.99/month",
-            monthlyPrice: "\$71.88/year",
+            price: "₹149/month",
+            monthlyPrice: "₹1,788/year",
             selected: !_isAnnual,
             onTap: () => setState(() => _isAnnual = false),
           ),

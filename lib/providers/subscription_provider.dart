@@ -3,10 +3,6 @@ import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:orushops/core/services/revenue_cat_service.dart';
 import 'package:orushops/providers/auth_provider.dart';
 
-final revenueCatServiceProvider = Provider<RevenueCatService>((ref) {
-  return RevenueCatService.instance;
-});
-
 // Check if user has any active subscription
 final subscriptionStatusProvider = FutureProvider<bool>((ref) async {
   final currentUser = ref.watch(currentUserProvider);

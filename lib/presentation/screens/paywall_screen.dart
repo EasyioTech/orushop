@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import '../../core/theme/app_theme.dart';
 import '../../providers/paywall_provider.dart';
+import '../../providers/subscription_provider.dart';
 
 class PaywallScreen extends ConsumerStatefulWidget {
   final int cartAmount;

@@ -5,13 +5,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 
+import 'core/database/database_helper.dart';
 import 'core/theme/app_theme.dart';
+import 'presentation/screens/home_screen.dart';
 import 'core/widgets/error_boundary.dart';
 import 'core/services/auth_service.dart';
 import 'core/services/revenue_cat_service.dart';
-import 'core/database/seed_data.dart';
 import 'features/khata/screens/khata_screen.dart';
-import 'presentation/screens/cart_screen.dart';
 import 'presentation/screens/inventory_screen.dart';
 import 'presentation/screens/products_screen.dart';
 import 'presentation/screens/profile_screen.dart';
@@ -30,12 +30,11 @@ void main() async {
       options: DefaultFirebaseOptions.currentPlatform,
     ),
     SharedPreferences.getInstance(),
+    DatabaseHelper().database,
   ]);
 
   final prefs = results[1] as SharedPreferences;
   initializeSharedPrefs(prefs);
-
-  await SeedData.seedProducts(force: false);
 
   runApp(
     ProviderScope(
@@ -47,13 +46,29 @@ void main() async {
   );
 }
 
-// Local seed logic removed in favor of SeedData service
-
-class MyApp extends ConsumerWidget {
+class MyApp extends ConsumerStatefulWidget {
   const MyApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends ConsumerState<MyApp> {
+  @override
+  void initState() {
+    super.initState();
+    // Initialize RevenueCat once when a user is first detected, not on every rebuild.
+    ref.listenManual(authStateProvider, (previous, next) {
+      next.whenData((user) {
+        if (user != null) {
+          ref.read(revenueCatServiceProvider).initialize(user.uid);
+        }
+      });
+    }, fireImmediately: true);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final authState = ref.watch(authStateProvider);
     final onboarding = ref.watch(onboardingProvider);
 
@@ -77,10 +92,6 @@ class MyApp extends ConsumerWidget {
       home: authState.when(
         data: (user) {
           if (user == null) return const LoginScreen();
-          
-          // Initialize Subscriptions for the logged-in user
-          ref.read(revenueCatServiceProvider).initialize(user.uid);
-          
           return const MyHomePage();
         },
         loading: () => const Scaffold(
@@ -125,16 +136,16 @@ class MyHomePage extends ConsumerStatefulWidget {
 
 class _MyHomePageState extends ConsumerState<MyHomePage> {
   static const _navItems = [
-    _NavItem(label: 'Shop',      icon: Icons.storefront_outlined,  activeIcon: Icons.storefront_rounded),
-    _NavItem(label: 'Cart',      icon: Icons.shopping_cart_outlined, activeIcon: Icons.shopping_cart_rounded),
-    _NavItem(label: 'Stock',     icon: Icons.inventory_2_outlined,  activeIcon: Icons.inventory_2_rounded),
-    _NavItem(label: 'Khata',     icon: Icons.book_outlined,         activeIcon: Icons.book_rounded),
-    _NavItem(label: 'Profile',   icon: Icons.person_outline_rounded, activeIcon: Icons.person_rounded),
+    _NavItem(label: 'Home',    icon: Icons.home_outlined,          activeIcon: Icons.home_rounded),
+    _NavItem(label: 'POS',     icon: Icons.storefront_outlined,    activeIcon: Icons.storefront_rounded),
+    _NavItem(label: 'Stock',   icon: Icons.inventory_2_outlined,   activeIcon: Icons.inventory_2_rounded),
+    _NavItem(label: 'Khata',   icon: Icons.book_outlined,          activeIcon: Icons.book_rounded),
+    _NavItem(label: 'Profile', icon: Icons.person_outline_rounded, activeIcon: Icons.person_rounded),
   ];
 
   List<Widget> _buildScreens() => const [
+    HomeScreen(),
     ProductsScreen(),
-    CartScreen(),
     InventoryScreen(),
     KhataScreen(),
     ProfileScreen(),
