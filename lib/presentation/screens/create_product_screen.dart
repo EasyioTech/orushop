@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:orushops/core/models/product.dart';
 import 'package:orushops/core/database/database_helper.dart';
 import 'package:orushops/core/theme/app_theme.dart';
@@ -14,7 +15,6 @@ import 'package:orushops/core/services/global_catalog_service.dart';
 import 'package:orushops/features/onboarding/models/shop_catalog_data.dart';
 import 'package:orushops/features/onboarding/models/shop_models.dart';
 import 'package:orushops/providers/shop_provider.dart';
-import 'batch_scan_screen.dart';
 
 class CreateProductScreen extends ConsumerStatefulWidget {
   const CreateProductScreen({super.key});
@@ -28,9 +28,9 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
   final _skuController = TextEditingController();
   final _priceController = TextEditingController();
   final _costController = TextEditingController();
-  final _initialQtyController = TextEditingController();
+  final _initialQtyController = TextEditingController(text: '0');
 
-  // Advanced fields
+  // Advanced fields (hidden or auto-filled)
   final _mrpController = TextEditingController();
   final _hsnController = TextEditingController();
   final _taxController = TextEditingController();
@@ -55,7 +55,7 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
   DateTime? _expiryDate;
 
   bool _showScanner = false;
-  bool _showAdvanced = false;
+  int _currentStep = 0;
   File? _productImage;
   String? _externalImageUrl;
 
@@ -135,6 +135,7 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
           orElse: () => _categories.first,
         );
         _onCategoryChanged(matchingCat);
+        if (_currentStep == 1) _currentStep = 2; // Auto-advance
       });
       HapticFeedback.mediumImpact();
       if (mounted) {
@@ -142,7 +143,7 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
           SnackBar(
             content: Row(
               children: [
-                const Icon(Icons.auto_awesome, color: Colors.white, size: 20),
+                const Icon(CupertinoIcons.sparkles, color: Colors.white, size: 20),
                 const SizedBox(width: 12),
                 Text('Found: ${product.name}'),
               ],
@@ -172,21 +173,17 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
 
     if (name.isEmpty) {
       HapticFeedback.heavyImpact();
-      _showError('Enter the item name');
+      _showError('Please enter the name');
+      setState(() => _currentStep = 1);
       return;
     }
     if (price <= 0) {
       HapticFeedback.heavyImpact();
-      _showError('Enter the sell price');
-      return;
-    }
-    if (cost <= 0) {
-      HapticFeedback.heavyImpact();
-      _showError('Enter the buy price');
+      _showError('Please enter the price');
+      setState(() => _currentStep = 2);
       return;
     }
 
-    // Auto-generate SKU if empty
     if (_skuController.text.trim().isEmpty) {
       _generateSKU();
     }
@@ -257,40 +254,17 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
       if (!mounted) return;
       HapticFeedback.mediumImpact();
       ref.invalidate(productsProvider);
-      await Future.delayed(const Duration(milliseconds: 300));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
-              const SizedBox(width: 12),
-              Text('$name added!'),
-            ],
-          ),
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: AppTheme.successColor,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        ),
-      );
       Navigator.pop(context, true);
     } catch (e) {
       HapticFeedback.heavyImpact();
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error: $e'),
-          backgroundColor: AppTheme.errorColor,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      _showError('Error: $e');
     }
   }
 
   void _showError(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(msg, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        content: Text(msg),
         backgroundColor: AppTheme.errorColor,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -298,7 +272,533 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
     );
   }
 
-  void _openSKUScanner() => setState(() => _showScanner = true);
+  @override
+  Widget build(BuildContext context) {
+    if (_showScanner) {
+      return Scaffold(
+        backgroundColor: Colors.black,
+        body: Stack(
+          children: [
+            MobileScanner(
+              controller: _scannerController,
+              onDetect: (capture) {
+                for (final barcode in capture.barcodes) {
+                  final sku = barcode.rawValue ?? '';
+                  if (sku.isNotEmpty) {
+                    HapticFeedback.mediumImpact();
+                    _skuController.text = sku;
+                    setState(() => _showScanner = false);
+                    break;
+                  }
+                }
+              },
+            ),
+            SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: IconButton(
+                  icon: const Icon(CupertinoIcons.xmark_circle_fill, color: Colors.white, size: 36),
+                  onPressed: () => setState(() => _showScanner = false),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Scaffold(
+      backgroundColor: AppTheme.backgroundColor,
+      body: Column(
+        children: [
+          _buildVisualHeader(),
+          Expanded(
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              child: _buildCurrentStep(),
+            ),
+          ),
+          _buildNavigationFooter(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVisualHeader() {
+    return Container(
+      width: double.infinity,
+      decoration: const BoxDecoration(
+        color: AppTheme.primaryColor,
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(32),
+          bottomRight: Radius.circular(32),
+        ),
+      ),
+      padding: EdgeInsets.only(
+        top: MediaQuery.of(context).padding.top + 16,
+        left: 24,
+        right: 24,
+        bottom: 24,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              GestureDetector(
+                onTap: () => Navigator.pop(context),
+                child: const Icon(CupertinoIcons.back, color: Colors.white),
+              ),
+              const Text(
+                'Add Item',
+                style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(width: 24),
+            ],
+          ),
+          const SizedBox(height: 24),
+          Row(
+            children: List.generate(4, (index) {
+              final isActive = index <= _currentStep;
+              return Expanded(
+                child: Container(
+                  height: 6,
+                  margin: EdgeInsets.only(right: index == 3 ? 0 : 8),
+                  decoration: BoxDecoration(
+                    color: isActive ? Colors.white : Colors.white24,
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                ),
+              );
+            }),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            _getStepTitle(),
+            style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900, letterSpacing: -0.5),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _getStepTitle() {
+    switch (_currentStep) {
+      case 0: return 'Choose Type';
+      case 1: return 'What is it?';
+      case 2: return 'How much?';
+      case 3: return 'Inventory';
+      default: return '';
+    }
+  }
+
+  Widget _buildCurrentStep() {
+    switch (_currentStep) {
+      case 0: return _buildStepCategory();
+      case 1: return _buildStepInfo();
+      case 2: return _buildStepPrice();
+      case 3: return _buildStepStock();
+      default: return const SizedBox();
+    }
+  }
+
+  Widget _buildStepCategory() {
+    return GridView.builder(
+      key: const ValueKey(0),
+      padding: const EdgeInsets.all(24),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 16,
+        mainAxisSpacing: 16,
+        childAspectRatio: 1.1,
+      ),
+      itemCount: _categories.length,
+      itemBuilder: (context, index) {
+        final cat = _categories[index];
+        final isSelected = _selectedCategory == cat;
+        return GestureDetector(
+          onTap: () {
+            _onCategoryChanged(cat);
+            HapticFeedback.mediumImpact();
+            setState(() => _currentStep = 1);
+          },
+          child: Container(
+            decoration: BoxDecoration(
+              color: isSelected ? AppTheme.primaryColor : Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: isSelected ? Colors.transparent : AppTheme.borderColor),
+              boxShadow: [
+                BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4)),
+              ],
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  _getCategoryIcon(cat.name),
+                  size: 40,
+                  color: isSelected ? Colors.white : AppTheme.primaryColor,
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  cat.name,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: isSelected ? Colors.white : AppTheme.textPrimary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  IconData _getCategoryIcon(String name) {
+    final n = name.toLowerCase();
+    if (n.contains('tablet') || n.contains('medicine')) return CupertinoIcons.capsule_fill;
+    if (n.contains('grocery') || n.contains('rice') || n.contains('atta')) return CupertinoIcons.cart_fill;
+    if (n.contains('electric') || n.contains('tv')) return CupertinoIcons.tv_fill;
+    if (n.contains('cloth') || n.contains('men')) return CupertinoIcons.tag_fill;
+    if (n.contains('bakery') || n.contains('cake')) return CupertinoIcons.bag_fill;
+    if (n.contains('stationery') || n.contains('pen')) return CupertinoIcons.pencil;
+    if (n.contains('hardware') || n.contains('tool')) return CupertinoIcons.hammer_fill;
+    if (n.contains('beauty') || n.contains('skin')) return CupertinoIcons.sparkles;
+    if (n.contains('mobile') || n.contains('phone')) return CupertinoIcons.phone_fill;
+    return CupertinoIcons.cube_box_fill;
+  }
+
+  Widget _buildStepInfo() {
+    return SingleChildScrollView(
+      key: const ValueKey(1),
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        children: [
+          _buildBigCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Name of Item', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _nameController,
+                  autofocus: true,
+                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                  decoration: InputDecoration(
+                    hintText: 'e.g. Sugar, Milk, Paracetamol',
+                    border: InputBorder.none,
+                    hintStyle: TextStyle(color: Colors.grey.shade300),
+                  ),
+                  textCapitalization: TextCapitalization.words,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+          Row(
+            children: [
+              Expanded(
+                child: _buildActionBtn(
+                  onPressed: () => setState(() => _showScanner = true),
+                  icon: CupertinoIcons.barcode_viewfinder,
+                  label: 'Scan Barcode',
+                  color: AppTheme.primaryColor,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildActionBtn(
+                  onPressed: _captureProductImage,
+                  icon: CupertinoIcons.camera_fill,
+                  label: 'Take Photo',
+                  color: AppTheme.accentColor,
+                ),
+              ),
+            ],
+          ),
+          if (_productImage != null) ...[
+            const SizedBox(height: 24),
+            Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(24),
+                  child: Image.file(_productImage!, height: 200, width: double.infinity, fit: BoxFit.cover),
+                ),
+                Positioned(
+                  right: 8,
+                  top: 8,
+                  child: GestureDetector(
+                    onTap: () => setState(() => _productImage = null),
+                    child: const Icon(CupertinoIcons.xmark_circle_fill, color: Colors.white, size: 28),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStepPrice() {
+    return SingleChildScrollView(
+      key: const ValueKey(2),
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        children: [
+          _buildBigCard(
+            color: AppTheme.successColor.withValues(alpha: 0.1),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Selling Price', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppTheme.successColor)),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    const Text('₹', style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: AppTheme.successColor)),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextField(
+                        controller: _priceController,
+                        autofocus: true,
+                        keyboardType: TextInputType.number,
+                        style: const TextStyle(fontSize: 48, fontWeight: FontWeight.w900, color: AppTheme.successColor),
+                        decoration: const InputDecoration(border: InputBorder.none, hintText: '0'),
+                        onSubmitted: (_) => setState(() => _currentStep = 3),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+          _buildBigCard(
+            color: AppTheme.errorColor.withValues(alpha: 0.1),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Buying Cost', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppTheme.errorColor)),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    const Text('₹', style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: AppTheme.errorColor)),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextField(
+                        controller: _costController,
+                        keyboardType: TextInputType.number,
+                        style: const TextStyle(fontSize: 40, fontWeight: FontWeight.w900, color: AppTheme.errorColor),
+                        decoration: const InputDecoration(border: InputBorder.none, hintText: '0'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStepStock() {
+    return SingleChildScrollView(
+      key: const ValueKey(3),
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildBigCard(
+            child: Column(
+              children: [
+                const Text('Current Stock', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                const SizedBox(height: 24),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _roundBtn(
+                      icon: CupertinoIcons.minus,
+                      onPressed: () {
+                        final val = int.tryParse(_initialQtyController.text) ?? 0;
+                        if (val > 0) _initialQtyController.text = (val - 1).toString();
+                      },
+                    ),
+                    Container(
+                      width: 120,
+                      alignment: Alignment.center,
+                      child: TextField(
+                        controller: _initialQtyController,
+                        textAlign: TextAlign.center,
+                        keyboardType: TextInputType.number,
+                        style: const TextStyle(fontSize: 48, fontWeight: FontWeight.w900),
+                        decoration: const InputDecoration(border: InputBorder.none),
+                      ),
+                    ),
+                    _roundBtn(
+                      icon: CupertinoIcons.plus,
+                      onPressed: () {
+                        final val = int.tryParse(_initialQtyController.text) ?? 0;
+                        _initialQtyController.text = (val + 1).toString();
+                      },
+                    ),
+                  ],
+                ),
+                Text(_selectedUnit, style: const TextStyle(color: AppTheme.textSecondary, fontWeight: FontWeight.bold)),
+              ],
+            ),
+          ),
+          if (_selectedCategory?.productFields.hasExpiryDate ?? false) ...[
+            const SizedBox(height: 24),
+            _buildBigCard(
+              child: ListTile(
+                contentPadding: EdgeInsets.zero,
+                onTap: _pickExpiryDate,
+                title: const Text('Expiry Date', style: TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: Text(_expiryDate == null ? 'Not set' : DateFormat('dd MMM yyyy').format(_expiryDate!)),
+                trailing: const Icon(CupertinoIcons.calendar),
+              ),
+            ),
+          ],
+          const SizedBox(height: 32),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 8),
+            child: Text('SUMMARY', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12, color: AppTheme.textSecondary, letterSpacing: 1.5)),
+          ),
+          const SizedBox(height: 12),
+          _buildBigCard(
+            child: Row(
+              children: [
+                Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    color: AppTheme.slate100,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: _productImage != null 
+                    ? ClipRRect(borderRadius: BorderRadius.circular(16), child: Image.file(_productImage!, fit: BoxFit.cover))
+                    : const Icon(CupertinoIcons.cube_box, color: AppTheme.slate400),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(_nameController.text.isEmpty ? 'New Item' : _nameController.text, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, letterSpacing: -0.5)),
+                      Text('Selling at ₹${_priceController.text}', style: const TextStyle(color: AppTheme.successColor, fontWeight: FontWeight.w800, fontSize: 16)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBigCard({required Widget child, Color? color}) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: color ?? Colors.white,
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 15, offset: const Offset(0, 8)),
+        ],
+      ),
+      child: child,
+    );
+  }
+
+  Widget _buildActionBtn({required VoidCallback onPressed, required IconData icon, required String label, required Color color}) {
+    return GestureDetector(
+      onTap: onPressed,
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: color.withValues(alpha: 0.3), width: 2),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: color, size: 32),
+            const SizedBox(height: 12),
+            Text(label, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 13)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _roundBtn({required IconData icon, required VoidCallback onPressed}) {
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.lightImpact();
+        onPressed();
+      },
+      child: Container(
+        width: 56,
+        height: 56,
+        decoration: BoxDecoration(
+          color: AppTheme.primaryColor.withValues(alpha: 0.1),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(icon, color: AppTheme.primaryColor, size: 28),
+      ),
+    );
+  }
+
+  Widget _buildNavigationFooter() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 40),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, -5))],
+      ),
+      child: Row(
+        children: [
+          if (_currentStep > 0)
+            Expanded(
+              child: TextButton(
+                onPressed: () => setState(() => _currentStep--),
+                child: const Text('Back', style: TextStyle(fontSize: 18, color: AppTheme.textSecondary, fontWeight: FontWeight.bold)),
+              ),
+            ),
+          const SizedBox(width: 16),
+          Expanded(
+            flex: 2,
+            child: ElevatedButton(
+              onPressed: _currentStep == 3 ? _createProduct : () {
+                if (_currentStep == 1 && _nameController.text.isEmpty) {
+                  _showError('Please enter item name');
+                  return;
+                }
+                setState(() => _currentStep++);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryColor,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 20),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              ),
+              child: Text(
+                _currentStep == 3 ? 'Save Item' : 'Next',
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   Future<void> _captureProductImage() async {
     try {
@@ -330,698 +830,7 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
       initialDate: DateTime.now().add(const Duration(days: 365)),
       firstDate: DateTime.now(),
       lastDate: DateTime.now().add(const Duration(days: 3650)),
-      builder: (context, child) => Theme(
-        data: Theme.of(context).copyWith(
-          colorScheme: const ColorScheme.light(
-            primary: AppTheme.primaryColor,
-            onPrimary: Colors.white,
-            onSurface: AppTheme.textPrimary,
-          ),
-        ),
-        child: child!,
-      ),
     );
     if (picked != null) setState(() => _expiryDate = picked);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    // Watch for shop type changes (e.g. from Other to Medical)
-    ref.listen(shopTypeAsyncProvider, (previous, next) {
-      if (next.hasValue) {
-        _loadCategories();
-      }
-    });
-    if (_showScanner) {
-      return Scaffold(
-        backgroundColor: Colors.black,
-        body: Stack(
-          children: [
-            MobileScanner(
-              controller: _scannerController,
-              onDetect: (capture) {
-                for (final barcode in capture.barcodes) {
-                  final sku = barcode.rawValue ?? '';
-                  if (sku.isNotEmpty) {
-                    HapticFeedback.mediumImpact();
-                    _skuController.text = sku;
-                    setState(() => _showScanner = false);
-                    break;
-                  }
-                }
-              },
-            ),
-            SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: IconButton(
-                  icon: const Icon(Icons.close_rounded, color: Colors.white, size: 32),
-                  onPressed: () => setState(() => _showScanner = false),
-                ),
-              ),
-            ),
-            Center(
-              child: Container(
-                width: 250,
-                height: 250,
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.white, width: 2),
-                  borderRadius: BorderRadius.circular(24),
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
-      body: Column(
-        children: [
-          _buildHeader(),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // ── CATEGORY FIRST — tap one button ─────────────────────
-                  _buildLabel('What type of item is this?'),
-                  const SizedBox(height: 10),
-                  _buildCategoryChips(),
-                  if (_selectedCategory != null && _selectedCategory!.subcategories.isNotEmpty) ...[
-                    const SizedBox(height: 16),
-                    _buildLabel('Choose type'),
-                    const SizedBox(height: 10),
-                    _buildSubcategoryChips(),
-                  ],
-                  const SizedBox(height: 28),
-
-                  // ── PRODUCT NAME ─────────────────────────────────────────
-                  _buildLabel('Item Name *'),
-                  const SizedBox(height: 10),
-                  _buildBigInput(
-                    controller: _nameController,
-                    hint: 'e.g. Sugar, Shirt, Soap',
-                    icon: Icons.shopping_bag_outlined,
-                    keyboardType: TextInputType.text,
-                  ),
-                  const SizedBox(height: 24),
-
-                  // ── PRICE ROW ────────────────────────────────────────────
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildLabel('Sell Price *'),
-                            const SizedBox(height: 10),
-                            _buildBigInput(
-                              controller: _priceController,
-                              hint: '0',
-                              icon: Icons.sell_outlined,
-                              prefix: '₹',
-                              keyboardType: TextInputType.number,
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildLabel('Buy Price *'),
-                            const SizedBox(height: 10),
-                            _buildBigInput(
-                              controller: _costController,
-                              hint: '0',
-                              icon: Icons.receipt_long_outlined,
-                              prefix: '₹',
-                              keyboardType: TextInputType.number,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-
-                  // ── STOCK COUNT ──────────────────────────────────────────
-                  _buildLabel('How many items do you have now?'),
-                  const SizedBox(height: 10),
-                  _buildBigInput(
-                    controller: _initialQtyController,
-                    hint: '0',
-                    icon: Icons.inventory_2_outlined,
-                    keyboardType: TextInputType.number,
-                  ),
-                  const SizedBox(height: 24),
-
-                  // ── PHOTO ────────────────────────────────────────────────
-                  _buildLabel('Photo (not required)'),
-                  const SizedBox(height: 10),
-                  _buildPhotoSection(),
-                  const SizedBox(height: 28),
-
-                  // ── ADVANCED TOGGLE ──────────────────────────────────────
-                  GestureDetector(
-                    onTap: () => setState(() => _showAdvanced = !_showAdvanced),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.2)),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            _showAdvanced ? Icons.expand_less_rounded : Icons.expand_more_rounded,
-                            color: AppTheme.primaryColor,
-                          ),
-                          const SizedBox(width: 12),
-                          Text(
-                            _showAdvanced ? 'Show less' : 'More details (not required)',
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              color: AppTheme.primaryColor,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  if (_showAdvanced) ...[
-                    const SizedBox(height: 20),
-                    _buildAdvancedSection(),
-                  ],
-
-                  const SizedBox(height: 32),
-
-                  // ── CREATE BUTTON ────────────────────────────────────────
-                  SizedBox(
-                    width: double.infinity,
-                    height: 68,
-                    child: ElevatedButton.icon(
-                      onPressed: _createProduct,
-                      icon: const Icon(Icons.add_circle_rounded, size: 24),
-                      label: const Text(
-                        'Add Item',
-                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primaryColor,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                        elevation: 8,
-                        shadowColor: AppTheme.primaryColor.withValues(alpha: 0.4),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 40),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHeader() {
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [AppTheme.primaryColor, AppTheme.primaryLight],
-        ),
-        borderRadius: const BorderRadius.only(
-          bottomLeft: Radius.circular(32),
-          bottomRight: Radius.circular(32),
-        ),
-        boxShadow: [
-          BoxShadow(color: AppTheme.primaryColor.withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 10)),
-        ],
-      ),
-      padding: EdgeInsets.only(
-        top: MediaQuery.of(context).padding.top + 12,
-        left: 12,
-        right: 16,
-        bottom: 28,
-      ),
-      child: Row(
-        children: [
-          IconButton(
-            icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
-            onPressed: () => Navigator.pop(context),
-          ),
-          const Expanded(
-            child: Text(
-              'Add New Item',
-              style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: -0.5),
-            ),
-          ),
-          TextButton.icon(
-            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const BatchScanScreen())),
-            icon: const Icon(Icons.bolt_rounded, color: Colors.white, size: 18),
-            label: const Text('Bulk Add', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
-            style: TextButton.styleFrom(
-              backgroundColor: Colors.white24,
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLabel(String text) {
-    return Text(
-      text,
-      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppTheme.textPrimary),
-    );
-  }
-
-  Widget _buildBigInput({
-    required TextEditingController controller,
-    required String hint,
-    required IconData icon,
-    TextInputType keyboardType = TextInputType.text,
-    String? prefix,
-  }) {
-    return TextField(
-      controller: controller,
-      keyboardType: keyboardType,
-      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: TextStyle(fontSize: 18, color: Colors.grey.shade400),
-        prefixText: prefix != null ? '$prefix ' : null,
-        prefixStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
-        prefixIcon: Icon(icon, size: 22, color: AppTheme.primaryColor),
-        filled: true,
-        fillColor: Colors.white,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide.none,
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: AppTheme.primaryColor, width: 2),
-        ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
-      ),
-    );
-  }
-
-  Widget _buildCategoryChips() {
-    return Wrap(
-      spacing: 10,
-      runSpacing: 10,
-      children: _categories.map((cat) {
-        final isSelected = _selectedCategory == cat;
-        return GestureDetector(
-          onTap: () => _onCategoryChanged(cat),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-            decoration: BoxDecoration(
-              color: isSelected ? AppTheme.primaryColor : Colors.white,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: isSelected ? AppTheme.primaryColor : Colors.grey.shade300,
-                width: isSelected ? 2 : 1,
-              ),
-              boxShadow: isSelected
-                  ? [BoxShadow(color: AppTheme.primaryColor.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 3))]
-                  : [],
-            ),
-            child: Text(
-              cat.name,
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-                color: isSelected ? Colors.white : AppTheme.textPrimary,
-              ),
-            ),
-          ),
-        );
-      }).toList(),
-    );
-  }
-
-  Widget _buildSubcategoryChips() {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: _selectedCategory!.subcategories.map((sub) {
-        final isSelected = _selectedSubcategory == sub;
-        return GestureDetector(
-          onTap: () => setState(() => _selectedSubcategory = sub),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: isSelected ? AppTheme.primaryColor.withValues(alpha: 0.12) : Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: isSelected ? AppTheme.primaryColor : Colors.grey.shade300),
-            ),
-            child: Text(
-              sub,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                color: isSelected ? AppTheme.primaryColor : AppTheme.textSecondary,
-              ),
-            ),
-          ),
-        );
-      }).toList(),
-    );
-  }
-
-  Widget _buildPhotoSection() {
-    final hasImage = _productImage != null || _externalImageUrl != null;
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        children: [
-          if (hasImage) ...[
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: _productImage != null
-                  ? Image.file(_productImage!, height: 160, width: double.infinity, fit: BoxFit.cover)
-                  : Image.network(_externalImageUrl!, height: 160, width: double.infinity, fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) => const Icon(Icons.broken_image_outlined, size: 48)),
-            ),
-            const SizedBox(height: 12),
-          ],
-          Row(
-            children: [
-              Expanded(
-                child: _buildPhotoBtn(
-                  onPressed: _captureProductImage,
-                  icon: Icons.camera_alt_rounded,
-                  label: hasImage ? 'Retake' : 'Camera',
-                  isPrimary: true,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildPhotoBtn(
-                  onPressed: hasImage ? () => setState(() { _productImage = null; _externalImageUrl = null; }) : _pickProductImage,
-                  icon: hasImage ? Icons.close_rounded : Icons.photo_library_rounded,
-                  label: hasImage ? 'Remove' : 'Gallery',
-                  isPrimary: false,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPhotoBtn({required VoidCallback onPressed, required IconData icon, required String label, required bool isPrimary}) {
-    return ElevatedButton.icon(
-      onPressed: onPressed,
-      icon: Icon(icon, size: 18),
-      label: Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: isPrimary ? AppTheme.primaryColor : AppTheme.backgroundColor,
-        foregroundColor: isPrimary ? Colors.white : AppTheme.primaryColor,
-        elevation: 0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        padding: const EdgeInsets.symmetric(vertical: 12),
-      ),
-    );
-  }
-
-  Widget _buildAdvancedSection() {
-    final fields = _selectedCategory?.productFields;
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // SKU / Barcode
-          _buildSmallLabel('Barcode / SKU'),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _skuController,
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-                  decoration: _smallInputDec('PROD-1234', Icons.qr_code_rounded),
-                ),
-              ),
-              const SizedBox(width: 8),
-              _iconBtn(onPressed: _openSKUScanner, icon: Icons.camera_alt_outlined, color: AppTheme.primaryColor),
-              const SizedBox(width: 6),
-              _iconBtn(onPressed: _generateSKU, icon: Icons.auto_fix_high_rounded, color: AppTheme.primaryLight),
-            ],
-          ),
-
-          if (fields != null && fields.hasMrp) ...[
-            const SizedBox(height: 16),
-            _buildSmallLabel('MRP (printed price on pack)'),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _mrpController,
-              keyboardType: TextInputType.number,
-              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-              decoration: _smallInputDec('0.00', Icons.tag_rounded, prefix: '₹ '),
-            ),
-          ],
-
-          if (fields != null && fields.hasBrand) ...[
-            const SizedBox(height: 16),
-            _buildSmallLabel('Brand'),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _brandController,
-              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-              decoration: _smallInputDec('e.g. Samsung, Amul', Icons.branding_watermark_outlined),
-            ),
-          ],
-
-          if (fields != null && fields.hasWeight) ...[
-            const SizedBox(height: 16),
-            _buildSmallLabel('Weight / Volume'),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _weightController,
-              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-              decoration: _smallInputDec('e.g. 500g, 1L', Icons.scale_outlined),
-            ),
-          ],
-
-          if (fields != null && fields.hasUnit && (fields.unitOptions.length > 1)) ...[
-            const SizedBox(height: 16),
-            _buildSmallLabel('Unit (piece / kg / litre)'),
-            const SizedBox(height: 8),
-            _buildUnitDropdown(fields.unitOptions),
-          ],
-
-          if (fields != null && fields.hasExpiryDate) ...[
-            const SizedBox(height: 16),
-            _buildSmallLabel('Expiry Date (not required)'),
-            const SizedBox(height: 8),
-            _buildDateTile(),
-          ],
-
-          if (fields != null && (fields.hasHsnCode || fields.hasTaxRate)) ...[
-            const SizedBox(height: 16),
-            _buildSmallLabel('GST / Tax Info'),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                if (fields.hasHsnCode)
-                  Expanded(
-                    child: TextField(
-                      controller: _hsnController,
-                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-                      decoration: _smallInputDec('HSN Code', Icons.article_outlined),
-                    ),
-                  ),
-                if (fields.hasHsnCode && fields.hasTaxRate) const SizedBox(width: 12),
-                if (fields.hasTaxRate)
-                  Expanded(
-                    child: TextField(
-                      controller: _taxController,
-                      keyboardType: TextInputType.number,
-                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-                      decoration: _smallInputDec('Tax %', Icons.percent_rounded),
-                    ),
-                  ),
-              ],
-            ),
-          ],
-
-          if (fields != null && fields.hasSerialNumber) ...[
-            const SizedBox(height: 16),
-            _buildSmallLabel('Serial Number'),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _serialNumberController,
-              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-              decoration: _smallInputDec('SN-123456', Icons.numbers_rounded),
-            ),
-          ],
-
-          if (fields != null && fields.hasImei) ...[
-            const SizedBox(height: 16),
-            _buildSmallLabel('IMEI Number'),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _imeiController,
-              keyboardType: TextInputType.number,
-              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-              decoration: _smallInputDec('15-digit IMEI', Icons.phone_android_rounded),
-            ),
-          ],
-
-          if (fields != null && fields.hasWarranty) ...[
-            const SizedBox(height: 16),
-            _buildSmallLabel('Warranty'),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _warrantyController,
-              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-              decoration: _smallInputDec('e.g. 1 Year, 6 Months', Icons.verified_user_outlined),
-            ),
-          ],
-
-          if (fields != null && fields.hasSizeVariant) ...[
-            const SizedBox(height: 16),
-            _buildSmallLabel('Size'),
-            const SizedBox(height: 8),
-            if (fields.sizeOptions.isNotEmpty)
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: fields.sizeOptions.map((s) {
-                  final isSel = _sizeController.text == s;
-                  return GestureDetector(
-                    onTap: () => setState(() => _sizeController.text = s),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: isSel ? AppTheme.primaryColor : AppTheme.backgroundColor,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: isSel ? AppTheme.primaryColor : Colors.grey.shade300),
-                      ),
-                      child: Text(s, style: TextStyle(fontWeight: FontWeight.bold, color: isSel ? Colors.white : AppTheme.textPrimary)),
-                    ),
-                  );
-                }).toList(),
-              )
-            else
-              TextField(
-                controller: _sizeController,
-                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-                decoration: _smallInputDec('e.g. XL, 42', Icons.straighten_rounded),
-              ),
-          ],
-
-          if (fields != null && fields.hasColorVariant) ...[
-            const SizedBox(height: 16),
-            _buildSmallLabel('Color'),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _colorController,
-              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-              decoration: _smallInputDec('e.g. Red, Navy Blue', Icons.palette_outlined),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSmallLabel(String text) {
-    return Text(text, style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppTheme.textSecondary.withValues(alpha: 0.8)));
-  }
-
-  InputDecoration _smallInputDec(String hint, IconData icon, {String? prefix}) {
-    return InputDecoration(
-      hintText: hint,
-      hintStyle: TextStyle(color: Colors.grey.shade400),
-      prefixText: prefix,
-      prefixIcon: Icon(icon, size: 18, color: AppTheme.primaryColor),
-      filled: true,
-      fillColor: AppTheme.backgroundColor,
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-    );
-  }
-
-  Widget _iconBtn({required VoidCallback onPressed, required IconData icon, required Color color}) {
-    return Container(
-      width: 50,
-      height: 50,
-      decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(onTap: onPressed, borderRadius: BorderRadius.circular(12), child: Icon(icon, color: color, size: 22)),
-      ),
-    );
-  }
-
-  Widget _buildUnitDropdown(List<String> options) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14),
-      decoration: BoxDecoration(color: AppTheme.backgroundColor, borderRadius: BorderRadius.circular(12)),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: options.contains(_selectedUnit) ? _selectedUnit : options.first,
-          isExpanded: true,
-          items: options.map((u) => DropdownMenuItem(value: u, child: Text(u, style: const TextStyle(fontWeight: FontWeight.w600)))).toList(),
-          onChanged: (val) { if (val != null) setState(() => _selectedUnit = val); },
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDateTile() {
-    return GestureDetector(
-      onTap: _pickExpiryDate,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-        decoration: BoxDecoration(color: AppTheme.backgroundColor, borderRadius: BorderRadius.circular(12)),
-        child: Row(
-          children: [
-            Icon(Icons.event_busy_rounded, size: 18, color: AppTheme.primaryColor),
-            const SizedBox(width: 10),
-            Text(
-              _expiryDate == null ? 'Pick a date' : DateFormat('dd MMM yyyy').format(_expiryDate!),
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                color: _expiryDate == null ? Colors.grey.shade400 : AppTheme.textPrimary,
-              ),
-            ),
-            const Spacer(),
-            const Icon(Icons.calendar_today_rounded, size: 16, color: AppTheme.textSecondary),
-          ],
-        ),
-      ),
-    );
   }
 }

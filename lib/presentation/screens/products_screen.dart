@@ -19,7 +19,7 @@ import 'package:orushops/core/models/khata_customer.dart';
 import 'package:orushops/providers/khata_provider.dart';
 import 'package:orushops/providers/checkout_provider.dart';
 import 'package:orushops/core/repositories/owner_provider.dart';
-import 'cart_screen.dart';
+
 import 'profile_screen.dart';
 import 'sales_history_screen.dart';
 import 'receipt_screen.dart';
@@ -1283,7 +1283,7 @@ class _CheckoutSheetState extends ConsumerState<_CheckoutSheet> {
   int _quickDiscount = 0;
   double _amountPaid = 0;
   String _receivedPaymentMode = 'Cash';
-  List<KhataCustomer> _customerSuggestions = [];
+
 
   @override
   void initState() {
@@ -1448,7 +1448,6 @@ class _CheckoutSheetState extends ConsumerState<_CheckoutSheet> {
                 setState(() {
                   _customerPhone = phoneCtrl.text.trim().isEmpty ? null : phoneCtrl.text.trim();
                   _customerName = nameCtrl.text.trim().isEmpty ? null : nameCtrl.text.trim();
-                  _customerSuggestions = [];
                 });
                 Navigator.pop(ctx);
                 onSaved();
@@ -1630,7 +1629,7 @@ class _CartStep extends ConsumerWidget {
             shrinkWrap: true,
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
             itemCount: cartItems.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 8),
+            separatorBuilder: (_, _) => const SizedBox(height: 8),
             itemBuilder: (_, i) => _SheetCartItem(item: cartItems[i]),
           ),
         ),
@@ -1645,7 +1644,7 @@ class _CartStep extends ConsumerWidget {
           child: Row(
             children: [
               Consumer(
-                builder: (_, ref, __) {
+                builder: (_, ref, _) {
                   final subtotal = ref.watch(cartSubtotalProvider);
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -2027,7 +2026,7 @@ class _CheckoutStep extends StatelessWidget {
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      [customerName, customerPhone].where((v) => v != null && v!.isNotEmpty).join(' · '),
+                      [customerName, customerPhone].where((v) => v != null && v.isNotEmpty).join(' · '),
                       style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppTheme.textPrimary),
                     ),
                   ),

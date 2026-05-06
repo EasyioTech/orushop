@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:fl_chart/fl_chart.dart';
 
 import '../../core/utils/currency_formatter.dart';
 import '../../providers/analytics_provider.dart';
@@ -18,6 +20,14 @@ class AnalyticsScreen extends ConsumerStatefulWidget {
 class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
   DateTime? _startDate;
   DateTime? _endDate;
+
+  @override
+  void initState() {
+    super.initState();
+    // Default to last 7 days so graphs aren't empty
+    _endDate = DateTime.now();
+    _startDate = _endDate!.subtract(const Duration(days: 7));
+  }
 
   Future<void> _selectDateRange() async {
     final picked = await showDateRangePicker(
@@ -46,7 +56,9 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final todayTotal = ref.watch(dailySalesTotalProvider(DateTime.now()));
+    final now = DateTime.now();
+    final todayStart = DateTime(now.year, now.month, now.day);
+    final todayTotal = ref.watch(dailySalesTotalProvider(todayStart));
     final topProducts = ref.watch(topProductsProvider);
 
     final periodAnalytics = _startDate != null && _endDate != null
@@ -115,14 +127,30 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        'Store Analytics',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 24,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: -0.5,
-                        ),
+                      Row(
+                        children: [
+                          GestureDetector(
+                            onTap: () => Navigator.pop(context),
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.2),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(CupertinoIcons.back, color: Colors.white, size: 20),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          const Text(
+                            'Store Analytics',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 24,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -0.5,
+                            ),
+                          ),
+                        ],
                       ),
                       Container(
                         decoration: BoxDecoration(
@@ -130,8 +158,9 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                           borderRadius: BorderRadius.circular(14),
                         ),
                         child: IconButton(
-                          icon: const Icon(Icons.history_rounded, color: Colors.white, size: 22),
+                          icon: Icon(CupertinoIcons.time_solid, color: Colors.white, size: 20),
                           onPressed: () {
+                            HapticFeedback.mediumImpact();
                             Navigator.push(
                               context,
                               MaterialPageRoute(builder: (_) => const SalesHistoryScreen()),
@@ -211,7 +240,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                       ),
                       child: Row(
                         children: [
-                          Icon(Icons.calendar_today_rounded, color: AppTheme.primaryColor, size: 20),
+                          Icon(CupertinoIcons.calendar, color: AppTheme.primaryColor, size: 20),
                           const SizedBox(width: 12),
                           Text(
                             _startDate == null
@@ -342,15 +371,16 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     if (products.isEmpty) {
       return _buildEmptyState('No sales data available yet.');
     }
+    
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
@@ -358,29 +388,32 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
         itemCount: products.length,
-        separatorBuilder: (context, index) => const Divider(height: 1, color: AppTheme.borderColor),
+        separatorBuilder: (context, index) => Divider(height: 1, color: AppTheme.backgroundColor, indent: 20, endIndent: 20),
         itemBuilder: (context, index) {
           final product = products[index];
           return ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-            title: Text(
-              product.productName,
-              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
-            ),
-            trailing: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+            leading: Container(
+              width: 40,
+              height: 40,
               decoration: BoxDecoration(
                 color: AppTheme.primaryColor.withValues(alpha: 0.05),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Text(
-                '${product.unitsSold} sold',
-                style: TextStyle(
-                  color: AppTheme.primaryColor,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 13,
+              child: Center(
+                child: Text(
+                  '${index + 1}',
+                  style: TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.bold),
                 ),
               ),
+            ),
+            title: Text(
+              product.productName,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+            ),
+            trailing: Text(
+              '${product.unitsSold} units',
+              style: TextStyle(color: AppTheme.textSecondary, fontSize: 13, fontWeight: FontWeight.w600),
             ),
           );
         },
@@ -484,62 +517,72 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
   Widget _buildPaymentBreakdown(List<dynamic> methods) {
     if (methods.isEmpty) return _buildEmptyState('No payment data for this period.');
     
-    final total = methods.fold<double>(0, (sum, m) => sum + m.totalAmount);
-    
+    final colors = [AppTheme.primaryColor, AppTheme.accentColor, AppTheme.successColor, AppTheme.warningColor];
+
     return Container(
-      padding: const EdgeInsets.all(20),
+      height: 240,
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
-      child: Column(
-        children: methods.map((method) {
-          final percentage = total > 0 ? (method.totalAmount / total) : 0.0;
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(method.method, style: const TextStyle(fontWeight: FontWeight.bold)),
-                    Text(CurrencyFormatter.format(method.totalAmount), style: TextStyle(color: AppTheme.textSecondary)),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Stack(
+      child: Row(
+        children: [
+          Expanded(
+            child: PieChart(
+              PieChartData(
+                sectionsSpace: 4,
+                centerSpaceRadius: 40,
+                sections: methods.asMap().entries.map((entry) {
+                  final i = entry.key;
+                  final method = entry.value;
+                  return PieChartSectionData(
+                    color: colors[i % colors.length],
+                    value: method.totalAmount,
+                    title: '',
+                    radius: 25,
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
+          const SizedBox(width: 24),
+          Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: methods.asMap().entries.map((entry) {
+              final i = entry.key;
+              final method = entry.value;
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
                   children: [
                     Container(
-                      height: 10,
+                      width: 12,
+                      height: 12,
                       decoration: BoxDecoration(
-                        color: AppTheme.backgroundColor,
-                        borderRadius: BorderRadius.circular(5),
+                        color: colors[i % colors.length],
+                        shape: BoxShape.circle,
                       ),
                     ),
-                    FractionallySizedBox(
-                      widthFactor: percentage,
-                      child: Container(
-                        height: 10,
-                        decoration: BoxDecoration(
-                          color: AppTheme.primaryLight,
-                          borderRadius: BorderRadius.circular(5),
-                        ),
-                      ),
+                    const SizedBox(width: 8),
+                    Text(
+                      method.method,
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                     ),
                   ],
                 ),
-              ],
-            ),
-          );
-        }).toList(),
+              );
+            }).toList(),
+          ),
+        ],
       ),
     );
   }
@@ -547,67 +590,65 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
   Widget _buildSalesTrend(List<dynamic> trend) {
     if (trend.isEmpty) return _buildEmptyState('No trend data available.');
 
-    final maxAmount = trend.fold<double>(0, (max, d) => max < d.totalAmount ? d.totalAmount : max);
-
     return Container(
-      padding: const EdgeInsets.all(20),
+      height: 300,
+      padding: const EdgeInsets.fromLTRB(16, 32, 24, 16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
-      child: Column(
-        children: trend.map((day) {
-          final factor = maxAmount > 0 ? (day.totalAmount / maxAmount) : 0.0;
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Row(
-              children: [
-                SizedBox(
-                  width: 50,
-                  child: Text(
-                    DateFormat('MMM d').format(day.date),
-                    style: TextStyle(color: AppTheme.textSecondary, fontSize: 12, fontWeight: FontWeight.bold),
-                  ),
-                ),
-                Expanded(
-                  child: Stack(
-                    children: [
-                      Container(
-                        height: 24,
-                        decoration: BoxDecoration(
-                          color: AppTheme.backgroundColor,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                      ),
-                      FractionallySizedBox(
-                        widthFactor: factor,
-                        child: Container(
-                          height: 24,
-                          decoration: BoxDecoration(
-                            color: AppTheme.successColor.withValues(alpha: 0.7),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  CurrencyFormatter.format(day.totalAmount),
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                ),
-              ],
+      child: LineChart(
+        LineChartData(
+          gridData: const FlGridData(show: false),
+          titlesData: FlTitlesData(
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                getTitlesWidget: (value, meta) {
+                  if (value.toInt() < 0 || value.toInt() >= trend.length) return const SizedBox();
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      DateFormat('MM/dd').format(trend[value.toInt()].date),
+                      style: TextStyle(color: AppTheme.textSecondary, fontSize: 10, fontWeight: FontWeight.bold),
+                    ),
+                  );
+                },
+              ),
             ),
-          );
-        }).toList(),
+            leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          ),
+          borderData: FlBorderData(show: false),
+          lineBarsData: [
+            LineChartBarData(
+              spots: trend.asMap().entries.map((entry) {
+                return FlSpot(entry.key.toDouble(), entry.value.totalAmount);
+              }).toList(),
+              isCurved: true,
+              color: AppTheme.primaryColor,
+              barWidth: 4,
+              isStrokeCapRound: true,
+              dotData: const FlDotData(show: false),
+              belowBarData: BarAreaData(
+                show: true,
+                gradient: LinearGradient(
+                  colors: [AppTheme.primaryColor.withValues(alpha: 0.2), AppTheme.primaryColor.withValues(alpha: 0.0)],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -618,7 +659,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
         padding: const EdgeInsets.all(32),
         child: Column(
           children: [
-            Icon(Icons.analytics_outlined, size: 48, color: AppTheme.textSecondary.withValues(alpha: 0.3)),
+            Icon(CupertinoIcons.chart_bar_alt_fill, size: 48, color: AppTheme.textSecondary.withValues(alpha: 0.3)),
             const SizedBox(height: 16),
             Text(message, style: TextStyle(color: AppTheme.textSecondary.withValues(alpha: 0.5))),
           ],

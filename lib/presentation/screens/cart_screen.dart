@@ -59,18 +59,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     await _processSale(subtotal, items);
   }
 
-  void _onPhoneChanged(String query) async {
-    if (query.length < 3) {
-      setState(() => _customerSuggestions = []);
-      return;
-    }
-    
-    final repo = ref.read(khataRepositoryProvider);
-    final results = await repo.getAllCustomers(search: query);
-    setState(() {
-      _customerSuggestions = results;
-    });
-  }
+
 
   void _showCustomerDetailsDialog() {
     final phoneController = TextEditingController(text: _customerPhone);

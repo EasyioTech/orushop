@@ -2,66 +2,98 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter/cupertino.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../core/repositories/analytics_repository.dart';
 import '../../providers/analytics_provider.dart';
 import '../../providers/navigation_provider.dart';
 import '../../providers/auth_provider.dart';
+import 'analytics_screen.dart';
 
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final todayStart = DateTime(now.year, now.month, now.day);
+    final yesterdayStart = todayStart.subtract(const Duration(days: 1));
+    
     final user = ref.watch(currentUserProvider);
-    final todayTotal = ref.watch(dailySalesTotalProvider(DateTime.now()));
+    final todayTotal = ref.watch(dailySalesTotalProvider(todayStart));
+    final yesterdayTotal = ref.watch(dailySalesTotalProvider(yesterdayStart));
     final lowStock = ref.watch(lowStockProductsProvider(5));
+    final topProducts = ref.watch(topProductsProvider);
 
     final greeting = _greeting();
-    final name = user?.displayName?.split(' ').first ?? 'there';
-    final today = DateFormat('EEEE, d MMM').format(DateTime.now());
+    final name = user?.displayName?.split(' ').first ?? 'Partner';
+    final todayStr = DateFormat('EEE, d MMM').format(now);
 
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
-          // ── Header ──────────────────────────────────────────────────────────
-          SliverToBoxAdapter(
-            child: _Header(greeting: greeting, name: name, date: today),
+          // ── Elegant Top Bar ────────────────────────────────────────────────
+          SliverAppBar(
+            expandedHeight: 0,
+            toolbarHeight: 75,
+            pinned: true,
+            backgroundColor: AppTheme.backgroundColor,
+            surfaceTintColor: Colors.transparent,
+            elevation: 0,
+            centerTitle: false,
+            titleSpacing: 20,
+            title: Row(
+              children: [
+                _ProfileAvatar(name: name),
+                const SizedBox(width: 14),
+                _GreetingTitle(greeting: greeting, name: name, date: todayStr),
+              ],
+            ),
+            actions: const [
+              _NotificationButton(),
+              SizedBox(width: 12),
+            ],
           ),
 
-          // ── Today's snapshot ────────────────────────────────────────────────
+          // ── Main Dashboard Hero ───────────────────────────────────────────
           SliverToBoxAdapter(
-            child: todayTotal.when(
-              data: (data) => _TodayCard(
-                revenue: data.total,
-                txCount: data.count,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 10, 20, 24),
+              child: todayTotal.when(
+                data: (data) {
+                  final prev = yesterdayTotal.valueOrNull?.total ?? 0.0;
+                  final growth = prev == 0 ? (data.total > 0 ? 100.0 : 0.0) : ((data.total - prev) / prev) * 100;
+                  return _SalesHeroCard(revenue: data.total, count: data.count, growth: growth);
+                },
+                loading: () => const _HeroSkeleton(),
+                error: (e, _) => const SizedBox.shrink(),
               ),
-              loading: () => const _TodayCardSkeleton(),
-              error: (e, _) => const SizedBox.shrink(),
             ),
           ),
 
-          // ── Quick actions ────────────────────────────────────────────────────
-          SliverToBoxAdapter(
-            child: _SectionLabel(label: 'Quick Actions'),
-          ),
+          // ── Core Action Grid ──────────────────────────────────────────────
           SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            padding: const EdgeInsets.symmetric(horizontal: 20),
             sliver: SliverGrid(
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 2,
-                mainAxisSpacing: 12,
-                crossAxisSpacing: 12,
-                childAspectRatio: 1.55,
+                mainAxisSpacing: 16,
+                crossAxisSpacing: 16,
+                childAspectRatio: 1.05,
               ),
               delegate: SliverChildListDelegate([
                 _ActionCard(
-                  icon: Icons.point_of_sale_rounded,
+                  icon: CupertinoIcons.add_circled_solid,
                   label: 'New Sale',
-                  sub: 'Start billing',
+                  subtitle: 'Start Billing',
                   color: AppTheme.accentColor,
                   onTap: () {
                     HapticFeedback.mediumImpact();
@@ -69,36 +101,34 @@ class HomeScreen extends ConsumerWidget {
                   },
                 ),
                 _ActionCard(
-                  icon: Icons.inventory_2_rounded,
-                  label: 'Inventory',
-                  sub: 'Manage stock',
-                  color: const Color(0xFF7C3AED),
+                  icon: CupertinoIcons.cube_box_fill,
+                  label: 'Stock',
+                  subtitle: 'Inventory',
+                  color: const Color(0xFF6366F1),
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    ref.read(navigationIndexProvider.notifier).state = 2;
+                  },
+                ),
+                _ActionCard(
+                  icon: CupertinoIcons.book_fill,
+                  label: 'Khata',
+                  subtitle: 'Ledger Book',
+                  color: const Color(0xFFF59E0B),
                   onTap: () {
                     HapticFeedback.selectionClick();
                     ref.read(navigationIndexProvider.notifier).state = 3;
                   },
                 ),
                 _ActionCard(
-                  icon: Icons.book_rounded,
-                  label: 'Khata',
-                  sub: 'Credit ledger',
-                  color: const Color(0xFF059669),
-                  onTap: () {
-                    HapticFeedback.selectionClick();
-                    ref.read(navigationIndexProvider.notifier).state = 4;
-                  },
-                ),
-                _ActionCard(
-                  icon: Icons.bar_chart_rounded,
-                  label: 'Analytics',
-                  sub: 'Sales report',
-                  color: const Color(0xFFD97706),
+                  icon: CupertinoIcons.chart_bar_square_fill,
+                  label: 'Reports',
+                  subtitle: 'Shop Insights',
+                  color: const Color(0xFF10B981),
                   onTap: () {
                     HapticFeedback.selectionClick();
                     Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const _AnalyticsPlaceholder(),
-                      ),
+                      MaterialPageRoute(builder: (_) => const AnalyticsScreen()),
                     );
                   },
                 ),
@@ -106,18 +136,25 @@ class HomeScreen extends ConsumerWidget {
             ),
           ),
 
-          // ── Low stock alert ──────────────────────────────────────────────────
+          // ── Analytics Section: Top Products ───────────────────────────────
           SliverToBoxAdapter(
-            child: lowStock.when(
-              data: (items) => items.isEmpty
-                  ? const SizedBox.shrink()
-                  : _LowStockSection(items: items),
-              loading: () => const _LowStockSkeleton(),
+            child: topProducts.when(
+              data: (products) => products.isEmpty ? const SizedBox.shrink() : _TopProductsSection(products: products),
+              loading: () => const SizedBox.shrink(),
               error: (e, _) => const SizedBox.shrink(),
             ),
           ),
 
-          const SliverToBoxAdapter(child: SizedBox(height: 32)),
+          // ── Critical Alerts ───────────────────────────────────────────────
+          SliverToBoxAdapter(
+            child: lowStock.when(
+              data: (items) => items.isEmpty ? const SizedBox.shrink() : _AlertSection(items: items),
+              loading: () => const SizedBox.shrink(),
+              error: (e, _) => const SizedBox.shrink(),
+            ),
+          ),
+
+          const SliverToBoxAdapter(child: SizedBox(height: 100)),
         ],
       ),
     );
@@ -125,91 +162,160 @@ class HomeScreen extends ConsumerWidget {
 
   String _greeting() {
     final h = DateTime.now().hour;
-    if (h < 12) return 'Good morning';
-    if (h < 17) return 'Good afternoon';
-    return 'Good evening';
+    if (h < 12) return 'Good Morning';
+    if (h < 17) return 'Good Afternoon';
+    return 'Good Evening';
   }
 }
 
-// ── Header ──────────────────────────────────────────────────────────────────
+// ── SUB-COMPONENTS ───────────────────────────────────────────────────────────
 
-class _Header extends StatelessWidget {
-  final String greeting;
+class _ProfileAvatar extends StatelessWidget {
   final String name;
-  final String date;
-
-  const _Header({
-    required this.greeting,
-    required this.name,
-    required this.date,
-  });
+  const _ProfileAvatar({required this.name});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
+      width: 46,
+      height: 46,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: const LinearGradient(
+          colors: [AppTheme.primaryColor, AppTheme.primaryLight],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.primaryColor.withValues(alpha: 0.2),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Center(
+        child: Text(
+          name.isNotEmpty ? name[0].toUpperCase() : 'P',
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 18),
+        ),
+      ),
+    );
+  }
+}
+
+class _GreetingTitle extends StatelessWidget {
+  final String greeting;
+  final String name;
+  final String date;
+
+  const _GreetingTitle({required this.greeting, required this.name, required this.date});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '$greeting, $name',
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w900,
+            color: AppTheme.textPrimary,
+            letterSpacing: -0.8,
+          ),
+        ),
+        Text(
+          date,
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: AppTheme.textSecondary,
+            letterSpacing: 0.2,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _NotificationButton extends StatelessWidget {
+  const _NotificationButton();
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      onPressed: () {},
+      icon: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          shape: BoxShape.circle,
+          border: Border.all(color: AppTheme.borderColor.withValues(alpha: 0.6)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.02),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: const Icon(CupertinoIcons.bell_fill, size: 20, color: AppTheme.textPrimary),
+      ),
+    );
+  }
+}
+
+// ── SALES HERO CARD ──────────────────────────────────────────────────────────
+
+class _SalesHeroCard extends StatelessWidget {
+  final double revenue;
+  final int count;
+  final double growth;
+
+  const _SalesHeroCard({required this.revenue, required this.count, required this.growth});
+
+  @override
+  Widget build(BuildContext context) {
+    final fmt = NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
+
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
         color: AppTheme.primaryColor,
-        borderRadius: BorderRadius.vertical(bottom: Radius.circular(28)),
+        borderRadius: BorderRadius.circular(32),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.primaryColor.withValues(alpha: 0.3),
+            blurRadius: 30,
+            offset: const Offset(0, 15),
+          ),
+        ],
       ),
-      padding: EdgeInsets.only(
-        top: MediaQuery.of(context).padding.top + 20,
-        left: 20,
-        right: 20,
-        bottom: 28,
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
         children: [
-          Expanded(
+          const Positioned.fill(child: _HeroDecorations()),
+          Padding(
+            padding: const EdgeInsets.all(32),
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                const _HeroBadge(),
+                const SizedBox(height: 24),
                 Text(
-                  date,
-                  style: const TextStyle(
-                    color: Color(0xFF94A3B8),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    letterSpacing: 0.4,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '$greeting, $name 👋',
+                  fmt.format(revenue),
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 22,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.3,
+                    fontSize: 44,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -2.0,
                   ),
                 ),
-                const SizedBox(height: 2),
-                const Text(
-                  'Here\'s your shop at a glance',
-                  style: TextStyle(
-                    color: Color(0xFF64748B),
-                    fontSize: 13,
-                    fontWeight: FontWeight.w400,
-                  ),
-                ),
+                const SizedBox(height: 30),
+                _HeroStatsRow(count: count, growth: growth),
               ],
-            ),
-          ),
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.12),
-                width: 1,
-              ),
-            ),
-            child: const Icon(
-              Icons.storefront_rounded,
-              color: Colors.white,
-              size: 22,
             ),
           ),
         ],
@@ -218,423 +324,449 @@ class _Header extends StatelessWidget {
   }
 }
 
-// ── Today's revenue card ─────────────────────────────────────────────────────
-
-class _TodayCard extends StatelessWidget {
-  final double revenue;
-  final int txCount;
-
-  const _TodayCard({required this.revenue, required this.txCount});
-
+class _HeroDecorations extends StatelessWidget {
+  const _HeroDecorations();
   @override
   Widget build(BuildContext context) {
-    final fmt = NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 20, 16, 4),
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFF007AFF), Color(0xFF2563EB)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+    return Stack(
+      children: [
+        Positioned(
+          right: -60,
+          top: -60,
+          child: Container(
+            width: 220,
+            height: 220,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.04),
+              shape: BoxShape.circle,
+            ),
           ),
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: AppTheme.accentColor.withValues(alpha: 0.28),
-              blurRadius: 20,
-              offset: const Offset(0, 8),
-            ),
-          ],
         ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    "TODAY'S REVENUE",
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1.2,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    fmt.format(revenue),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 32,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -1,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '$txCount ${txCount == 1 ? 'sale' : 'sales'} today',
-                    style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Container(
-              width: 56,
-              height: 56,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: const Icon(
-                Icons.trending_up_rounded,
-                color: Colors.white,
-                size: 28,
-              ),
-            ),
-          ],
+        Positioned(
+          right: 20,
+          bottom: -40,
+          child: Icon(
+            CupertinoIcons.graph_circle_fill,
+            size: 150,
+            color: Colors.white.withValues(alpha: 0.03),
+          ),
         ),
-      ),
+      ],
     );
   }
 }
 
-class _TodayCardSkeleton extends StatelessWidget {
-  const _TodayCardSkeleton();
+class _HeroBadge extends StatelessWidget {
+  const _HeroBadge();
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: const Row(
+            children: [
+              Icon(CupertinoIcons.sparkles, color: Colors.white, size: 14),
+              SizedBox(width: 8),
+              Text(
+                'TODAY\'S PERFORMANCE',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.2,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const Icon(CupertinoIcons.ellipsis, color: Colors.white54, size: 24),
+      ],
+    );
+  }
+}
+
+class _HeroStatsRow extends StatelessWidget {
+  final int count;
+  final double growth;
+
+  const _HeroStatsRow({required this.count, required this.growth});
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 20, 16, 4),
-      child: Container(
-        height: 100,
-        decoration: BoxDecoration(
-          color: AppTheme.slate100,
-          borderRadius: BorderRadius.circular(20),
-        ),
+    final isUp = growth >= 0;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.07),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+      ),
+      child: Row(
+        children: [
+          _HeroStatItem(
+            icon: CupertinoIcons.shopping_cart,
+            label: 'Total Orders',
+            value: '$count',
+          ),
+          Container(
+            width: 1,
+            height: 35,
+            margin: const EdgeInsets.symmetric(horizontal: 24),
+            color: Colors.white.withValues(alpha: 0.15),
+          ),
+          _HeroStatItem(
+            icon: isUp ? CupertinoIcons.arrow_up_right : CupertinoIcons.arrow_down_right,
+            label: 'Growth Rate',
+            value: '${isUp ? '+' : ''}${growth.toStringAsFixed(1)}%',
+            valueColor: isUp ? const Color(0xFF4ADE80) : const Color(0xFFF87171),
+          ),
+        ],
       ),
     );
   }
 }
 
-// ── Section label ────────────────────────────────────────────────────────────
-
-class _SectionLabel extends StatelessWidget {
+class _HeroStatItem extends StatelessWidget {
+  final IconData icon;
   final String label;
-  const _SectionLabel({required this.label});
+  final String value;
+  final Color? valueColor;
+
+  const _HeroStatItem({required this.icon, required this.label, required this.value, this.valueColor});
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
-      child: Text(
-        label,
-        style: const TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.w700,
-          color: AppTheme.textSecondary,
-          letterSpacing: 0.6,
-        ),
+    return Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: Colors.white54, size: 14),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: const TextStyle(color: Colors.white38, fontSize: 10, fontWeight: FontWeight.w700),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: TextStyle(
+              color: valueColor ?? Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
+              letterSpacing: -0.5,
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-// ── Quick action card ────────────────────────────────────────────────────────
+// ── ACTION CARD ──────────────────────────────────────────────────────────────
 
 class _ActionCard extends StatelessWidget {
   final IconData icon;
   final String label;
-  final String sub;
+  final String subtitle;
   final Color color;
   final VoidCallback onTap;
 
   const _ActionCard({
     required this.icon,
     required this.label,
-    required this.sub,
+    required this.subtitle,
     required this.color,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(16),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        splashColor: color.withValues(alpha: 0.08),
-        highlightColor: color.withValues(alpha: 0.04),
-        child: Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppTheme.borderColor, width: 1),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: AppTheme.borderColor.withValues(alpha: 0.8), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(icon, color: color, size: 20),
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: AppTheme.textPrimary,
-                    ),
-                  ),
-                  Text(
-                    sub,
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w400,
-                      color: AppTheme.textSecondary,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
+        ],
       ),
-    );
-  }
-}
-
-// ── Low stock section ────────────────────────────────────────────────────────
-
-class _LowStockSection extends StatelessWidget {
-  final List<LowStockProduct> items;
-  const _LowStockSection({required this.items});
-
-  @override
-  Widget build(BuildContext context) {
-    final showing = items.take(5).toList();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(5),
-                decoration: BoxDecoration(
-                  color: AppTheme.warningColor.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(
-                  Icons.warning_amber_rounded,
-                  size: 16,
-                  color: AppTheme.warningColor,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'Low Stock Alert',
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: AppTheme.textSecondary,
-                  letterSpacing: 0.6,
-                ),
-              ),
-              const Spacer(),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: AppTheme.warningColor.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  '${items.length} items',
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: AppTheme.warningColor,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppTheme.borderColor),
-            ),
+      clipBehavior: Clip.antiAlias,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(22),
             child: Column(
-              children: List.generate(showing.length, (i) {
-                final item = showing[i];
-                final isLast = i == showing.length - 1;
-                return _LowStockRow(item: item, isLast: isLast);
-              }),
-            ),
-          ),
-        ),
-        if (items.length > 5)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-            child: Text(
-              '+${items.length - 5} more items need restocking',
-              style: const TextStyle(
-                fontSize: 12,
-                color: AppTheme.textSecondary,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-}
-
-class _LowStockRow extends StatelessWidget {
-  final LowStockProduct item;
-  final bool isLast;
-
-  const _LowStockRow({required this.item, required this.isLast});
-
-  @override
-  Widget build(BuildContext context) {
-    final qty = item.quantity;
-    final isOut = qty == 0;
-
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-          child: Row(
-            children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: isOut
-                      ? AppTheme.errorColor.withValues(alpha: 0.1)
-                      : AppTheme.warningColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(10),
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(icon, color: color, size: 26),
                 ),
-                child: Icon(
-                  isOut
-                      ? Icons.remove_shopping_cart_rounded
-                      : Icons.inventory_2_outlined,
-                  size: 18,
-                  color: isOut ? AppTheme.errorColor : AppTheme.warningColor,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
+                Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      item.productName,
+                      label,
                       style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
                         color: AppTheme.textPrimary,
+                        letterSpacing: -0.8,
+                        height: 1.1,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 4),
                     Text(
-                      'Low stock',
+                      subtitle,
                       style: const TextStyle(
-                        fontSize: 11,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
                         color: AppTheme.textSecondary,
+                        letterSpacing: 0.2,
                       ),
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: isOut
-                      ? AppTheme.errorColor.withValues(alpha: 0.1)
-                      : AppTheme.warningColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  isOut ? 'Out' : '$qty left',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: isOut ? AppTheme.errorColor : AppTheme.warningColor,
-                  ),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-        if (!isLast)
-          Divider(
-            height: 1,
-            thickness: 1,
-            color: AppTheme.dividerColor,
-            indent: 62,
-          ),
-      ],
-    );
-  }
-}
-
-class _LowStockSkeleton extends StatelessWidget {
-  const _LowStockSkeleton();
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
-      child: Container(
-        height: 140,
-        decoration: BoxDecoration(
-          color: AppTheme.slate100,
-          borderRadius: BorderRadius.circular(16),
         ),
       ),
     );
   }
 }
 
-// ── Analytics placeholder (navigated to from action card) ───────────────────
+// ── TOP PRODUCTS SECTION ─────────────────────────────────────────────────────
 
-class _AnalyticsPlaceholder extends StatelessWidget {
-  const _AnalyticsPlaceholder();
+class _TopProductsSection extends StatelessWidget {
+  final List<TopProduct> products;
+  const _TopProductsSection({required this.products});
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Analytics')),
-      body: const Center(child: Text('Analytics coming soon')),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 32, 20, 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Top Sellers',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: AppTheme.textPrimary, letterSpacing: -0.8),
+              ),
+              Icon(CupertinoIcons.bolt_fill, color: Color(0xFFF59E0B), size: 18),
+            ],
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            height: 140,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              itemCount: products.length > 5 ? 5 : products.length,
+              itemBuilder: (context, index) {
+                final product = products[index];
+                return _TopProductCard(product: product, index: index);
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TopProductCard extends StatelessWidget {
+  final TopProduct product;
+  final int index;
+  const _TopProductCard({required this.product, required this.index});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 140,
+      margin: const EdgeInsets.only(right: 16),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: AppTheme.slate100,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              '#${index + 1}',
+              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: AppTheme.slate600),
+            ),
+          ),
+          const Spacer(),
+          Text(
+            product.productName,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppTheme.textPrimary, letterSpacing: -0.5),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '${product.unitsSold} units',
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppTheme.accentColor),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── ALERT SECTION ────────────────────────────────────────────────────────────
+
+class _AlertSection extends StatelessWidget {
+  final List<LowStockProduct> items;
+  const _AlertSection({required this.items});
+
+  @override
+  Widget build(BuildContext context) {
+    final displayCount = items.length > 3 ? 3 : items.length;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Stock Alerts',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: AppTheme.textPrimary, letterSpacing: -0.8),
+          ),
+          const SizedBox(height: 16),
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(32),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 30,
+                  offset: const Offset(0, 15),
+                ),
+              ],
+            ),
+            child: Column(
+              children: List.generate(displayCount, (i) {
+                final item = items[i];
+                return _AlertTile(item: item, isOut: item.quantity == 0, isLast: i == (displayCount - 1));
+              }),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AlertTile extends StatelessWidget {
+  final LowStockProduct item;
+  final bool isOut;
+  final bool isLast;
+
+  const _AlertTile({required this.item, required this.isOut, required this.isLast});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        border: isLast ? null : Border(bottom: BorderSide(color: AppTheme.borderColor.withValues(alpha: 0.3))),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              color: isOut ? const Color(0xFFFEF2F2) : const Color(0xFFFFFBEB),
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: Icon(
+              isOut ? CupertinoIcons.exclamationmark_triangle_fill : CupertinoIcons.tag_fill,
+              color: isOut ? const Color(0xFFEF4444) : const Color(0xFFF59E0B),
+              size: 22,
+            ),
+          ),
+          const SizedBox(width: 18),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item.productName,
+                  style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: AppTheme.textPrimary, letterSpacing: -0.5),
+                ),
+                Text(
+                  isOut ? 'Critical: Out of Stock' : 'Low Stock: ${item.quantity} remaining',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: isOut ? const Color(0xFFEF4444) : AppTheme.textSecondary,
+                    fontWeight: isOut ? FontWeight.w800 : FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Icon(CupertinoIcons.chevron_right, size: 16, color: AppTheme.slate300),
+        ],
+      ),
+    );
+  }
+}
+
+// ── SKELETONS ────────────────────────────────────────────────────────────────
+
+class _HeroSkeleton extends StatelessWidget {
+  const _HeroSkeleton();
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 240,
+      decoration: BoxDecoration(
+        color: AppTheme.primaryColor.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(32),
+      ),
+      child: const Center(child: CupertinoActivityIndicator()),
     );
   }
 }

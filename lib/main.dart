@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/cupertino.dart';
 import 'firebase_options.dart';
 
 import 'core/database/database_helper.dart';
@@ -57,7 +58,6 @@ class _MyAppState extends ConsumerState<MyApp> {
   @override
   void initState() {
     super.initState();
-    // Initialize RevenueCat once when a user is first detected, not on every rebuild.
     ref.listenManual(authStateProvider, (previous, next) {
       next.whenData((user) {
         if (user != null) {
@@ -72,8 +72,6 @@ class _MyAppState extends ConsumerState<MyApp> {
     final authState = ref.watch(authStateProvider);
     final onboarding = ref.watch(onboardingProvider);
 
-    // If onboarding is not completed, we always show the onboarding flow.
-    // The onboarding flow itself handles the login/signup step.
     if (!onboarding.isCompleted) {
       return MaterialApp(
         title: 'OruShops',
@@ -84,7 +82,6 @@ class _MyAppState extends ConsumerState<MyApp> {
       );
     }
 
-    // If onboarding IS completed, we follow the standard auth flow.
     return MaterialApp(
       title: 'OruShops',
       debugShowCheckedModeBanner: false,
@@ -104,7 +101,7 @@ class _MyAppState extends ConsumerState<MyApp> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.error_outline_rounded, color: AppTheme.errorColor, size: 64),
+                const Icon(CupertinoIcons.exclamationmark_circle, color: AppTheme.errorColor, size: 64),
                 const SizedBox(height: 16),
                 Text('Something went wrong', style: Theme.of(context).textTheme.headlineSmall),
                 const SizedBox(height: 8),
@@ -119,13 +116,10 @@ class _MyAppState extends ConsumerState<MyApp> {
           ),
         ),
       ),
-      builder: (context, child) {
-        return ErrorBoundary(child: child!);
-      },
+      builder: (context, child) => ErrorBoundary(child: child!),
     );
   }
 }
-
 
 class MyHomePage extends ConsumerStatefulWidget {
   const MyHomePage({super.key});
@@ -136,11 +130,11 @@ class MyHomePage extends ConsumerStatefulWidget {
 
 class _MyHomePageState extends ConsumerState<MyHomePage> {
   static const _navItems = [
-    _NavItem(label: 'Home',    icon: Icons.home_outlined,          activeIcon: Icons.home_rounded),
-    _NavItem(label: 'POS',     icon: Icons.storefront_outlined,    activeIcon: Icons.storefront_rounded),
-    _NavItem(label: 'Stock',   icon: Icons.inventory_2_outlined,   activeIcon: Icons.inventory_2_rounded),
-    _NavItem(label: 'Khata',   icon: Icons.book_outlined,          activeIcon: Icons.book_rounded),
-    _NavItem(label: 'Profile', icon: Icons.person_outline_rounded, activeIcon: Icons.person_rounded),
+    _NavItem(label: 'Home',    icon: CupertinoIcons.house,          activeIcon: CupertinoIcons.house_fill),
+    _NavItem(label: 'POS',     icon: CupertinoIcons.cart,           activeIcon: CupertinoIcons.cart_fill),
+    _NavItem(label: 'Stock',   icon: CupertinoIcons.cube_box,       activeIcon: CupertinoIcons.cube_box_fill),
+    _NavItem(label: 'Khata',   icon: CupertinoIcons.book,           activeIcon: CupertinoIcons.book_fill),
+    _NavItem(label: 'Profile', icon: CupertinoIcons.person_circle, activeIcon: CupertinoIcons.person_circle_fill),
   ];
 
   List<Widget> _buildScreens() => const [
@@ -200,8 +194,6 @@ class _OfflineAwareBody extends ConsumerWidget {
   }
 }
 
-// ── Nav data ─────────────────────────────────────────────────────────────────
-
 class _NavItem {
   final String label;
   final IconData icon;
@@ -209,7 +201,7 @@ class _NavItem {
   const _NavItem({required this.label, required this.icon, required this.activeIcon});
 }
 
-// ── Custom bottom nav ─────────────────────────────────────────────────────────
+// ── MINIMALIST ATTACHED NAV BAR ─────────────────────────────────────────────
 
 class _AppNavBar extends StatelessWidget {
   final int selectedIndex;
@@ -230,22 +222,30 @@ class _AppNavBar extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border(
-          top: BorderSide(color: const Color(0xFFE2E8F0), width: 1),
+          top: BorderSide(color: AppTheme.borderColor.withValues(alpha: 0.8), width: 1),
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 10,
+            offset: const Offset(0, -2),
+          ),
+        ],
       ),
       child: Padding(
         padding: EdgeInsets.only(bottom: bottomPadding),
         child: SizedBox(
-          height: 60,
+          height: 65,
           child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: List.generate(items.length, (i) {
               final item = items[i];
               final active = i == selectedIndex;
               return Expanded(
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
+                child: _NavBarItem(
+                  item: item,
+                  active: active,
                   onTap: () => onTap(i),
-                  child: _NavBarItem(item: item, active: active),
                 ),
               );
             }),
@@ -259,46 +259,46 @@ class _AppNavBar extends StatelessWidget {
 class _NavBarItem extends StatelessWidget {
   final _NavItem item;
   final bool active;
+  final VoidCallback onTap;
 
-  const _NavBarItem({required this.item, required this.active});
+  const _NavBarItem({required this.item, required this.active, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 160),
-      curve: Curves.easeOut,
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 160),
-            child: Icon(
-              active ? item.activeIcon : item.icon,
-              key: ValueKey(active),
-              size: 22,
-              color: active ? AppTheme.primaryColor : const Color(0xFF94A3B8),
-            ),
+          const SizedBox(height: 8),
+          Icon(
+            active ? item.activeIcon : item.icon,
+            size: 24,
+            color: active ? AppTheme.primaryColor : AppTheme.textSecondary.withValues(alpha: 0.5),
           ),
-          const SizedBox(height: 3),
+          const SizedBox(height: 4),
           Text(
             item.label,
             style: TextStyle(
               fontSize: 10,
-              fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-              color: active ? AppTheme.primaryColor : const Color(0xFF94A3B8),
+              fontWeight: active ? FontWeight.w900 : FontWeight.w600,
+              color: active ? AppTheme.primaryColor : AppTheme.textSecondary.withValues(alpha: 0.5),
               letterSpacing: 0.2,
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
+          // Elegant Bottom Indicator
           AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            width: active ? 18 : 0,
-            height: 2,
+            duration: const Duration(milliseconds: 250),
+            width: active ? 16 : 0,
+            height: 3,
             decoration: BoxDecoration(
-              color: AppTheme.accentColor,
-              borderRadius: BorderRadius.circular(1),
+              color: AppTheme.primaryColor,
+              borderRadius: BorderRadius.circular(2),
             ),
           ),
+          const SizedBox(height: 4),
         ],
       ),
     );
