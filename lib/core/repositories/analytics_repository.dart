@@ -1,23 +1,30 @@
+import 'package:flutter/foundation.dart';
+import 'package:intl/intl.dart';
 import '../database/database_helper.dart';
+import '../database/table_constants.dart';
 
 class AnalyticsRepository {
   final DatabaseHelper _dbHelper = DatabaseHelper();
 
   Future<DailySalesTotal> getDailySalesTotal(DateTime date) async {
     final db = await _dbHelper.database;
-    final startOfDay = DateTime(date.year, date.month, date.day);
-    final endOfDay = startOfDay.add(const Duration(days: 1));
+    final dateStr = DateFormat('yyyy-MM-dd').format(date);
 
     final result = await db.rawQuery(
       'SELECT SUM(finalAmount) as total, COUNT(*) as count FROM sales '
-      'WHERE createdAt >= ? AND createdAt < ?',
-      [startOfDay.toIso8601String(), endOfDay.toIso8601String()],
+      'WHERE date(createdAt) = ?',
+      [dateStr],
     );
 
     final row = result.isNotEmpty ? result.first : {};
+    final total = (row['total'] as num?)?.toDouble() ?? 0.0;
+    final count = (row['count'] as int?) ?? 0;
+    
+    debugPrint('AnalyticsRepo: getDailySalesTotal for $dateStr -> Total: $total, Count: $count');
+    
     return DailySalesTotal(
-      total: (row['total'] as num?)?.toDouble() ?? 0.0,
-      count: (row['count'] as int?) ?? 0,
+      total: total,
+      count: count,
     );
   }
 
@@ -129,7 +136,7 @@ class AnalyticsRepository {
     final db = await _dbHelper.database;
 
     final saleResult = await db.query(
-      'sales',
+      TableConstants.sales,
       where: 'id = ?',
       whereArgs: [saleId],
     );
@@ -163,13 +170,16 @@ class AnalyticsRepository {
 
   Future<List<DailySalesData>> getSalesTrend(DateTime start, DateTime end) async {
     final db = await _dbHelper.database;
+    final startStr = DateFormat('yyyy-MM-dd').format(start);
+    final endStr = DateFormat('yyyy-MM-dd').format(end);
+
     final result = await db.rawQuery(
       'SELECT date(createdAt) as date, SUM(finalAmount) as total, COUNT(*) as count '
       'FROM sales '
-      'WHERE createdAt >= ? AND createdAt < ? '
+      'WHERE date(createdAt) BETWEEN ? AND ? '
       'GROUP BY date(createdAt) '
       'ORDER BY date ASC',
-      [start.toIso8601String(), end.add(const Duration(days: 1)).toIso8601String()],
+      [startStr, endStr],
     );
 
     return result

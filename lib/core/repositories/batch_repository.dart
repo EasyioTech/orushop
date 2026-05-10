@@ -53,7 +53,7 @@ class BatchRepository {
     );
   }
 
-  Future<int> deductQuantity(int batchId, int quantity) async {
+  Future<int> deductQuantity(int batchId, double quantity) async {
     final db = await _dbHelper.database;
     return db.rawUpdate(
       'UPDATE ${TableConstants.productBatches} SET quantity = quantity - ? WHERE id = ?',
@@ -82,16 +82,14 @@ class BatchRepository {
     return result.map((map) => ProductBatch.fromMap(map)).toList();
   }
 
-  Future<int> getTotalQuantityByProduct(int productId) async {
+  Future<double> getTotalQuantityByProduct(int productId) async {
     final db = await _dbHelper.database;
     final result = await db.rawQuery(
       'SELECT SUM(quantity) as total FROM ${TableConstants.productBatches} WHERE productId = ?',
       [productId],
     );
-    if (result.isEmpty) return 0;
     final total = result.first['total'];
-    if (total == null) return 0;
-    return (total is int) ? total : (total as num).toInt();
+    return (total is num) ? total.toDouble() : 0.0;
   }
 
   Future<List<ProductBatch>> getAll() async {
@@ -103,7 +101,7 @@ class BatchRepository {
     return result.map((map) => ProductBatch.fromMap(map)).toList();
   }
 
-  Future<void> syncBatchesForProduct(int productId, int productQuantity) async {
+  Future<void> syncBatchesForProduct(int productId, double productQuantity) async {
     final db = await _dbHelper.database;
     await db.transaction((txn) async {
       final batchResult = await txn.query(
@@ -112,13 +110,14 @@ class BatchRepository {
         whereArgs: [productId],
       );
 
-      final currentBatchTotal = batchResult.fold<int>(0, (sum, b) => sum + (b['quantity'] as int? ?? 0));
+      final currentBatchTotal = batchResult.fold<double>(0.0, (sum, b) => sum + (b['quantity'] as num? ?? 0.0));
 
       if (currentBatchTotal == 0 && productQuantity > 0) {
         await txn.insert(TableConstants.productBatches, {
           'productId': productId,
           'quantity': productQuantity,
           'costPrice': 0,
+          'batchNumber': 'AUTO-SYNC',
           'expiryDate': DateTime.now().add(const Duration(days: 365)).toIso8601String(),
           'createdAt': DateTime.now().toIso8601String(),
         });
@@ -129,6 +128,7 @@ class BatchRepository {
             'productId': productId,
             'quantity': difference,
             'costPrice': 0,
+            'batchNumber': 'AUTO-SYNC',
             'expiryDate': DateTime.now().add(const Duration(days: 365)).toIso8601String(),
             'createdAt': DateTime.now().toIso8601String(),
           });

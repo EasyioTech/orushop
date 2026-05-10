@@ -24,8 +24,10 @@ class ShopCatalog {
           hasExpiryDate: true, hasBatchNumber: true, hasMrp: true,
           hasHsnCode: true, hasTaxRate: true, hasBrand: true,
           hasManufacturer: true, hasSchedule: true, hasUnit: true,
+          isLoose: true,
           defaultUnit: 'Strip', unitOptions: ['Strip', 'Box', 'Bottle', 'Piece'],
           defaultTaxRate: 12.0,
+          template: ProductTemplate.batchExpiry,
         ),
       ),
       ShopCategory(
@@ -35,8 +37,10 @@ class ShopCatalog {
           hasExpiryDate: true, hasBatchNumber: true, hasMrp: true,
           hasHsnCode: true, hasTaxRate: true, hasBrand: true,
           hasManufacturer: true, hasSchedule: true, hasUnit: true,
+          isLoose: true,
           defaultUnit: 'Bottle', unitOptions: ['Bottle', 'Sachet'],
           defaultTaxRate: 12.0,
+          template: ProductTemplate.batchExpiry,
         ),
       ),
       ShopCategory(
@@ -48,6 +52,7 @@ class ShopCatalog {
           hasManufacturer: true, hasSchedule: true, hasUnit: true,
           defaultUnit: 'Vial', unitOptions: ['Vial', 'Ampoule', 'Pack'],
           defaultTaxRate: 12.0,
+          template: ProductTemplate.batchExpiry,
         ),
       ),
       ShopCategory(
@@ -57,8 +62,10 @@ class ShopCatalog {
           hasExpiryDate: true, hasBatchNumber: false, hasMrp: true,
           hasHsnCode: true, hasTaxRate: true, hasBrand: true,
           hasManufacturer: false, hasUnit: true,
-          defaultUnit: 'Box', unitOptions: ['Box', 'Pack', 'Piece'],
+          isLoose: true,
+          defaultUnit: 'Box', unitOptions: ['Box', 'Pack', 'Piece', 'Gram', 'Metre'],
           defaultTaxRate: 5.0,
+          template: ProductTemplate.batchExpiry,
         ),
       ),
       ShopCategory(
@@ -69,6 +76,7 @@ class ShopCatalog {
           hasHsnCode: true, hasTaxRate: true, hasBrand: true,
           defaultUnit: 'Piece', unitOptions: ['Piece', 'Pack', 'Box'],
           defaultTaxRate: 0.0,
+          template: ProductTemplate.batchExpiry,
         ),
       ),
       ShopCategory(
@@ -81,6 +89,7 @@ class ShopCatalog {
           hasSerialNumber: true,
           defaultUnit: 'Piece', unitOptions: ['Piece', 'Kit'],
           defaultTaxRate: 18.0,
+          template: ProductTemplate.serialized,
         ),
       ),
       ShopCategory(
@@ -89,8 +98,10 @@ class ShopCatalog {
         productFields: ProductFieldConfig(
           hasExpiryDate: true, hasBatchNumber: false, hasMrp: true,
           hasHsnCode: true, hasTaxRate: true, hasBrand: true,
-          defaultUnit: 'Bottle', unitOptions: ['Bottle', 'Pack', 'Box'],
+          isLoose: true,
+          defaultUnit: 'Bottle', unitOptions: ['Bottle', 'Pack', 'Box', 'Gram', 'ML'],
           defaultTaxRate: 0.0,
+          template: ProductTemplate.batchExpiry,
         ),
       ),
     ],
@@ -106,6 +117,7 @@ class ShopCatalog {
           hasBrand: true, hasUnit: true,
           defaultUnit: 'Kg', unitOptions: ['Kg', 'Gram', 'Pack', 'Bag'],
           defaultTaxRate: 0.0,
+          isLoose: true, template: ProductTemplate.bulkUom,
         ),
       ),
       ShopCategory(
@@ -117,6 +129,7 @@ class ShopCatalog {
           hasBrand: true, hasUnit: true,
           defaultUnit: 'Kg', unitOptions: ['Kg', 'Gram', 'Pack'],
           defaultTaxRate: 0.0,
+          isLoose: true, template: ProductTemplate.bulkUom,
         ),
       ),
       ShopCategory(
@@ -128,6 +141,7 @@ class ShopCatalog {
           hasBrand: true, hasUnit: true,
           defaultUnit: 'Litre', unitOptions: ['Litre', 'ML', 'Kg', 'Tin'],
           defaultTaxRate: 5.0,
+          isLoose: true, template: ProductTemplate.bulkUom,
         ),
       ),
       ShopCategory(
@@ -139,6 +153,7 @@ class ShopCatalog {
           hasBrand: true, hasUnit: true,
           defaultUnit: 'Gram', unitOptions: ['Gram', 'Kg', 'Pack'],
           defaultTaxRate: 5.0,
+          isLoose: true, template: ProductTemplate.bulkUom,
         ),
       ),
       ShopCategory(
@@ -148,8 +163,10 @@ class ShopCatalog {
         productFields: ProductFieldConfig(
           hasExpiryDate: true, hasMrp: true, hasHsnCode: true, hasTaxRate: true,
           hasBrand: true, hasUnit: true,
+          isLoose: true,
           defaultUnit: 'Litre', unitOptions: ['Litre', 'ML', 'Kg', 'Gram', 'Dozen', 'Piece'],
           defaultTaxRate: 0.0,
+          template: ProductTemplate.bulkUom,
         ),
       ),
       ShopCategory(
@@ -159,8 +176,10 @@ class ShopCatalog {
         productFields: ProductFieldConfig(
           hasExpiryDate: true, hasMrp: true, hasHsnCode: true, hasTaxRate: true,
           hasBrand: true, hasUnit: true,
+          isLoose: true,
           defaultUnit: 'Gram', unitOptions: ['Gram', 'Kg', 'Pack', 'Piece'],
           defaultTaxRate: 18.0,
+          template: ProductTemplate.bulkUom,
         ),
       ),
       ShopCategory(
@@ -170,8 +189,10 @@ class ShopCatalog {
         productFields: ProductFieldConfig(
           hasExpiryDate: true, hasMrp: true, hasHsnCode: true, hasTaxRate: true,
           hasBrand: true, hasUnit: true,
+          isLoose: true,
           defaultUnit: 'Piece', unitOptions: ['Piece', 'Litre', 'ML', 'Gram', 'Kg', 'Pack'],
           defaultTaxRate: 18.0,
+          template: ProductTemplate.bulkUom,
         ),
       ),
       ShopCategory(
@@ -183,6 +204,7 @@ class ShopCatalog {
           hasBrand: true, hasUnit: true,
           defaultUnit: 'Pack', unitOptions: ['Pack', 'Gram', 'Piece', 'Bottle'],
           defaultTaxRate: 18.0,
+          template: ProductTemplate.batchExpiry,
         ),
       ),
       ShopCategory(
@@ -219,6 +241,7 @@ class ShopCatalog {
           hasBrand: true, hasWarranty: true,
           defaultUnit: 'Piece', unitOptions: ['Piece'],
           defaultTaxRate: 18.0,
+          template: ProductTemplate.serialized,
         ),
       ),
       ShopCategory(
@@ -230,6 +253,7 @@ class ShopCatalog {
           hasBrand: true, hasWarranty: true,
           defaultUnit: 'Piece', unitOptions: ['Piece'],
           defaultTaxRate: 18.0,
+          template: ProductTemplate.serialized,
         ),
       ),
       ShopCategory(
@@ -240,6 +264,7 @@ class ShopCatalog {
           hasBrand: true, hasWarranty: true, hasSizeVariant: true,
           defaultUnit: 'Piece', unitOptions: ['Piece'],
           defaultTaxRate: 28.0,
+          template: ProductTemplate.serialized,
         ),
       ),
       ShopCategory(
@@ -250,6 +275,7 @@ class ShopCatalog {
           hasBrand: true, hasWarranty: true,
           defaultUnit: 'Piece', unitOptions: ['Piece'],
           defaultTaxRate: 18.0,
+          template: ProductTemplate.serialized,
         ),
       ),
       ShopCategory(
@@ -261,6 +287,7 @@ class ShopCatalog {
           hasBrand: true, hasWarranty: true,
           defaultUnit: 'Piece', unitOptions: ['Piece'],
           defaultTaxRate: 18.0,
+          template: ProductTemplate.serialized,
         ),
       ),
       ShopCategory(
@@ -271,6 +298,7 @@ class ShopCatalog {
           hasBrand: true, hasWarranty: true,
           defaultUnit: 'Piece', unitOptions: ['Piece'],
           defaultTaxRate: 18.0,
+          template: ProductTemplate.serialized,
         ),
       ),
       ShopCategory(
@@ -308,6 +336,7 @@ class ShopCatalog {
           defaultUnit: 'Piece', unitOptions: ['Piece', 'Set'],
           defaultTaxRate: 5.0,
           sizeOptions: ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'],
+          template: ProductTemplate.variantMatrix,
         ),
       ),
       ShopCategory(
@@ -320,6 +349,7 @@ class ShopCatalog {
           defaultUnit: 'Piece', unitOptions: ['Piece', 'Set', 'Metre'],
           defaultTaxRate: 5.0,
           sizeOptions: ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'Free Size'],
+          template: ProductTemplate.variantMatrix,
         ),
       ),
       ShopCategory(
@@ -333,6 +363,7 @@ class ShopCatalog {
           defaultTaxRate: 5.0,
           sizeOptions: ['0-3m', '3-6m', '6-12m', '1Y', '2Y', '3Y', '4Y', '5Y', '6Y', '7Y',
             '8Y', '10Y', '12Y', '14Y'],
+          template: ProductTemplate.variantMatrix,
         ),
       ),
       ShopCategory(
@@ -345,6 +376,7 @@ class ShopCatalog {
           defaultUnit: 'Piece', unitOptions: ['Piece', 'Pack'],
           defaultTaxRate: 5.0,
           sizeOptions: ['S', 'M', 'L', 'XL', 'XXL'],
+          template: ProductTemplate.variantMatrix,
         ),
       ),
       ShopCategory(
@@ -356,6 +388,7 @@ class ShopCatalog {
           defaultUnit: 'Piece', unitOptions: ['Piece'],
           defaultTaxRate: 5.0,
           sizeOptions: ['S', 'M', 'L', 'XL', 'XXL', 'Free Size'],
+          template: ProductTemplate.variantMatrix,
         ),
       ),
       ShopCategory(
@@ -368,6 +401,7 @@ class ShopCatalog {
           defaultUnit: 'Pair', unitOptions: ['Pair'],
           defaultTaxRate: 18.0,
           sizeOptions: ['5', '6', '7', '8', '9', '10', '11', '12'],
+          template: ProductTemplate.variantMatrix,
         ),
       ),
       ShopCategory(
@@ -392,8 +426,10 @@ class ShopCatalog {
         productFields: ProductFieldConfig(
           hasExpiryDate: true, hasMrp: true, hasTaxRate: true, hasBrand: true,
           hasUnit: true, hasRecipe: true,
+          isLoose: true,
           defaultUnit: 'Piece', unitOptions: ['Piece', 'Loaf', 'Pack', 'Dozen'],
           defaultTaxRate: 5.0,
+          template: ProductTemplate.bulkUom,
         ),
       ),
       ShopCategory(
@@ -403,8 +439,10 @@ class ShopCatalog {
         productFields: ProductFieldConfig(
           hasExpiryDate: true, hasMrp: true, hasTaxRate: true,
           hasUnit: true, hasWeight: true, hasRecipe: true,
-          defaultUnit: 'Piece', unitOptions: ['Piece', 'Kg', 'Slice'],
+          isLoose: true,
+          defaultUnit: 'Piece', unitOptions: ['Piece', 'Kg', 'Slice', 'Gram'],
           defaultTaxRate: 18.0,
+          template: ProductTemplate.bulkUom,
         ),
       ),
       ShopCategory(
@@ -414,8 +452,10 @@ class ShopCatalog {
         productFields: ProductFieldConfig(
           hasExpiryDate: true, hasMrp: true, hasTaxRate: true, hasBrand: true,
           hasUnit: true, hasWeight: true,
+          isLoose: true,
           defaultUnit: 'Pack', unitOptions: ['Pack', 'Gram', 'Kg', 'Piece'],
           defaultTaxRate: 18.0,
+          template: ProductTemplate.bulkUom,
         ),
       ),
       ShopCategory(
@@ -427,6 +467,7 @@ class ShopCatalog {
           hasUnit: true, hasWeight: true, hasRecipe: true,
           defaultUnit: 'Kg', unitOptions: ['Kg', 'Gram', 'Piece', 'Box'],
           defaultTaxRate: 5.0,
+          isLoose: true, template: ProductTemplate.bulkUom,
         ),
       ),
       ShopCategory(
@@ -437,6 +478,7 @@ class ShopCatalog {
           hasUnit: true, hasRecipe: true,
           defaultUnit: 'Piece', unitOptions: ['Piece', 'Dozen', 'Kg'],
           defaultTaxRate: 5.0,
+          isService: true, template: ProductTemplate.serviceLabor,
         ),
       ),
       ShopCategory(
@@ -446,8 +488,10 @@ class ShopCatalog {
         productFields: ProductFieldConfig(
           hasExpiryDate: true, hasMrp: true, hasTaxRate: true,
           hasUnit: true, hasRecipe: true,
-          defaultUnit: 'Piece', unitOptions: ['Piece', 'Cup', 'ML', 'Litre'],
+          isService: true,
+          defaultUnit: 'Piece', unitOptions: ['Piece', 'Cup', 'ML', 'Litre', 'Glass'],
           defaultTaxRate: 18.0,
+          template: ProductTemplate.serviceLabor,
         ),
       ),
       ShopCategory(
@@ -459,6 +503,7 @@ class ShopCatalog {
           hasUnit: true, hasWeight: true,
           defaultUnit: 'Kg', unitOptions: ['Kg', 'Gram', 'Litre', 'ML', 'Piece'],
           defaultTaxRate: 5.0,
+          isLoose: true, template: ProductTemplate.bulkUom,
         ),
       ),
     ],
@@ -566,6 +611,7 @@ class ShopCatalog {
           hasBrand: true, hasWarranty: true, hasUnit: true,
           defaultUnit: 'Piece', unitOptions: ['Piece'],
           defaultTaxRate: 18.0,
+          template: ProductTemplate.serialized,
         ),
       ),
       ShopCategory(
@@ -577,6 +623,7 @@ class ShopCatalog {
           hasUnit: true,
           defaultUnit: 'Pack', unitOptions: ['Pack', 'Piece', 'Kg', 'Box'],
           defaultTaxRate: 18.0,
+          isLoose: true, template: ProductTemplate.bulkUom,
         ),
       ),
       ShopCategory(
@@ -588,6 +635,7 @@ class ShopCatalog {
           hasUnit: true,
           defaultUnit: 'Bag', unitOptions: ['Bag', 'Kg', 'Piece', 'Sheet', 'SqFt'],
           defaultTaxRate: 28.0,
+          isLoose: true, template: ProductTemplate.bulkUom,
         ),
       ),
       ShopCategory(
@@ -597,8 +645,10 @@ class ShopCatalog {
         productFields: ProductFieldConfig(
           hasMrp: true, hasHsnCode: true, hasTaxRate: true, hasBrand: true,
           hasUnit: true,
+          isLoose: true,
           defaultUnit: 'Piece', unitOptions: ['Piece', 'Metre', 'Pack', 'Set'],
           defaultTaxRate: 18.0,
+          template: ProductTemplate.bulkUom,
         ),
       ),
       ShopCategory(
@@ -608,8 +658,10 @@ class ShopCatalog {
         productFields: ProductFieldConfig(
           hasMrp: true, hasHsnCode: true, hasTaxRate: true, hasBrand: true,
           hasUnit: true,
+          isLoose: true,
           defaultUnit: 'Piece', unitOptions: ['Piece', 'Metre', 'Roll', 'Box'],
           defaultTaxRate: 18.0,
+          template: ProductTemplate.bulkUom,
         ),
       ),
       ShopCategory(
@@ -619,8 +671,10 @@ class ShopCatalog {
         productFields: ProductFieldConfig(
           hasMrp: true, hasHsnCode: true, hasTaxRate: true, hasBrand: true,
           hasUnit: true,
+          isLoose: true,
           defaultUnit: 'Litre', unitOptions: ['Litre', 'ML', 'Kg', 'Tin'],
           defaultTaxRate: 18.0,
+          template: ProductTemplate.bulkUom,
         ),
       ),
       ShopCategory(
@@ -729,6 +783,7 @@ class ShopCatalog {
           defaultUnit: 'Piece', unitOptions: ['Piece'],
           defaultTaxRate: 18.0,
           sizeOptions: ['64GB', '128GB', '256GB', '512GB', '1TB'],
+          template: ProductTemplate.serialized,
         ),
       ),
       ShopCategory(
@@ -750,6 +805,7 @@ class ShopCatalog {
           hasUnit: true, hasColorVariant: true, hasSizeVariant: true,
           defaultUnit: 'Piece', unitOptions: ['Piece', 'Pack'],
           defaultTaxRate: 18.0,
+          template: ProductTemplate.variantMatrix,
         ),
       ),
       ShopCategory(
@@ -790,8 +846,23 @@ class ShopCatalog {
           'Cameras', 'Speakers', 'Motherboards'],
         productFields: ProductFieldConfig(
           hasMrp: true, hasHsnCode: true, hasTaxRate: true, hasBrand: true, hasUnit: true,
+          hasSerialNumber: true,
           defaultUnit: 'Piece', unitOptions: ['Piece'],
           defaultTaxRate: 18.0,
+          template: ProductTemplate.serialized,
+        ),
+      ),
+      ShopCategory(
+        name: 'Repair Services',
+        subcategories: ['Screen Replacement', 'Battery Replacement', 'Software Repair',
+          'Water Damage', 'Charging Port Fix', 'Speaker / Mic Fix', 'Data Recovery'],
+        productFields: ProductFieldConfig(
+          hasUnit: true,
+          defaultUnit: 'Job', unitOptions: ['Job', 'Hour', 'Visit'],
+          defaultTaxRate: 18.0,
+          hasTaxRate: true,
+          isService: true,
+          template: ProductTemplate.serviceLabor,
         ),
       ),
     ],
@@ -806,6 +877,7 @@ class ShopCatalog {
           hasMrp: true, hasTaxRate: true, hasUnit: true, hasRecipe: true, hasWeight: true,
           defaultUnit: 'Plate', unitOptions: ['Plate', 'Half Plate', 'Bowl', 'Piece'],
           defaultTaxRate: 5.0,
+          isService: true, template: ProductTemplate.serviceLabor,
         ),
       ),
       ShopCategory(
@@ -816,6 +888,7 @@ class ShopCatalog {
           hasMrp: true, hasTaxRate: true, hasUnit: true, hasRecipe: true, hasWeight: true,
           defaultUnit: 'Plate', unitOptions: ['Plate', 'Half Plate', 'Piece'],
           defaultTaxRate: 5.0,
+          isService: true, template: ProductTemplate.serviceLabor,
         ),
       ),
       ShopCategory(
@@ -825,6 +898,7 @@ class ShopCatalog {
           hasMrp: true, hasTaxRate: true, hasUnit: true, hasRecipe: true,
           defaultUnit: 'Piece', unitOptions: ['Piece', 'Dozen', 'Half Dozen'],
           defaultTaxRate: 5.0,
+          isService: true, template: ProductTemplate.serviceLabor,
         ),
       ),
       ShopCategory(
@@ -835,6 +909,7 @@ class ShopCatalog {
           hasMrp: true, hasTaxRate: true, hasUnit: true, hasRecipe: true, hasWeight: true,
           defaultUnit: 'Piece', unitOptions: ['Piece', 'Bowl', 'Plate', 'Scoop'],
           defaultTaxRate: 5.0,
+          isService: true, template: ProductTemplate.serviceLabor,
         ),
       ),
       ShopCategory(
@@ -845,6 +920,7 @@ class ShopCatalog {
           hasMrp: true, hasTaxRate: true, hasUnit: true, hasRecipe: true,
           defaultUnit: 'Glass', unitOptions: ['Glass', 'Bottle', 'Cup', 'ML'],
           defaultTaxRate: 5.0,
+          isService: true, template: ProductTemplate.serviceLabor,
         ),
       ),
       ShopCategory(
@@ -855,6 +931,7 @@ class ShopCatalog {
           hasMrp: true, hasTaxRate: true, hasUnit: true, hasRecipe: true, hasWeight: true,
           defaultUnit: 'Piece', unitOptions: ['Piece', 'Plate'],
           defaultTaxRate: 5.0,
+          isService: true, template: ProductTemplate.serviceLabor,
         ),
       ),
       ShopCategory(
@@ -863,8 +940,10 @@ class ShopCatalog {
           'Dairy', 'Oil & Ghee', 'Flour & Grains'],
         productFields: ProductFieldConfig(
           hasExpiryDate: true, hasMrp: true, hasTaxRate: true, hasUnit: true,
-          defaultUnit: 'Kg', unitOptions: ['Kg', 'Gram', 'Litre', 'Piece', 'Pack'],
+          isLoose: true,
+          defaultUnit: 'Kg', unitOptions: ['Kg', 'Gram', 'Litre', 'ML', 'Piece', 'Pack'],
           defaultTaxRate: 0.0,
+          template: ProductTemplate.bulkUom,
         ),
       ),
     ],
@@ -883,11 +962,7 @@ class ShopCatalog {
       ShopCategory(
         name: 'Services',
         subcategories: [],
-        productFields: ProductFieldConfig(
-          hasMrp: true,
-          defaultUnit: 'Service', unitOptions: ['Service', 'Hour', 'Visit'],
-          defaultTaxRate: 18.0,
-        ),
+        productFields: ProductFieldConfig.service(),
       ),
     ],
   };

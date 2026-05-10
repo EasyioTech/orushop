@@ -53,7 +53,7 @@ class _OnboardingShopAdditionalDetailsScreenState extends ConsumerState<Onboardi
   Widget build(BuildContext context) {
     return OnboardingPage(
       currentStep: 2,
-      totalSteps: 4,
+      totalSteps: 2,
       title: 'Advanced Shop Details',
       description: 'Configure your shop type and other technical information.',
       showBackButton: true,

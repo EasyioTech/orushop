@@ -2,33 +2,41 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/repositories/analytics_repository.dart';
 
+/// Revision counter to force-refresh analytics providers globally.
+final analyticsRevisionProvider = StateProvider<int>((ref) => 0);
+
 final analyticsRepositoryProvider = Provider((ref) => AnalyticsRepository());
 
 final dailySalesTotalProvider =
     FutureProvider.family<DailySalesTotal, DateTime>((ref, date) async {
+  ref.watch(analyticsRevisionProvider); // Force refresh when revision changes
   final repository = ref.watch(analyticsRepositoryProvider);
   return repository.getDailySalesTotal(date);
 });
 
 final topProductsProvider = FutureProvider<List<TopProduct>>((ref) async {
+  ref.watch(analyticsRevisionProvider);
   final repository = ref.watch(analyticsRepositoryProvider);
   return repository.getTopProductsLast30Days();
 });
 
 final lowStockProductsProvider =
     FutureProvider.family<List<LowStockProduct>, int>((ref, threshold) async {
+  ref.watch(analyticsRevisionProvider);
   final repository = ref.watch(analyticsRepositoryProvider);
   return repository.getLowStockProducts(threshold);
 });
 
 final expiringBatchesProvider =
     FutureProvider.family<List<ExpiringBatch>, int>((ref, alertDays) async {
+  ref.watch(analyticsRevisionProvider);
   final repository = ref.watch(analyticsRepositoryProvider);
   return repository.getExpiringBatches(alertDays);
 });
 
 final salesHistoryProvider = FutureProvider.family<List<SalesHistoryItem>, ({int limit, int offset, DateTime? startDate, DateTime? endDate})>(
   (ref, params) async {
+    ref.watch(analyticsRevisionProvider);
     final repository = ref.watch(analyticsRepositoryProvider);
     return repository.getSalesHistory(
       limit: params.limit,
@@ -47,6 +55,7 @@ final saleDetailProvider =
 
 final salesTrendProvider = FutureProvider.family<List<DailySalesData>, ({DateTime start, DateTime end})>(
   (ref, params) async {
+    ref.watch(analyticsRevisionProvider);
     final repository = ref.watch(analyticsRepositoryProvider);
     return repository.getSalesTrend(params.start, params.end);
   },
@@ -54,6 +63,7 @@ final salesTrendProvider = FutureProvider.family<List<DailySalesData>, ({DateTim
 
 final periodAnalyticsProvider = FutureProvider.family<PeriodAnalytics, ({DateTime start, DateTime end})>(
   (ref, params) async {
+    ref.watch(analyticsRevisionProvider);
     final repository = ref.watch(analyticsRepositoryProvider);
     return repository.getPeriodAnalytics(params.start, params.end);
   },
@@ -61,6 +71,7 @@ final periodAnalyticsProvider = FutureProvider.family<PeriodAnalytics, ({DateTim
 
 final paymentBreakdownProvider = FutureProvider.family<List<PaymentMethodBreakdown>, ({DateTime start, DateTime end})>(
   (ref, params) async {
+    ref.watch(analyticsRevisionProvider);
     final repository = ref.watch(analyticsRepositoryProvider);
     return repository.getPaymentMethodBreakdown(params.start, params.end);
   },

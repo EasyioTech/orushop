@@ -37,8 +37,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
-      body: CustomScrollView(
-        physics: const BouncingScrollPhysics(),
+      body: RefreshIndicator(
+        onRefresh: () async {
+          HapticFeedback.mediumImpact();
+          ref.read(analyticsRevisionProvider.notifier).state++;
+          await Future.delayed(const Duration(milliseconds: 800));
+        },
+        color: AppTheme.primaryColor,
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
           // ── Elegant Top Bar ────────────────────────────────────────────────
           SliverAppBar(
@@ -57,10 +64,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 _GreetingTitle(greeting: greeting, name: name, date: todayStr),
               ],
             ),
-            actions: const [
-              _NotificationButton(),
-              SizedBox(width: 12),
-            ],
+            actions: const [],
           ),
 
           // ── Main Dashboard Hero ───────────────────────────────────────────
@@ -157,6 +161,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           const SliverToBoxAdapter(child: SizedBox(height: 100)),
         ],
       ),
+    ),
     );
   }
 
@@ -239,32 +244,6 @@ class _GreetingTitle extends StatelessWidget {
   }
 }
 
-class _NotificationButton extends StatelessWidget {
-  const _NotificationButton();
-
-  @override
-  Widget build(BuildContext context) {
-    return IconButton(
-      onPressed: () {},
-      icon: Container(
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          shape: BoxShape.circle,
-          border: Border.all(color: AppTheme.borderColor.withValues(alpha: 0.6)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.02),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: const Icon(CupertinoIcons.bell_fill, size: 20, color: AppTheme.textPrimary),
-      ),
-    );
-  }
-}
 
 // ── SALES HERO CARD ──────────────────────────────────────────────────────────
 

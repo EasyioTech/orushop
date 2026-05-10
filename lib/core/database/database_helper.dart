@@ -7,6 +7,10 @@ import 'migrations/migration_v1.dart';
 import 'migrations/migration_v3.dart';
 import 'migrations/migration_v4.dart';
 import 'migrations/migration_v6.dart';
+import 'migrations/migration_v7.dart';
+import 'migrations/migration_v8.dart';
+import 'migrations/migration_v9.dart';
+import 'migrations/migration_v10.dart';
 import 'table_constants.dart';
 
 class DatabaseHelper {
@@ -38,7 +42,7 @@ class DatabaseHelper {
       final path = join(dbPath, 'OruShops.db');
       return await openDatabase(
         path,
-        version: 6,
+        version: 10,
         onCreate: _onCreate,
         onUpgrade: _onUpgrade,
         onOpen: _onOpen,
@@ -54,6 +58,10 @@ class DatabaseHelper {
     await MigrationV3.up(db);
     await MigrationV4.up(db);
     await MigrationV6.up(db);
+    await MigrationV7.up(db);
+    await MigrationV8.up(db);
+    await MigrationV9.up(db);
+    await MigrationV10.up(db);
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -70,6 +78,10 @@ class DatabaseHelper {
       }
     }
     if (oldVersion < 6) await MigrationV6.up(db);
+    if (oldVersion < 7) await MigrationV7.up(db);
+    if (oldVersion < 8) await MigrationV8.up(db);
+    if (oldVersion < 9) await MigrationV9.up(db);
+    if (oldVersion < 10) await MigrationV10.up(db);
   }
 
   Future<void> _onOpen(Database db) async {
@@ -114,6 +126,7 @@ class DatabaseHelper {
         TableConstants.khataPayments,
         TableConstants.productCategories,
         TableConstants.productSubcategories,
+        TableConstants.productVariants,
       ];
 
       for (final table in tables) {

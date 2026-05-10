@@ -62,19 +62,27 @@ class PaginationNotifier extends StateNotifier<List<Product>> {
   static const int pageSize = 500;
   int _currentPage = 0;
   bool _hasMore = true;
+  bool _isLoading = false;
 
-  PaginationNotifier(this._repository) : super([]);
+  PaginationNotifier(this._repository) : super([]) {
+    loadMore();
+  }
 
   Future<void> loadMore() async {
-    if (!_hasMore) return;
+    if (!_hasMore || _isLoading) return;
 
-    final newProducts = await _repository.getPaginated(pageSize, _currentPage * pageSize);
+    _isLoading = true;
+    try {
+      final newProducts = await _repository.getPaginated(pageSize, _currentPage * pageSize);
 
-    if (newProducts.isEmpty) {
-      _hasMore = false;
-    } else {
-      state = [...state, ...newProducts];
-      _currentPage++;
+      if (newProducts.isEmpty) {
+        _hasMore = false;
+      } else {
+        state = [...state, ...newProducts];
+        _currentPage++;
+      }
+    } finally {
+      _isLoading = false;
     }
   }
 
@@ -85,7 +93,7 @@ class PaginationNotifier extends StateNotifier<List<Product>> {
     await loadMore();
   }
 
-  void decrementStock(Map<int, int> soldItems) {
+  void decrementStock(Map<int, double> soldItems) {
     state = [
       for (final product in state)
         if (soldItems.containsKey(product.id))

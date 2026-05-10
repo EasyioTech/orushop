@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orushops/core/models/product.dart';
+import 'package:orushops/core/models/product_variant.dart';
+import 'package:orushops/core/repositories/variant_repository.dart';
 import 'package:orushops/core/services/product_crud_service.dart';
 import 'package:orushops/core/theme/app_theme.dart';
 import 'package:orushops/providers/products_provider.dart';
@@ -9,6 +11,7 @@ import 'package:orushops/features/onboarding/models/shop_catalog_data.dart';
 import 'package:orushops/features/onboarding/models/shop_models.dart';
 import 'package:orushops/providers/shop_provider.dart';
 import 'package:intl/intl.dart';
+import 'package:orushops/providers/analytics_provider.dart';
 
 class EditProductScreen extends ConsumerStatefulWidget {
   final Product product;
@@ -22,6 +25,7 @@ class EditProductScreen extends ConsumerStatefulWidget {
 class _EditProductScreenState extends ConsumerState<EditProductScreen> {
   late TextEditingController _nameController;
   late TextEditingController _priceController;
+  late TextEditingController _wholesalePriceController;
   late TextEditingController _costController;
 
   // Advanced fields
@@ -34,6 +38,8 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
   late TextEditingController _serialNumberController;
   late TextEditingController _imeiController;
   late TextEditingController _warrantyController;
+  late TextEditingController _scheduleController;
+  late TextEditingController _recipeController;
   late TextEditingController _weightController;
   late TextEditingController _isbnController;
   late TextEditingController _colorController;
@@ -46,13 +52,24 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
   String? _selectedSubcategory;
   String _selectedUnit = 'Piece';
   bool _showAdvanced = false;
+  bool _isService = false;
+  bool _isLoose = false;
+
+  // Variant matrix state
+  List<ProductVariant> _variants = [];
+  final List<String> _deletedVariantIds = [];
+  final _newVariantSizeCtrl = TextEditingController();
+  final _newVariantColorCtrl = TextEditingController();
+  final _newVariantPriceCtrl = TextEditingController();
+  final _newVariantStockCtrl = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.product.name);
     _priceController = TextEditingController(text: widget.product.price.toString());
-    _costController = TextEditingController();
+    _wholesalePriceController = TextEditingController(text: widget.product.wholesalePrice?.toString() ?? '');
+    _costController = TextEditingController(text: widget.product.costPrice?.toString() ?? '');
 
     _skuController = TextEditingController(text: widget.product.sku);
     _mrpController = TextEditingController(text: widget.product.mrp?.toString() ?? '');
@@ -63,6 +80,8 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
     _serialNumberController = TextEditingController(text: widget.product.serialNumber ?? '');
     _imeiController = TextEditingController(text: widget.product.imei ?? '');
     _warrantyController = TextEditingController(text: widget.product.warranty ?? '');
+    _scheduleController = TextEditingController(text: widget.product.schedule ?? '');
+    _recipeController = TextEditingController(text: widget.product.recipe ?? '');
     _weightController = TextEditingController(text: widget.product.weight ?? '');
     _isbnController = TextEditingController(text: widget.product.isbn ?? '');
     _colorController = TextEditingController(text: widget.product.color ?? '');
@@ -72,8 +91,19 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
 
     _selectedSubcategory = widget.product.subcategory;
     _selectedUnit = widget.product.unit;
+    _isService = widget.product.isService;
+    _isLoose = widget.product.isLoose;
 
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadCategories());
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      _loadCategories();
+      await _loadVariants();
+    });
+  }
+
+  Future<void> _loadVariants() async {
+    final variants = await VariantRepository().getByProduct(widget.product.id);
+    if (!mounted) return;
+    setState(() => _variants = variants);
   }
 
   void _loadCategories() {
@@ -112,10 +142,15 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
 
   void _onCategoryChanged(ShopCategory? cat) {
     if (cat == null) return;
+    final fields = cat.productFields;
     setState(() {
       _selectedCategory = cat;
       _selectedSubcategory = cat.subcategories.isNotEmpty ? cat.subcategories.first : null;
-      _selectedUnit = cat.productFields.defaultUnit;
+      _selectedUnit = fields.defaultUnit;
+      _isLoose = fields.isLoose;
+      _isService = fields.isService;
+      if (_isLoose) _isService = false;
+      if (_isService) _isLoose = false;
     });
   }
 
@@ -123,6 +158,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
   void dispose() {
     _nameController.dispose();
     _priceController.dispose();
+    _wholesalePriceController.dispose();
     _costController.dispose();
     _skuController.dispose();
     _mrpController.dispose();
@@ -133,11 +169,17 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
     _serialNumberController.dispose();
     _imeiController.dispose();
     _warrantyController.dispose();
+    _scheduleController.dispose();
+    _recipeController.dispose();
     _weightController.dispose();
     _isbnController.dispose();
     _colorController.dispose();
     _sizeController.dispose();
     _batchNumberController.dispose();
+    _newVariantSizeCtrl.dispose();
+    _newVariantColorCtrl.dispose();
+    _newVariantPriceCtrl.dispose();
+    _newVariantStockCtrl.dispose();
     super.dispose();
   }
 
@@ -178,18 +220,43 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
         serialNumber: _serialNumberController.text.trim().isEmpty ? null : _serialNumberController.text.trim(),
         imei: _imeiController.text.trim().isEmpty ? null : _imeiController.text.trim(),
         warranty: _warrantyController.text.trim().isEmpty ? null : _warrantyController.text.trim(),
+        schedule: _scheduleController.text.trim().isEmpty ? null : _scheduleController.text.trim(),
+        recipe: _recipeController.text.trim().isEmpty ? null : _recipeController.text.trim(),
         weight: _weightController.text.trim().isEmpty ? null : _weightController.text.trim(),
         isbn: _isbnController.text.trim().isEmpty ? null : _isbnController.text.trim(),
         color: _colorController.text.trim().isEmpty ? null : _colorController.text.trim(),
         size: _sizeController.text.trim().isEmpty ? null : _sizeController.text.trim(),
+        expiryDate: _expiryDate?.toIso8601String(),
+        batchNumber: _batchNumberController.text.trim().isEmpty ? null : _batchNumberController.text.trim(),
+        isService: _isService,
+        isLoose: _isLoose,
+        wholesalePrice: double.tryParse(_wholesalePriceController.text),
+        costPrice: double.tryParse(_costController.text),
         updatedAt: DateTime.now(),
       );
 
       await ProductCrudService().updateProduct(updated);
 
+      // Persist variant changes for variantMatrix products
+      if (_selectedCategory?.productFields.template == ProductTemplate.variantMatrix) {
+        final repo = VariantRepository();
+        for (final idStr in _deletedVariantIds) {
+          await repo.delete(int.parse(idStr));
+        }
+        for (final v in _variants) {
+          await repo.upsert(v);
+        }
+        // Sync parent quantity to sum of variant stocks
+        final totalStock = _variants.fold<double>(0, (s, v) => s + v.stock);
+        await repo.syncParentQuantity(widget.product.id, totalStock);
+      }
+
       HapticFeedback.mediumImpact();
       if (!mounted) return;
       ref.invalidate(productsProvider);
+      ref.invalidate(paginatedProductsProvider);
+      ref.invalidate(lowStockProductsProvider);
+      ref.invalidate(expiringBatchesProvider);
       Navigator.pop(context, true);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: const Text('Item updated ✓'), backgroundColor: AppTheme.successColor),
@@ -225,6 +292,9 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
       HapticFeedback.mediumImpact();
       if (!mounted) return;
       ref.invalidate(productsProvider);
+      ref.invalidate(paginatedProductsProvider);
+      ref.invalidate(lowStockProductsProvider);
+      ref.invalidate(expiringBatchesProvider);
       Navigator.pop(context, true);
     } catch (e) {
       HapticFeedback.heavyImpact();
@@ -242,7 +312,12 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
       backgroundColor: Colors.transparent,
       builder: (ctx) => _AddStockBottomSheet(
         product: widget.product,
-        onStockAdded: () => ref.invalidate(productsProvider),
+      onStockAdded: () {
+        ref.invalidate(productsProvider);
+        ref.invalidate(paginatedProductsProvider);
+        ref.invalidate(lowStockProductsProvider);
+        ref.invalidate(expiringBatchesProvider);
+      },
       ),
     );
   }
@@ -453,6 +528,17 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                       ),
                     ],
                   ),
+                  if (_isLoose) ...[
+                    const SizedBox(height: 16),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _label('Wholesale Price (bulk/full pack)'),
+                        const SizedBox(height: 8),
+                        _field(controller: _wholesalePriceController, hint: '0', icon: Icons.store_outlined, keyboard: TextInputType.number, prefix: '₹ '),
+                      ],
+                    ),
+                  ],
                   const SizedBox(height: 28),
 
                   // ── ADVANCED TOGGLE ─────────────────────────────────────
@@ -529,7 +615,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
     );
   }
 
-  Widget _stockCard(int stock, bool outOfStock, bool lowStock) {
+  Widget _stockCard(double stock, bool outOfStock, bool lowStock) {
     final color = outOfStock ? Colors.red : lowStock ? Colors.orange : AppTheme.primaryColor;
     final msg = outOfStock
         ? 'Out of stock — add stock now'
@@ -557,7 +643,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '$stock items',
+                  '${stock % 1 == 0 ? stock.toInt() : stock.toStringAsFixed(2)} items',
                   style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: AppTheme.textPrimary),
                 ),
                 Text(msg, style: TextStyle(fontSize: 13, color: color, fontWeight: FontWeight.w600)),
@@ -614,6 +700,24 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
             const SizedBox(height: 8),
             _unitDropdown(),
           ],
+
+          const SizedBox(height: 20),
+          _toggleTile(
+            title: 'Service / No Stock',
+            subtitle: 'No inventory deducted on sale (repairs, labor, sessions)',
+            value: _isService,
+            onChanged: (v) => setState(() { _isService = v; if (v) _isLoose = false; }),
+            icon: Icons.design_services_outlined,
+          ),
+
+          const SizedBox(height: 12),
+          _toggleTile(
+            title: 'Loose / Fractional Qty',
+            subtitle: 'Sell by weight, volume, or partial units (grams, ml, tablets)',
+            value: _isLoose,
+            onChanged: (v) => setState(() { _isLoose = v; if (v) _isService = false; }),
+            icon: Icons.scale_outlined,
+          ),
 
           if (fields.hasBatchNumber) ...[
             const SizedBox(height: 20),
@@ -716,7 +820,51 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
             _field(controller: _isbnController, hint: '978-3...', icon: Icons.menu_book_rounded),
           ],
 
-          if (fields.hasSizeVariant) ...[
+          if (fields.hasSchedule) ...[
+            const SizedBox(height: 20),
+            _label('Drug Schedule'),
+            const SizedBox(height: 4),
+            Text('H = prescription, H1 = dangerous, X = narcotic', style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+            const SizedBox(height: 8),
+            DropdownButtonFormField<String>(
+              initialValue: _scheduleController.text.isEmpty ? null : _scheduleController.text,
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: AppTheme.backgroundColor,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                prefixIcon: const Icon(Icons.warning_amber_outlined),
+              ),
+              hint: const Text('Not scheduled (OTC)'),
+              items: const [
+                DropdownMenuItem(value: 'H', child: Text('Schedule H — Prescription Only')),
+                DropdownMenuItem(value: 'H1', child: Text('Schedule H1 — Dangerous Drug')),
+                DropdownMenuItem(value: 'X', child: Text('Schedule X — Narcotic/Psychotropic')),
+              ],
+              onChanged: (v) => setState(() => _scheduleController.text = v ?? ''),
+            ),
+          ],
+
+          if (fields.hasRecipe) ...[
+            const SizedBox(height: 20),
+            _label('Recipe / Ingredients'),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _recipeController,
+              maxLines: 4,
+              decoration: InputDecoration(
+                hintText: 'List ingredients or cooking notes...',
+                filled: true,
+                fillColor: AppTheme.backgroundColor,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                prefixIcon: const Icon(Icons.restaurant_menu_outlined),
+              ),
+            ),
+          ],
+
+          if (fields.template == ProductTemplate.variantMatrix) ...[
+            const SizedBox(height: 20),
+            _buildVariantEditor(),
+          ] else if (fields.hasSizeVariant) ...[
             const SizedBox(height: 20),
             _label('Size'),
             const SizedBox(height: 8),
@@ -725,6 +873,204 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
         ],
       ),
     );
+  }
+
+  Widget _buildVariantEditor() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.grid_view_rounded, size: 18, color: AppTheme.primaryColor),
+            const SizedBox(width: 8),
+            _label('Size / Color Variants'),
+            const Spacer(),
+            Text('${_variants.length} combos', style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+          ],
+        ),
+        const SizedBox(height: 12),
+
+        // Existing variants list
+        if (_variants.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppTheme.backgroundColor,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: Colors.grey.shade200),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.info_outline, size: 16, color: Colors.grey.shade400),
+                const SizedBox(width: 8),
+                Text('No variants yet. Add below.', style: TextStyle(color: Colors.grey.shade500, fontSize: 13)),
+              ],
+            ),
+          )
+        else
+          ...List.generate(_variants.length, (i) {
+            final v = _variants[i];
+            return Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: AppTheme.backgroundColor,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(v.label, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                        const SizedBox(height: 2),
+                        Text('₹${v.price.toStringAsFixed(0)}  ·  ${v.stock % 1 == 0 ? v.stock.toInt() : v.stock.toStringAsFixed(2)} in stock',
+                          style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.delete_outline_rounded, color: Colors.red.shade400, size: 20),
+                    onPressed: () {
+                      setState(() {
+                        if (v.id > 0) _deletedVariantIds.add(v.id.toString());
+                        _variants.removeAt(i);
+                      });
+                    },
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                ],
+              ),
+            );
+          }),
+
+        const SizedBox(height: 12),
+        // Add new variant row
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.3)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Add Variant', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppTheme.primaryColor)),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _newVariantSizeCtrl,
+                      style: const TextStyle(fontSize: 14),
+                      decoration: InputDecoration(
+                        hintText: 'Size (S, M, L…)',
+                        filled: true,
+                        fillColor: AppTheme.backgroundColor,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: TextField(
+                      controller: _newVariantColorCtrl,
+                      style: const TextStyle(fontSize: 14),
+                      decoration: InputDecoration(
+                        hintText: 'Color (Red…)',
+                        filled: true,
+                        fillColor: AppTheme.backgroundColor,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _newVariantPriceCtrl,
+                      keyboardType: TextInputType.number,
+                      style: const TextStyle(fontSize: 14),
+                      decoration: InputDecoration(
+                        hintText: 'Price',
+                        prefixText: '₹ ',
+                        filled: true,
+                        fillColor: AppTheme.backgroundColor,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: TextField(
+                      controller: _newVariantStockCtrl,
+                      keyboardType: TextInputType.number,
+                      style: const TextStyle(fontSize: 14),
+                      decoration: InputDecoration(
+                        hintText: 'Stock',
+                        filled: true,
+                        fillColor: AppTheme.backgroundColor,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton(
+                    onPressed: _addNewVariantLocally,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primaryColor,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    ),
+                    child: const Text('Add', style: TextStyle(fontWeight: FontWeight.w700)),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _addNewVariantLocally() {
+    final size = _newVariantSizeCtrl.text.trim();
+    final color = _newVariantColorCtrl.text.trim();
+    if (size.isEmpty && color.isEmpty) return;
+    final price = double.tryParse(_newVariantPriceCtrl.text) ?? widget.product.price.toDouble();
+    final stock = double.tryParse(_newVariantStockCtrl.text) ?? 0.0;
+    final now = DateTime.now();
+    final sku = '${widget.product.sku}-${[size, color].where((s) => s.isNotEmpty).join('-')}';
+    setState(() {
+      _variants.add(ProductVariant(
+        id: 0,
+        productId: widget.product.id,
+        size: size,
+        color: color,
+        sku: sku,
+        price: price,
+        stock: stock,
+        costPrice: widget.product.costPrice,
+        createdAt: now,
+        updatedAt: now,
+      ));
+      _newVariantSizeCtrl.clear();
+      _newVariantColorCtrl.clear();
+      _newVariantPriceCtrl.clear();
+      _newVariantStockCtrl.clear();
+    });
   }
 
   Widget _unitDropdown() {
@@ -747,6 +1093,31 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
     return Text(
       text,
       style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppTheme.textPrimary),
+    );
+  }
+
+  Widget _toggleTile({
+    required String title,
+    required String subtitle,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+    required IconData icon,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppTheme.backgroundColor,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: value ? AppTheme.primaryColor.withValues(alpha: 0.4) : Colors.grey.shade200),
+      ),
+      child: SwitchListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        secondary: Icon(icon, color: value ? AppTheme.primaryColor : Colors.grey.shade400, size: 22),
+        title: Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+        subtitle: Text(subtitle, style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+        value: value,
+        onChanged: onChanged,
+        activeThumbColor: AppTheme.primaryColor,
+      ),
     );
   }
 
@@ -800,8 +1171,8 @@ class _AddStockBottomSheetState extends ConsumerState<_AddStockBottomSheet> {
     super.dispose();
   }
 
-  void _incrementQty(int amount) {
-    final current = int.tryParse(_qtyController.text) ?? 0;
+  void _incrementQty(double amount) {
+    final current = double.tryParse(_qtyController.text) ?? 0.0;
     _qtyController.text = (current + amount).toString();
   }
 
@@ -816,7 +1187,7 @@ class _AddStockBottomSheetState extends ConsumerState<_AddStockBottomSheet> {
   }
 
   Future<void> _submit() async {
-    final qty = int.tryParse(_qtyController.text.trim()) ?? 0;
+    final qty = double.tryParse(_qtyController.text.trim()) ?? 0.0;
     final cost = double.tryParse(_costController.text.trim()) ?? 0;
 
     if (qty <= 0) {
@@ -847,6 +1218,9 @@ class _AddStockBottomSheetState extends ConsumerState<_AddStockBottomSheet> {
       HapticFeedback.mediumImpact();
       widget.onStockAdded?.call();
       if (!mounted) return;
+      ref.invalidate(productsProvider);
+      ref.invalidate(paginatedProductsProvider);
+      ref.invalidate(expiringBatchesProvider);
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -909,7 +1283,7 @@ class _AddStockBottomSheetState extends ConsumerState<_AddStockBottomSheet> {
           const SizedBox(height: 12),
           Row(
             children: [
-              for (final amt in [10, 50, 100])
+              for (final amt in [10.0, 50.0, 100.0])
                 Padding(
                   padding: const EdgeInsets.only(right: 8),
                   child: OutlinedButton(
@@ -919,7 +1293,7 @@ class _AddStockBottomSheetState extends ConsumerState<_AddStockBottomSheet> {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                     ),
-                    child: Text('+$amt', style: const TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.bold)),
+                    child: Text('+${amt.toInt()}', style: const TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.bold)),
                   ),
                 ),
             ],

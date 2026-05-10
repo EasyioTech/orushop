@@ -49,15 +49,20 @@ class OnboardingPage extends StatelessWidget {
     final double safeTop = MediaQuery.of(context).padding.top;
     
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       backgroundColor: Colors.white,
-      body: Stack(
-        children: [
-          Column(
-            children: [
-              Expanded(
-                child: SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  child: Column(
+      body: GestureDetector(
+        onTap: () => FocusScope.of(context).unfocus(),
+        behavior: HitTestBehavior.translucent,
+        child: Stack(
+          children: [
+            Column(
+              children: [
+                Expanded(
+                  child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+                    child: Column(
                     children: [
                       // Top Illustration Area
                       if (illustration != null)
@@ -250,6 +255,7 @@ class OnboardingPage extends StatelessWidget {
               child: headerAction!,
             ),
         ],
+      ),
       ),
     );
   }

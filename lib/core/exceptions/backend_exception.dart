@@ -9,7 +9,7 @@ class BackendException implements Exception {
 }
 
 class InsufficientStockException extends BackendException {
-  InsufficientStockException(String productName, int required, int available)
+  InsufficientStockException(String productName, num required, num available)
       : super(
           'Insufficient stock for $productName. Required: $required, Available: $available',
           code: 'INSUFFICIENT_STOCK',

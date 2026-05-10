@@ -324,24 +324,6 @@ class SaleDetailScreen extends StatelessWidget {
             child: const Text('BACK'),
           ),
         ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: ElevatedButton(
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Print functionality coming soon')),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              backgroundColor: AppTheme.primaryColor,
-              foregroundColor: Colors.white,
-              elevation: 0,
-            ),
-            child: const Text('PRINT RECEIPT'),
-          ),
-        ),
       ],
     );
   }

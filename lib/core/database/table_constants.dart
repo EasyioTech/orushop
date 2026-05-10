@@ -19,4 +19,7 @@ class TableConstants {
   // Catalog (v4)
   static const String productCategories = 'product_categories';
   static const String productSubcategories = 'product_subcategories';
+
+  // Variants (v10)
+  static const String productVariants = 'product_variants';
 }

@@ -22,6 +22,9 @@ import 'providers/shared_prefs_provider.dart';
 import 'providers/onboarding_provider.dart';
 import 'providers/navigation_provider.dart';
 import 'core/providers/connectivity_provider.dart';
+import 'providers/settings_provider.dart';
+import 'providers/products_provider.dart';
+import 'providers/analytics_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -58,12 +61,17 @@ class _MyAppState extends ConsumerState<MyApp> {
   @override
   void initState() {
     super.initState();
-    ref.listenManual(authStateProvider, (previous, next) {
-      next.whenData((user) {
-        if (user != null) {
-          ref.read(revenueCatServiceProvider).initialize(user.uid);
+    ref.listenManual(authStateProvider, (previous, next) async {
+      final user = next.value;
+      if (user != null) {
+        try {
+          final isTestMode = await ref.read(revenueCatTestModeProvider.future);
+          ref.read(revenueCatServiceProvider).initialize(user.uid, testMode: isTestMode);
+        } catch (e) {
+          // Fallback to test mode if settings fail to load
+          ref.read(revenueCatServiceProvider).initialize(user.uid, testMode: true);
         }
-      });
+      }
     }, fireImmediately: true);
   }
 
@@ -149,6 +157,20 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
     HapticFeedback.selectionClick();
     FocusManager.instance.primaryFocus?.unfocus();
     ref.read(navigationIndexProvider.notifier).state = index;
+
+    // Auto-refresh logic when opening a page (switching tabs)
+    if (index == 1) { // POS / Products
+      ref.invalidate(paginatedProductsProvider);
+    } else if (index == 2) { // Stock / Inventory
+      ref.invalidate(paginatedProductsProvider);
+      ref.invalidate(productsProvider);
+      ref.invalidate(expiringBatchesProvider);
+      // Force refresh analytics as well
+      ref.invalidate(analyticsRevisionProvider);
+    } else if (index == 0) { // Home
+      // Reset analytics data
+      ref.invalidate(analyticsRevisionProvider);
+    }
   }
 
   @override

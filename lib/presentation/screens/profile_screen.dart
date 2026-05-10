@@ -208,26 +208,6 @@ class _ProfileContent extends ConsumerWidget {
                 title: 'Account Settings',
                 children: [
                   _ActionTile(
-                    icon: Icons.edit_outlined,
-                    label: 'Edit Profile',
-                    subtitle: 'Update your name and photo',
-                    onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Edit profile coming soon')),
-                      );
-                    },
-                  ),
-                  _ActionTile(
-                    icon: Icons.security_outlined,
-                    label: 'Change Password',
-                    subtitle: 'Update your password',
-                    onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Password change coming soon')),
-                      );
-                    },
-                  ),
-                  _ActionTile(
                     icon: Icons.analytics_outlined,
                     label: 'Analytics',
                     subtitle: 'View sales and performance reports',

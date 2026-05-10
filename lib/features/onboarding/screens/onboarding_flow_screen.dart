@@ -10,8 +10,6 @@ import 'onboarding_screen_9.dart';
 import 'onboarding_screen_17.dart';
 import 'onboarding_shop_basic_details_screen.dart';
 import 'onboarding_shop_additional_details_screen.dart';
-import 'onboarding_features_screen.dart';
-import 'onboarding_categories_screen.dart';
 
 class OnboardingFlowScreen extends ConsumerStatefulWidget {
   const OnboardingFlowScreen({super.key});
@@ -82,20 +80,17 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
 
   void _goBack() {
     if (!mounted) return;
-    if (_currentPage == 9) {
-      // Back from Upsell to Success — don't skip, just go back one
-      _pageController.jumpToPage(8);
-    } else if (_currentPage == 8) {
-      // Back from Success to Categories
-      _pageController.jumpToPage(7);
+    if (_currentPage == 7) {
+      // Back from Upsell to Success
+      _pageController.jumpToPage(6);
     } else if (_currentPage == 6) {
-      // Back from Features to Additional Shop Details
-      _pageController.jumpToPage(_currentPage - 1);
+      // Back from Success to Additional Shop Details (skipped Features/Categories)
+      _pageController.jumpToPage(5);
     } else if (_currentPage == 5) {
       // Back from Additional to Basic Shop Details
-      _pageController.jumpToPage(_currentPage - 1);
+      _pageController.jumpToPage(4);
     } else if (_currentPage == 4) {
-      // Back from Basic Shop Details to Selection (since social/phone auth landed here)
+      // Back from Basic Shop Details to Selection
       _pageController.jumpToPage(1);
     } else if (_currentPage == 2) {
       _pageController.jumpToPage(1); // Back to Selection from Phone Path
@@ -154,24 +149,18 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
                   onNext: () => _pageController.jumpToPage(4),
                   onBack: _previousPage,
                 ),
-                // Shop Setup Path (Indices 4, 5, 6, 7)
+                // Shop Setup Path (Indices 4, 5)
                 OnboardingShopBasicDetailsScreen(
                   onNext: _nextPage,
                   onBack: _goBack,
                 ),
                 OnboardingShopAdditionalDetailsScreen(
-                  onNext: _nextPage,
+                  onNext: () => _pageController.jumpToPage(6), // Skip Features & Categories, go to Success
                   onBack: _goBack,
                 ),
-                OnboardingFeaturesScreen(
-                  onNext: _nextPage,
-                  onBack: _goBack,
-                ),
-                OnboardingCategoriesScreen(
-                  onNext: _nextPage,
-                  onBack: _goBack,
-                ),
-                // Success & Upsell (Indices 8, 9)
+                // Hidden/Automated: OnboardingFeaturesScreen & OnboardingCategoriesScreen
+                
+                // Success & Upsell (Indices 6, 7)
                 OnboardingScreen9(
                   onNext: _nextPage,
                   onBack: _goBack,

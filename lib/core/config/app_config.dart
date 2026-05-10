@@ -18,8 +18,8 @@ class AppConfig {
 
   /// True when running with real (non-test) RevenueCat keys.
   static bool get isRevenueCatProduction =>
-      !revenueCatGoogleKey.startsWith('test_') &&
-      !revenueCatAppleKey.startsWith('test_');
+      (revenueCatGoogleKey.isNotEmpty && !revenueCatGoogleKey.startsWith('test_')) ||
+      (revenueCatAppleKey.isNotEmpty && !revenueCatAppleKey.startsWith('test_'));
 
   /// True in release builds.
   static bool get isProduction => kReleaseMode;

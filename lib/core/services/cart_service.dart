@@ -25,7 +25,7 @@ class CartService {
     }
   }
 
-  void updateItemQuantity(int productId, int quantity) {
+  void updateItemQuantity(int productId, double quantity) {
     final index = _items.indexWhere((item) => item.productId == productId);
     if (index >= 0) {
       if (quantity <= 0) {

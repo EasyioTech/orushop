@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -26,13 +27,12 @@ class _CartScreenState extends ConsumerState<CartScreen> {
   String? _selectedPaymentMethod;
   String? _customerPhone;
   String? _customerName;
-  int _quickDiscount = 0;
+  double _quickDiscount = 0.0;
   bool _isDiscountExpanded = false;
     double _amountPaid = 0;
   String _receivedPaymentMode = 'Cash';
-  List<KhataCustomer> _customerSuggestions = [];
 
-  void _confirmSale(int subtotal, List<CartItem> items) async {
+  void _confirmSale(double subtotal, List<CartItem> items) async {
     if (items.isEmpty) return;
 
     if (_selectedPaymentMethod == null) {
@@ -62,121 +62,25 @@ class _CartScreenState extends ConsumerState<CartScreen> {
 
 
   void _showCustomerDetailsDialog() {
-    final phoneController = TextEditingController(text: _customerPhone);
-    final nameController = TextEditingController(text: _customerName);
-    
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          title: const Text('Customer Details', style: TextStyle(fontWeight: FontWeight.w800)),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text('Enter customer details to track this sale.', style: TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: phoneController,
-                  decoration: InputDecoration(
-                    labelText: 'Phone Number',
-                    hintText: 'e.g. 9876543210',
-                    prefixIcon: const Icon(Icons.phone_android_rounded),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2),
-                    ),
-                  ),
-                  keyboardType: TextInputType.phone,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  onChanged: (val) async {
-                    if (val.length >= 3) {
-                      final repo = ref.read(khataRepositoryProvider);
-                      final results = await repo.getAllCustomers(search: val);
-                      setDialogState(() {
-                        _customerSuggestions = results;
-                      });
-                    } else {
-                      setDialogState(() {
-                        _customerSuggestions = [];
-                      });
-                    }
-                  },
-                ),
-                if (_customerSuggestions.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  Container(
-                    constraints: const BoxConstraints(maxHeight: 150),
-                    decoration: BoxDecoration(
-                      color: AppTheme.backgroundColor,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppTheme.borderColor.withValues(alpha: 0.5)),
-                    ),
-                    child: ListView.builder(
-                      shrinkWrap: true,
-                      itemCount: _customerSuggestions.length,
-                      itemBuilder: (context, index) {
-                        final customer = _customerSuggestions[index];
-                        return ListTile(
-                          dense: true,
-                          title: Text(customer.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                          subtitle: Text(customer.phone),
-                          onTap: () {
-                            phoneController.text = customer.phone;
-                            nameController.text = customer.name;
-                            setDialogState(() {
-                              _customerSuggestions = [];
-                            });
-                          },
-                        );
-                      },
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 12),
-                TextField(
-                  controller: nameController,
-                  decoration: InputDecoration(
-                    labelText: 'Customer Name',
-                    hintText: 'e.g. John Doe',
-                    prefixIcon: const Icon(Icons.person_outline_rounded),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
-                  ),
-                  textCapitalization: TextCapitalization.words,
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel', style: TextStyle(color: AppTheme.textSecondary)),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                setState(() {
-                  _customerPhone = phoneController.text;
-                  _customerName = nameController.text;
-                  _customerSuggestions = [];
-                });
-                Navigator.pop(context);
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryColor,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              child: const Text('Save Details'),
-            ),
-          ],
-        ),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _CustomerDetailsSheet(
+        initialPhone: _customerPhone,
+        initialName: _customerName,
+        onSave: (phone, name) {
+          setState(() {
+            _customerPhone = phone;
+            _customerName = name;
+          });
+        },
       ),
     );
   }
 
-  Future<void> _processSale(int subtotal, List<CartItem> items) async {
+
+  Future<void> _processSale(double subtotal, List<CartItem> items) async {
     final finalAmount = subtotal - _quickDiscount;
     final state = ref.read(checkoutProvider);
     if (state.isLoading) return;
@@ -240,11 +144,12 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     }
   }
 
-  void _holdCart(List<CartItem> items) {
+  Future<void> _holdCart(List<CartItem> items) async {
     if (items.isEmpty) return;
     HapticFeedback.mediumImpact();
-    ref.read(heldCartsProvider.notifier).holdCart(items);
+    await ref.read(heldCartsProvider.notifier).holdCart(items);
     ref.read(cartProvider.notifier).clearCart();
+    if (!mounted) return;
     Navigator.pop(context);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -454,7 +359,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     );
   }
 
-  Widget _buildBottomActions(int subtotal, List<CartItem> cartItems, bool isLoading, bool hasStockError) {
+  Widget _buildBottomActions(double subtotal, List<CartItem> cartItems, bool isLoading, bool hasStockError) {
     final finalAmount = subtotal - _quickDiscount;
     return Container(
       padding: EdgeInsets.fromLTRB(24, 16, 24, MediaQuery.of(context).padding.bottom + 16),
@@ -520,15 +425,15 @@ class _CartScreenState extends ConsumerState<CartScreen> {
               scrollDirection: Axis.horizontal,
               child: Row(
                 children: [
-                  _QuickDiscountChip(label: 'None', value: 0, isActive: _quickDiscount == 0, onTap: () => setState(() { _quickDiscount = 0; _isDiscountExpanded = false; })),
+                  _QuickDiscountChip(label: 'None', value: 0.0, isActive: _quickDiscount == 0.0, onTap: () => setState(() { _quickDiscount = 0.0; _isDiscountExpanded = false; })),
                   const SizedBox(width: 8),
-                  _QuickDiscountChip(label: '−₹10', value: 10, isActive: _quickDiscount == 10, onTap: () => setState(() { _quickDiscount = _quickDiscount == 10 ? 0 : 10; _isDiscountExpanded = false; })),
+                  _QuickDiscountChip(label: '−₹10', value: 10.0, isActive: _quickDiscount == 10.0, onTap: () => setState(() { _quickDiscount = _quickDiscount == 10.0 ? 0.0 : 10.0; _isDiscountExpanded = false; })),
                   const SizedBox(width: 8),
-                  _QuickDiscountChip(label: '−₹50', value: 50, isActive: _quickDiscount == 50, onTap: () => setState(() { _quickDiscount = _quickDiscount == 50 ? 0 : 50; _isDiscountExpanded = false; })),
+                  _QuickDiscountChip(label: '−₹50', value: 50.0, isActive: _quickDiscount == 50.0, onTap: () => setState(() { _quickDiscount = _quickDiscount == 50.0 ? 0.0 : 50.0; _isDiscountExpanded = false; })),
                   const SizedBox(width: 8),
-                  _QuickDiscountChip(label: '−5%', value: (subtotal * 0.05).toInt(), isActive: _quickDiscount == (subtotal * 0.05).toInt(), onTap: () => setState(() { _quickDiscount = _quickDiscount == (subtotal * 0.05).toInt() ? 0 : (subtotal * 0.05).toInt(); _isDiscountExpanded = false; })),
+                  _QuickDiscountChip(label: '−5%', value: subtotal * 0.05, isActive: _quickDiscount == subtotal * 0.05, onTap: () => setState(() { _quickDiscount = _quickDiscount == subtotal * 0.05 ? 0.0 : subtotal * 0.05; _isDiscountExpanded = false; })),
                   const SizedBox(width: 8),
-                  _QuickDiscountChip(label: '−10%', value: (subtotal * 0.10).toInt(), isActive: _quickDiscount == (subtotal * 0.10).toInt(), onTap: () => setState(() { _quickDiscount = _quickDiscount == (subtotal * 0.10).toInt() ? 0 : (subtotal * 0.10).toInt(); _isDiscountExpanded = false; })),
+                  _QuickDiscountChip(label: '−10%', value: subtotal * 0.10, isActive: _quickDiscount == subtotal * 0.10, onTap: () => setState(() { _quickDiscount = _quickDiscount == subtotal * 0.10 ? 0.0 : subtotal * 0.10; _isDiscountExpanded = false; })),
                 ],
               ),
             ),
@@ -865,7 +770,7 @@ class _PaymentButton extends StatelessWidget {
 
 class _QuickDiscountChip extends StatelessWidget {
   final String label;
-  final int value;
+  final double value;
   final bool isActive;
   final VoidCallback onTap;
 
@@ -1026,9 +931,9 @@ class _CartItemTile extends ConsumerWidget {
 }
 
 class _QuantityControl extends StatelessWidget {
-  final int quantity;
-  final int? maxStock;
-  final Function(int) onChanged;
+  final double quantity;
+  final double? maxStock;
+  final Function(double) onChanged;
 
   const _QuantityControl({
     required this.quantity,
@@ -1068,7 +973,9 @@ class _QuantityControl extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Text(
-              quantity.toString(),
+              quantity == quantity.truncateToDouble()
+                  ? '${quantity.toInt()}'
+                  : quantity.toStringAsFixed(2),
               style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
             ),
           ),
@@ -1178,6 +1085,357 @@ class _CartItemImage extends ConsumerWidget {
           fontSize: 18,
           color: AppTheme.primaryColor,
         ),
+      ),
+    );
+  }
+}
+
+class _CustomerDetailsSheet extends ConsumerStatefulWidget {
+  final String? initialPhone;
+  final String? initialName;
+  final Function(String? phone, String? name) onSave;
+
+  const _CustomerDetailsSheet({
+    this.initialPhone,
+    this.initialName,
+    required this.onSave,
+  });
+
+  @override
+  ConsumerState<_CustomerDetailsSheet> createState() => _CustomerDetailsSheetState();
+}
+
+class _CustomerDetailsSheetState extends ConsumerState<_CustomerDetailsSheet> {
+  late TextEditingController _phoneController;
+  late TextEditingController _nameController;
+  List<KhataCustomer> _suggestions = [];
+  bool _isSearching = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _phoneController = TextEditingController(text: widget.initialPhone);
+    _nameController = TextEditingController(text: widget.initialName);
+  }
+
+  @override
+  void dispose() {
+    _phoneController.dispose();
+    _nameController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _searchCustomers(String query) async {
+    if (query.length < 3) {
+      setState(() {
+        _suggestions = [];
+        _isSearching = false;
+      });
+      return;
+    }
+
+    setState(() => _isSearching = true);
+    try {
+      final repo = ref.read(khataRepositoryProvider);
+      final results = await repo.getAllCustomers(search: query);
+      setState(() {
+        _suggestions = results;
+        _isSearching = false;
+      });
+    } catch (e) {
+      setState(() => _isSearching = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+
+    return Container(
+      padding: EdgeInsets.fromLTRB(24, 16, 24, bottomInset + 32),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black12,
+            blurRadius: 20,
+            offset: Offset(0, -5),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Handle ──────────────────────────────────────────────────────────
+          Center(
+            child: Container(
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppTheme.borderColor.withValues(alpha: 0.6),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // ── Header ──────────────────────────────────────────────────────────
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [AppTheme.primaryColor.withValues(alpha: 0.1), AppTheme.primaryColor.withValues(alpha: 0.05)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(CupertinoIcons.person_crop_circle_fill_badge_plus, color: AppTheme.primaryColor, size: 24),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Customer Details',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                        color: AppTheme.textPrimary,
+                        letterSpacing: -0.8,
+                      ),
+                    ),
+                    Text(
+                      'Identify customer for billing or Khata',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: AppTheme.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(CupertinoIcons.xmark_circle_fill, color: AppTheme.borderColor),
+                iconSize: 28,
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+
+          // ── Phone Field ─────────────────────────────────────────────────────
+          const _Label(text: 'PHONE NUMBER'),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _phoneController,
+            keyboardType: TextInputType.phone,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(10)],
+            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18, letterSpacing: 1),
+            autofocus: widget.initialPhone == null,
+            decoration: InputDecoration(
+              hintText: 'Enter 10-digit number',
+              hintStyle: TextStyle(color: AppTheme.textSecondary.withValues(alpha: 0.4), letterSpacing: 0),
+              prefixIcon: Icon(CupertinoIcons.phone_fill, size: 20, color: AppTheme.primaryColor),
+              suffixIcon: _isSearching 
+                  ? const Padding(
+                      padding: EdgeInsets.all(12),
+                      child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.primaryColor)),
+                    )
+                  : (_phoneController.text.isNotEmpty 
+                      ? IconButton(
+                          icon: Icon(CupertinoIcons.clear_circled_solid, size: 20),
+                          onPressed: () {
+                            _phoneController.clear();
+                            _searchCustomers('');
+                            setState(() {});
+                          },
+                        )
+                      : null),
+              filled: true,
+              fillColor: AppTheme.backgroundColor,
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(20),
+                borderSide: BorderSide.none,
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(20),
+                borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2),
+              ),
+              contentPadding: const EdgeInsets.all(20),
+            ),
+            onChanged: _searchCustomers,
+          ),
+
+          // ── Suggestions ─────────────────────────────────────────────────────
+          if (_suggestions.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.15)),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppTheme.primaryColor.withValues(alpha: 0.05),
+                    blurRadius: 15,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                    child: Text(
+                      'MATCHING CUSTOMERS',
+                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: AppTheme.primaryColor.withValues(alpha: 0.6), letterSpacing: 1),
+                    ),
+                  ),
+                  ListView.separated(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: _suggestions.length > 3 ? 3 : _suggestions.length,
+                    separatorBuilder: (context, index) => Divider(height: 1, color: AppTheme.borderColor.withValues(alpha: 0.3), indent: 16, endIndent: 16),
+                    itemBuilder: (context, index) {
+                      final customer = _suggestions[index];
+                      return ListTile(
+                        onTap: () {
+                          HapticFeedback.mediumImpact();
+                          setState(() {
+                            _phoneController.text = customer.phone;
+                            _nameController.text = customer.name;
+                            _suggestions = [];
+                          });
+                        },
+                        leading: Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Center(
+                            child: Text(
+                              customer.name[0].toUpperCase(),
+                              style: TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.w900),
+                            ),
+                          ),
+                        ),
+                        title: Text(customer.name, style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                        subtitle: Text(customer.phone, style: TextStyle(color: AppTheme.textSecondary, fontSize: 12, fontWeight: FontWeight.w600)),
+                        trailing: Icon(CupertinoIcons.arrow_right_circle_fill, color: AppTheme.primaryColor, size: 24),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ],
+
+          const SizedBox(height: 24),
+
+          // ── Name Field ──────────────────────────────────────────────────────
+          const _Label(text: 'CUSTOMER NAME'),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _nameController,
+            textCapitalization: TextCapitalization.words,
+            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
+            decoration: InputDecoration(
+              hintText: 'Enter name (optional)',
+              hintStyle: TextStyle(color: AppTheme.textSecondary.withValues(alpha: 0.4)),
+              prefixIcon: Icon(CupertinoIcons.person_fill, size: 20, color: AppTheme.primaryColor),
+              filled: true,
+              fillColor: AppTheme.backgroundColor,
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(20),
+                borderSide: BorderSide.none,
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(20),
+                borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2),
+              ),
+              contentPadding: const EdgeInsets.all(20),
+            ),
+          ),
+
+          const SizedBox(height: 32),
+
+          // ── Action Buttons ──────────────────────────────────────────────────
+          Row(
+            children: [
+              Expanded(
+                child: TextButton(
+                  onPressed: () {
+                    HapticFeedback.lightImpact();
+                    widget.onSave(null, null);
+                    Navigator.pop(context);
+                  },
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 18),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  ),
+                  child: const Text(
+                    'Clear Info',
+                    style: TextStyle(color: AppTheme.textSecondary, fontWeight: FontWeight.w700, fontSize: 16),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                flex: 2,
+                child: ElevatedButton(
+                  onPressed: () {
+                    HapticFeedback.mediumImpact();
+                    widget.onSave(
+                      _phoneController.text.isEmpty ? null : _phoneController.text,
+                      _nameController.text.isEmpty ? null : _nameController.text,
+                    );
+                    Navigator.pop(context);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryColor,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 18),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                    elevation: 0,
+                    shadowColor: AppTheme.primaryColor.withValues(alpha: 0.3),
+                  ),
+                  child: const Text(
+                    'Save Details',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Label extends StatelessWidget {
+  final String text;
+  const _Label({required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text,
+      style: TextStyle(
+        fontSize: 11,
+        fontWeight: FontWeight.w900,
+        color: AppTheme.textSecondary,
+        letterSpacing: 1.2,
       ),
     );
   }

@@ -215,5 +215,31 @@ class AppTheme {
       ),
     );
   }
+
+  static InputDecoration inputDecoration({
+    required String label,
+    required String hint,
+    required IconData icon,
+  }) {
+    return InputDecoration(
+      labelText: label.isEmpty ? null : label,
+      hintText: hint,
+      prefixIcon: Icon(icon, color: primaryColor),
+      filled: true,
+      fillColor: slate50,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide.none,
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide.none,
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: primaryColor, width: 2),
+      ),
+    );
+  }
 }
 

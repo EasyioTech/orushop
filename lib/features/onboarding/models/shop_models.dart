@@ -308,6 +308,16 @@ class ShopDetails {
   }
 }
 
+/// Template types matching the 6 billing templates.
+enum ProductTemplate {
+  standardRetail,   // 1 — simple piece-based products
+  batchExpiry,      // 2 — pharma, FMCG with batch + expiry
+  variantMatrix,    // 3 — clothing, footwear with size/color
+  serialized,       // 4 — electronics with serial/warranty
+  bulkUom,          // 5 — grocery/agri sold by weight/volume (loose)
+  serviceLabor,     // 6 — haircut, repair, consultation (no stock)
+}
+
 /// Per-shop-type product field configuration.
 /// Controls which fields are shown when adding a product in a category.
 class ProductFieldConfig {
@@ -332,6 +342,11 @@ class ProductFieldConfig {
   final List<String> unitOptions;
   final double defaultTaxRate;
   final List<String> sizeOptions;
+  /// Product is a service/labor — no stock tracking, quantity = sessions/hours.
+  final bool isService;
+  /// Product can be sold in fractional quantities (0.5 kg, 1.5 m, 250 g).
+  final bool isLoose;
+  final ProductTemplate template;
 
   const ProductFieldConfig({
     this.hasExpiryDate = false,
@@ -355,9 +370,22 @@ class ProductFieldConfig {
     this.unitOptions = const ['Piece'],
     this.defaultTaxRate = 18.0,
     this.sizeOptions = const [],
+    this.isService = false,
+    this.isLoose = false,
+    this.template = ProductTemplate.standardRetail,
   });
 
   factory ProductFieldConfig.basic() => const ProductFieldConfig();
+
+  factory ProductFieldConfig.service() => const ProductFieldConfig(
+    isService: true,
+    isLoose: false,
+    hasUnit: true,
+    defaultUnit: 'Session',
+    unitOptions: ['Session', 'Hour', 'Visit', 'Job'],
+    hasMrp: false,
+    template: ProductTemplate.serviceLabor,
+  );
 }
 
 /// A product category with optional subcategories and field config.

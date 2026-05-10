@@ -1,8 +1,9 @@
 class ProductBatch {
   final int id;
   final int productId;
-  final int quantity;
+  final double quantity;
   final double costPrice;
+  final String? batchNumber;
   final DateTime expiryDate;
   final DateTime createdAt;
 
@@ -11,6 +12,7 @@ class ProductBatch {
     required this.productId,
     required this.quantity,
     required this.costPrice,
+    this.batchNumber,
     required this.expiryDate,
     required this.createdAt,
   });
@@ -21,6 +23,7 @@ class ProductBatch {
       'productId': productId,
       'quantity': quantity,
       'costPrice': costPrice,
+      'batchNumber': batchNumber,
       'expiryDate': expiryDate.toIso8601String(),
       'createdAt': createdAt.toIso8601String(),
     };
@@ -30,8 +33,9 @@ class ProductBatch {
     return ProductBatch(
       id: map['id'] as int,
       productId: map['productId'] as int,
-      quantity: map['quantity'] as int,
+      quantity: (map['quantity'] as num).toDouble(),
       costPrice: (map['costPrice'] as num).toDouble(),
+      batchNumber: map['batchNumber'] as String?,
       expiryDate: DateTime.parse(map['expiryDate'] as String),
       createdAt: DateTime.parse(map['createdAt'] as String),
     );
@@ -40,8 +44,9 @@ class ProductBatch {
   ProductBatch copyWith({
     int? id,
     int? productId,
-    int? quantity,
+    double? quantity,
     double? costPrice,
+    String? batchNumber,
     DateTime? expiryDate,
     DateTime? createdAt,
   }) {
@@ -50,6 +55,7 @@ class ProductBatch {
       productId: productId ?? this.productId,
       quantity: quantity ?? this.quantity,
       costPrice: costPrice ?? this.costPrice,
+      batchNumber: batchNumber ?? this.batchNumber,
       expiryDate: expiryDate ?? this.expiryDate,
       createdAt: createdAt ?? this.createdAt,
     );

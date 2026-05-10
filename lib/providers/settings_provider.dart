@@ -98,3 +98,13 @@ final updateAnalyticsProvider = FutureProvider.family<void, bool>((ref, enabled)
   await settings.setAnalyticsEnabled(enabled);
 });
 
+final revenueCatTestModeProvider = FutureProvider<bool>((ref) async {
+  final settings = await ref.watch(settingsServiceProvider.future);
+  return settings.isRevenueCatTestMode();
+});
+
+final updateRevenueCatTestModeProvider = FutureProvider.family<void, bool>((ref, enabled) async {
+  final settings = await ref.watch(settingsServiceProvider.future);
+  await settings.setRevenueCatTestMode(enabled);
+});
+

@@ -2,7 +2,10 @@ class SaleItem {
   final int id;
   final int saleId;
   final int productId;
-  final int quantity;
+  /// Non-null when the sold item is a size/color variant.
+  final int? variantId;
+  /// Supports fractional quantities for loose/bulk products (e.g. 0.5 kg).
+  final double quantity;
   final double unitPrice;
   final double totalPrice;
   final List<int> batchIds;
@@ -11,6 +14,7 @@ class SaleItem {
     required this.id,
     required this.saleId,
     required this.productId,
+    this.variantId,
     required this.quantity,
     required this.unitPrice,
     required this.totalPrice,
@@ -22,6 +26,7 @@ class SaleItem {
       'id': id,
       'saleId': saleId,
       'productId': productId,
+      'variantId': variantId,
       'quantity': quantity,
       'unitPrice': unitPrice,
       'totalPrice': totalPrice,
@@ -34,15 +39,16 @@ class SaleItem {
       id: map['id'] as int,
       saleId: map['saleId'] as int,
       productId: map['productId'] as int,
-      quantity: map['quantity'] as int,
+      variantId: map['variantId'] as int?,
+      quantity: (map['quantity'] as num).toDouble(),
       unitPrice: (map['unitPrice'] as num).toDouble(),
       totalPrice: (map['totalPrice'] as num).toDouble(),
-      batchIds: (map['batchIds'] as String).isEmpty
+      batchIds: (map['batchIds'] as String? ?? '').isEmpty
           ? []
           : (map['batchIds'] as String)
               .split(',')
               .where((s) => s.isNotEmpty)
-              .map((id) => int.parse(id))
+              .map(int.parse)
               .toList(),
     );
   }
@@ -51,7 +57,8 @@ class SaleItem {
     int? id,
     int? saleId,
     int? productId,
-    int? quantity,
+    int? variantId,
+    double? quantity,
     double? unitPrice,
     double? totalPrice,
     List<int>? batchIds,
@@ -60,6 +67,7 @@ class SaleItem {
       id: id ?? this.id,
       saleId: saleId ?? this.saleId,
       productId: productId ?? this.productId,
+      variantId: variantId ?? this.variantId,
       quantity: quantity ?? this.quantity,
       unitPrice: unitPrice ?? this.unitPrice,
       totalPrice: totalPrice ?? this.totalPrice,

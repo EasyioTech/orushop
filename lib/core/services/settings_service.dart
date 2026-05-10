@@ -1,5 +1,6 @@
 import 'package:shared_preferences/shared_preferences.dart';
 import '../database/database_helper.dart';
+import '../database/table_constants.dart';
 
 class SettingsService {
   final SharedPreferences prefs;
@@ -25,14 +26,14 @@ class SettingsService {
   Future<void> clearAllData() async {
     final db = await dbHelper.database;
     await db.transaction((txn) async {
-      await txn.delete('sales');
-      await txn.delete('sale_items');
-      await txn.delete('product_batches');
-      await txn.delete('products');
-      await txn.delete('returns');
-      await txn.delete('return_items');
-      await txn.delete('refunds');
-      await txn.delete('event_logs');
+      await txn.delete(TableConstants.sales);
+      await txn.delete(TableConstants.saleItems);
+      await txn.delete(TableConstants.productBatches);
+      await txn.delete(TableConstants.products);
+      await txn.delete(TableConstants.returns);
+      await txn.delete(TableConstants.returnItems);
+      await txn.delete(TableConstants.refunds);
+      await txn.delete(TableConstants.eventLogs);
     });
   }
 
@@ -94,6 +95,16 @@ class SettingsService {
 
   Future<void> setAnalyticsEnabled(bool enabled) async {
     await prefs.setBool('analytics_enabled', enabled);
+  }
+
+  // Developer settings
+  Future<bool> isRevenueCatTestMode() async {
+    // Default to false for production safety, but if the user wants to test, they can toggle it.
+    return prefs.getBool('revenue_cat_test_mode') ?? true; 
+  }
+
+  Future<void> setRevenueCatTestMode(bool enabled) async {
+    await prefs.setBool('revenue_cat_test_mode', enabled);
   }
 }
 

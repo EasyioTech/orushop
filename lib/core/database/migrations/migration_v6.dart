@@ -16,6 +16,8 @@ class MigrationV6 {
     await _addColumnIfMissing(db, 'products', 'isbn', 'TEXT');
     await _addColumnIfMissing(db, 'products', 'size', 'TEXT');
     await _addColumnIfMissing(db, 'products', 'color', 'TEXT');
+    await _addColumnIfMissing(db, 'products', 'expiryDate', 'TEXT');
+    await _addColumnIfMissing(db, 'products', 'batchNumber', 'TEXT');
   }
 
   static Future<void> _addColumnIfMissing(

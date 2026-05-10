@@ -17,6 +17,10 @@ class AppLogger {
     debugPrint('[ERROR][$tag] $message${error != null ? ': $error' : ''}');
   }
 
+  static void i(String tag, String message) {
+    debugPrint('[INFO][$tag] $message');
+  }
+
   /// Only logs in debug mode — use for verbose/trace output.
   static void v(String tag, String message) {
     if (kDebugMode) debugPrint('[VERBOSE][$tag] $message');

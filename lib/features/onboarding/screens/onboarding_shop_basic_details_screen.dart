@@ -98,7 +98,7 @@ class _OnboardingShopBasicDetailsScreenState extends ConsumerState<OnboardingSho
   Widget build(BuildContext context) {
     return OnboardingPage(
       currentStep: 1,
-      totalSteps: 4,
+      totalSteps: 2,
       title: 'Basic Shop Details',
       description: 'Start by telling us the essentials about your business.',
       showBackButton: true,

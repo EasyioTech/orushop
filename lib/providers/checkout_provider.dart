@@ -8,9 +8,9 @@ import '../core/exceptions/backend_exception.dart';
 import '../core/models/khata_customer.dart';
 import '../core/models/khata_entry.dart';
 import 'khata_provider.dart';
-
-import 'package:orushops/providers/products_provider.dart';
-import 'package:orushops/providers/sale_provider.dart' show saleRepositoryProvider;
+import 'analytics_provider.dart';
+import 'products_provider.dart';
+import 'sale_provider.dart' show saleRepositoryProvider;
 
 class CheckoutState {
   final bool isLoading;
@@ -44,9 +44,9 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
 
   Future<Map<String, dynamic>?> saveSale({
     required List<CartItem> items,
-    required int subtotal,
-    required int discountAmount,
-    required int finalAmount,
+    required double subtotal,
+    required double discountAmount,
+    required double finalAmount,
     required String paymentMethod,
     required Map<int, int> selectedBatches,
     String? customerPhone,
@@ -128,14 +128,26 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
       }
 
       // Build productId → quantitySold map from the committed sale items
-      final soldItems = <int, int>{};
+      final soldItems = <int, double>{};
       for (final saleItem in (result['items'] as List)) {
         soldItems[saleItem.productId] =
-            (soldItems[saleItem.productId] ?? 0) + (saleItem.quantity as int);
+            (soldItems[saleItem.productId] ?? 0.0) + (saleItem.quantity as double);
       }
 
       // Surgical in-place stock decrement — no full reload, no empty-screen flash
       _ref.read(paginatedProductsProvider.notifier).decrementStock(soldItems);
+
+      // Invalidate analytics providers to ensure homepage and reports are fresh
+      debugPrint('Checkout: Invalidating analytics providers...');
+      _ref.invalidate(dailySalesTotalProvider);
+      _ref.invalidate(topProductsProvider);
+      _ref.invalidate(lowStockProductsProvider);
+      _ref.invalidate(expiringBatchesProvider);
+      _ref.invalidate(salesHistoryProvider);
+      
+      // Also increment revision for components still using the legacy revision pattern
+      _ref.read(analyticsRevisionProvider.notifier).state++;
+      debugPrint('Checkout: Synchronization triggered');
 
       final checkoutResult = {
         'sale': result['sale'],

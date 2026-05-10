@@ -137,6 +137,72 @@ class SaleRepository {
 
           // 2. Process each item
         for (final item in items) {
+          // FETCH product meta (quantity + isService) for this item
+          final List<Map<String, dynamic>> productResult = await txn.query(
+            TableConstants.products,
+            columns: ['quantity', 'isService'],
+            where: 'id = ?',
+            whereArgs: [item.productId],
+          );
+
+          final isServiceProduct = productResult.isNotEmpty
+              ? (productResult.first['isService'] as int? ?? 0) == 1
+              : false;
+
+          // Service products: record sale item but skip all stock deduction
+          if (isServiceProduct) {
+            final saleItem = SaleItem(
+              id: 0,
+              saleId: saleId,
+              productId: item.productId,
+              variantId: item.variantId,
+              quantity: item.quantity,
+              unitPrice: item.unitPrice,
+              totalPrice: item.quantity * item.unitPrice,
+              batchIds: [],
+            );
+            final saleItemId = await addItem(txn, saleItem);
+            processedItems.add(saleItem.copyWith(id: saleItemId));
+            continue;
+          }
+
+          // Variant products: deduct from product_variants.stock instead of batches
+          if (item.variantId != null) {
+            final List<Map<String, dynamic>> varRows = await txn.query(
+              TableConstants.productVariants,
+              columns: ['stock'],
+              where: 'id = ?',
+              whereArgs: [item.variantId],
+            );
+            if (varRows.isEmpty) {
+              throw Exception('Variant ${item.variantId} not found');
+            }
+            final varStock = (varRows.first['stock'] as num).toDouble();
+            if (varStock < item.quantity) {
+              throw InsufficientStockException(item.productName, item.quantity, varStock);
+            }
+            final updated = await txn.rawUpdate(
+              'UPDATE ${TableConstants.productVariants} SET stock = stock - ?, updatedAt = ? WHERE id = ? AND stock >= ?',
+              [item.quantity, DateTime.now().toIso8601String(), item.variantId, item.quantity],
+            );
+            if (updated == 0) {
+              throw TransactionException('Race condition on variant ${item.variantId}');
+            }
+            final saleItem = SaleItem(
+              id: 0,
+              saleId: saleId,
+              productId: item.productId,
+              variantId: item.variantId,
+              quantity: item.quantity,
+              unitPrice: item.unitPrice,
+              totalPrice: item.quantity * item.unitPrice,
+              batchIds: [],
+            );
+            final saleItemId = await addItem(txn, saleItem);
+            processedItems.add(saleItem.copyWith(id: saleItemId));
+            continue;
+          }
+
           // Fetch batches inside transaction with a row-level lock (implicit in txn)
           final List<Map<String, dynamic>> batchMaps = await txn.query(
             TableConstants.productBatches,
@@ -148,17 +214,9 @@ class SaleRepository {
           var batches = batchMaps.map((m) => ProductBatch.fromMap(m)).toList();
 
           // Calculate what we have in batches
-          var totalAvailableInBatches = batches.fold<int>(0, (sum, b) => sum + b.quantity);
-          
-          // FETCH source-of-truth quantity from products table
-          final List<Map<String, dynamic>> productResult = await txn.query(
-            TableConstants.products,
-            columns: ['quantity'],
-            where: 'id = ?',
-            whereArgs: [item.productId],
-          );
-          
-          final productTotal = productResult.isNotEmpty ? (productResult.first['quantity'] as int) : 0;
+          var totalAvailableInBatches = batches.fold<double>(0.0, (sum, b) => sum + b.quantity);
+
+          final productTotal = productResult.isNotEmpty ? (productResult.first['quantity'] as num).toDouble() : 0.0;
           
           // AUTOMATIC SYNC: If batches are missing but product table says we have stock,
           // or if product table has more than batches, create a correction batch.
@@ -170,6 +228,7 @@ class SaleRepository {
               'productId': item.productId,
               'quantity': gap,
               'costPrice': 0.0,
+              'batchNumber': 'AUTO-CORRECT',
               'expiryDate': DateTime.now().add(const Duration(days: 3650)).toIso8601String(),
               'createdAt': DateTime.now().toIso8601String(),
             });
@@ -224,6 +283,7 @@ class SaleRepository {
             id: 0,
             saleId: saleId,
             productId: item.productId,
+            variantId: item.variantId,
             quantity: item.quantity,
             unitPrice: item.unitPrice.toDouble(),
             totalPrice: (item.quantity * item.unitPrice).toDouble(),

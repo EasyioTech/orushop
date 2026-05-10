@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../providers/settings_provider.dart';
 import 'sync_backup_screen.dart';
-import 'orders_screen.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/database/database_helper.dart';
 import 'package:orushops/providers/products_provider.dart';
@@ -126,24 +126,6 @@ class SettingsScreen extends ConsumerWidget {
                   ],
                 ),
                 // Procurement
-                _SettingsSection(
-                  title: 'Procurement',
-                  children: [
-                    _ActionButton(
-                      icon: Icons.shopping_cart_checkout_rounded,
-                      label: 'Purchase Orders',
-                      subtitle: 'Create and manage supplier orders',
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const OrdersScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                  ],
-                ),
                 // Data Management
                 _SettingsSection(
                   title: 'Data Management',
@@ -205,10 +187,26 @@ class SettingsScreen extends ConsumerWidget {
                       label: 'Help & Support',
                       subtitle: 'Contact support team',
                       onTap: () {
+                        launchUrl(Uri.parse('mailto:support@orushops.com'));
+                      },
+                    ),
+                  ],
+                ),
+                // Developer Settings (Only visible in debug or if specifically needed)
+                _SettingsSection(
+                  title: 'Developer Tools',
+                  children: [
+                    _SwitchSettingTile(
+                      icon: Icons.bug_report_rounded,
+                      label: 'RevenueCat Test Mode',
+                      subtitle: 'Use sandbox environment for IAP',
+                      value: ref.watch(revenueCatTestModeProvider).value ?? true,
+                      onChanged: (val) {
+                        ref.read(updateRevenueCatTestModeProvider(val));
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Support: support@OruShops.com'),
-                            duration: Duration(seconds: 2),
+                          SnackBar(
+                            content: Text('Test Mode ${val ? "Enabled" : "Disabled"}. Restart app to apply.'),
+                            action: SnackBarAction(label: 'RESTART', onPressed: () => SystemNavigator.pop()),
                           ),
                         );
                       },
@@ -323,6 +321,77 @@ class _SettingsSection extends StatelessWidget {
         ),
         ...children,
       ],
+    );
+  }
+}
+
+class _SwitchSettingTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String subtitle;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  const _SwitchSettingTile({
+    required this.icon,
+    required this.label,
+    required this.subtitle,
+    required this.value,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          children: [
+            Icon(icon, color: AppTheme.primaryColor, size: 24),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                      color: AppTheme.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppTheme.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Switch.adaptive(
+              value: value,
+              onChanged: onChanged,
+              activeTrackColor: AppTheme.primaryColor,
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

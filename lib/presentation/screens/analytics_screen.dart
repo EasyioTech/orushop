@@ -79,12 +79,16 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
       body: RefreshIndicator(
         onRefresh: () async {
           HapticFeedback.mediumImpact();
-          ref.invalidate(dailySalesTotalProvider(DateTime.now()));
+          // Invalidate the entire families to ensure we catch all potential date matches
+          ref.invalidate(dailySalesTotalProvider);
           ref.invalidate(topProductsProvider);
+          ref.invalidate(lowStockProductsProvider);
+          ref.invalidate(expiringBatchesProvider);
+          
           if (_startDate != null && _endDate != null) {
-            ref.invalidate(periodAnalyticsProvider((start: _startDate!, end: _endDate!)));
-            ref.invalidate(salesTrendProvider((start: _startDate!, end: _endDate!)));
-            ref.invalidate(paymentBreakdownProvider((start: _startDate!, end: _endDate!)));
+            ref.invalidate(periodAnalyticsProvider);
+            ref.invalidate(salesTrendProvider);
+            ref.invalidate(paymentBreakdownProvider);
           }
           // Optional: Add a small delay for better UX
           await Future.delayed(const Duration(milliseconds: 800));

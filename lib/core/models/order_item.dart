@@ -3,10 +3,10 @@ class OrderItem {
   final int orderId;
   final int productId;
   final String productName;
-  final int quantity;
+  final double quantity;
   final double unitPrice;
   final double totalPrice;
-  final int? receivedQuantity;
+  final double? receivedQuantity;
 
   OrderItem({
     required this.id,
@@ -38,10 +38,10 @@ class OrderItem {
       orderId: map['orderId'] as int,
       productId: map['productId'] as int,
       productName: map['productName'] as String,
-      quantity: map['quantity'] as int,
+      quantity: (map['quantity'] as num).toDouble(),
       unitPrice: (map['unitPrice'] as num).toDouble(),
       totalPrice: (map['totalPrice'] as num).toDouble(),
-      receivedQuantity: map['receivedQuantity'] as int?,
+      receivedQuantity: map['receivedQuantity'] != null ? (map['receivedQuantity'] as num).toDouble() : null,
     );
   }
 
@@ -50,10 +50,10 @@ class OrderItem {
     int? orderId,
     int? productId,
     String? productName,
-    int? quantity,
+    double? quantity,
     double? unitPrice,
     double? totalPrice,
-    int? receivedQuantity,
+    double? receivedQuantity,
   }) {
     return OrderItem(
       id: id ?? this.id,

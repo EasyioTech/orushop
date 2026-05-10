@@ -33,9 +33,10 @@ class ProductCrudService {
 
   Future<void> addStock({
     required int productId,
-    required int quantity,
+    required double quantity,
     required double costPrice,
     required DateTime expiryDate,
+    String? batchNumber,
   }) async {
     if (quantity <= 0) throw ArgumentError('Quantity must be greater than 0');
     if (costPrice <= 0) throw ArgumentError('Cost price must be greater than 0');
@@ -51,6 +52,7 @@ class ProductCrudService {
           'productId': productId,
           'quantity': quantity,
           'costPrice': costPrice,
+          'batchNumber': batchNumber,
           'expiryDate': expiryDate.toIso8601String(),
           'createdAt': DateTime.now().toIso8601String(),
         },

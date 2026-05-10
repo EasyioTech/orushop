@@ -118,16 +118,14 @@ class ProductRepository {
     );
   }
 
-  Future<int> getTotalQuantity(int productId) async {
+  Future<double> getTotalQuantity(int productId) async {
     final db = await _dbHelper.database;
     final result = await db.rawQuery(
       'SELECT SUM(quantity) as total FROM ${TableConstants.productBatches} WHERE productId = ?',
       [productId],
     );
-    if (result.isEmpty) return 0;
     final total = result.first['total'];
-    if (total == null) return 0;
-    return (total is int) ? total : (total as num).toInt();
+    return (total is num) ? total.toDouble() : 0.0;
   }
 
   Future<List<String>> getCategories() async {

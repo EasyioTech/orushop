@@ -14,6 +14,7 @@ import 'inventory_history_screen.dart';
 import 'batch_scan_screen.dart';
 import 'package:orushops/core/models/product.dart';
 import 'package:orushops/features/onboarding/models/shop_models.dart';
+import 'package:orushops/providers/analytics_provider.dart';
 
 class InventoryScreen extends ConsumerStatefulWidget {
   const InventoryScreen({super.key});
@@ -45,7 +46,11 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const CreateProductScreen()),
-    );
+    ).then((_) {
+      ref.invalidate(productsProvider);
+      ref.invalidate(paginatedProductsProvider);
+      ref.invalidate(expiredBatchesProvider);
+    });
   }
 
   @override
@@ -97,6 +102,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
               .where(
                 (p) =>
                     (p.name.toLowerCase().contains(_searchQuery) ||
+                     (p.brand?.toLowerCase().contains(_searchQuery) ?? false) ||
                      p.sku.toLowerCase().contains(_searchQuery)) &&
                     (_selectedCategory == 'All' || p.category == _selectedCategory) &&
                     (_selectedSubcategory == 'All' || p.subcategory == _selectedSubcategory),
@@ -603,7 +609,11 @@ class _InventoryItemCardState extends ConsumerState<_InventoryItemCard> {
       MaterialPageRoute(
         builder: (_) => EditProductScreen(product: widget.product),
       ),
-    );
+    ).then((_) {
+      ref.invalidate(productsProvider);
+      ref.invalidate(paginatedProductsProvider);
+      ref.invalidate(expiredBatchesProvider);
+    });
   }
 
   void _showProductMenu(BuildContext context, WidgetRef ref) {
@@ -638,7 +648,11 @@ class _InventoryItemCardState extends ConsumerState<_InventoryItemCard> {
                   MaterialPageRoute(
                     builder: (_) => EditProductScreen(product: widget.product),
                   ),
-                );
+                ).then((_) {
+                  ref.invalidate(productsProvider);
+                  ref.invalidate(paginatedProductsProvider);
+                  ref.invalidate(expiredBatchesProvider);
+                });
               },
             ),
             ListTile(
@@ -982,6 +996,7 @@ class _AddStockBottomSheet extends ConsumerStatefulWidget {
 class _AddStockBottomSheetState extends ConsumerState<_AddStockBottomSheet> {
   final _qtyController = TextEditingController();
   final _costController = TextEditingController();
+  final _batchController = TextEditingController();
   final _qtyFocusNode = FocusNode();
   DateTime _expiry = DateTime.now().add(const Duration(days: 365));
 
@@ -994,6 +1009,7 @@ class _AddStockBottomSheetState extends ConsumerState<_AddStockBottomSheet> {
   void dispose() {
     _qtyController.dispose();
     _costController.dispose();
+    _batchController.dispose();
     _qtyFocusNode.dispose();
     super.dispose();
   }
@@ -1138,12 +1154,46 @@ class _AddStockBottomSheetState extends ConsumerState<_AddStockBottomSheet> {
                 ),
               ],
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 24),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Batch Number',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _batchController,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  decoration: InputDecoration(
+                    hintText: 'Enter batch number',
+                    filled: true,
+                    fillColor: AppTheme.backgroundColor,
+                    prefixIcon: const Icon(Icons.tag_rounded),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
             const Align(
               alignment: Alignment.centerLeft,
               child: Text(
-                'Batch Expiry Date',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                'Expiry Date',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
               ),
             ),
             const SizedBox(height: 12),
@@ -1218,7 +1268,7 @@ class _AddStockBottomSheetState extends ConsumerState<_AddStockBottomSheet> {
   }
 
   void _submit() async {
-    final qty = int.tryParse(_qtyController.text) ?? 0;
+    final qty = double.tryParse(_qtyController.text) ?? 0.0;
     final cost = double.tryParse(_costController.text) ?? 0;
 
     if (qty <= 0 || cost <= 0) {
@@ -1233,11 +1283,14 @@ class _AddStockBottomSheetState extends ConsumerState<_AddStockBottomSheet> {
         quantity: qty,
         costPrice: cost,
         expiryDate: _expiry,
+        batchNumber: _batchController.text.trim().isEmpty ? null : _batchController.text.trim(),
       );
 
       HapticFeedback.mediumImpact();
       if (mounted) {
         ref.invalidate(productsProvider);
+        ref.invalidate(lowStockProductsProvider);
+        ref.invalidate(expiringBatchesProvider);
         Navigator.pop(context);
       }
     } catch (e) {

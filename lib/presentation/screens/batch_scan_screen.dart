@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orushops/core/database/database_helper.dart';
+import 'package:orushops/core/database/table_constants.dart';
 import 'package:orushops/core/theme/app_theme.dart';
 import 'package:orushops/core/services/global_catalog_service.dart';
 import 'package:orushops/providers/products_provider.dart';
@@ -176,9 +177,9 @@ class _BatchScanScreenState extends ConsumerState<BatchScanScreen> {
             'updatedAt': now.toIso8601String(),
           };
           
-          final productId = await txn.insert('products', productMap);
-          
-          await txn.insert('product_batches', {
+          final productId = await txn.insert(TableConstants.products, productMap);
+
+          await txn.insert(TableConstants.productBatches, {
             'productId': productId,
             'quantity': item.quantity,
             'costPrice': p.typicalCost,

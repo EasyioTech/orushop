@@ -1,7 +1,9 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:orushops/core/theme/app_theme.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../widgets/onboarding_page.dart';
 
 class OnboardingScreen2 extends StatelessWidget {
@@ -106,6 +108,8 @@ class OnboardingScreen2 extends StatelessWidget {
               const TextSpan(text: 'By continuing, you agree to our '),
               TextSpan(
                 text: 'Terms of Service',
+                recognizer: TapGestureRecognizer()
+                  ..onTap = () => launchUrl(Uri.parse('https://orushops.com/terms'), mode: LaunchMode.externalApplication),
                 style: const TextStyle(
                   color: AppTheme.accentColor,
                   fontWeight: FontWeight.w600,
@@ -115,6 +119,8 @@ class OnboardingScreen2 extends StatelessWidget {
               const TextSpan(text: ' and '),
               TextSpan(
                 text: 'Privacy Policy',
+                recognizer: TapGestureRecognizer()
+                  ..onTap = () => launchUrl(Uri.parse('https://orushops.com/privacy'), mode: LaunchMode.externalApplication),
                 style: const TextStyle(
                   color: AppTheme.accentColor,
                   fontWeight: FontWeight.w600,

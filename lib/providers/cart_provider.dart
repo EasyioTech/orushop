@@ -46,7 +46,7 @@ class CartStateNotifier extends StateNotifier<List<CartItem>> {
     _saveCart();
   }
 
-  void updateQuantity(int productId, int quantity) {
+  void updateQuantity(int productId, double quantity) {
     _cartService.updateItemQuantity(productId, quantity);
     state = [..._cartService.items];
     _saveCart();
@@ -77,17 +77,17 @@ final cartProvider = StateNotifierProvider<CartStateNotifier, List<CartItem>>(
   },
 );
 
-final cartSubtotalProvider = Provider<int>((ref) {
+final cartSubtotalProvider = Provider<double>((ref) {
   final items = ref.watch(cartProvider);
-  return items.fold(0, (sum, item) => sum + (item.unitPrice * item.quantity).toInt());
+  return items.fold(0.0, (sum, item) => sum + item.totalPrice);
 });
 
 final cartTotalItemsProvider = Provider<int>((ref) {
   return ref.watch(cartProvider).length;
 });
 
-final cartTotalQuantityProvider = Provider<int>((ref) {
+final cartTotalQuantityProvider = Provider<double>((ref) {
   final items = ref.watch(cartProvider);
-  return items.fold(0, (sum, item) => sum + item.quantity);
+  return items.fold(0.0, (sum, item) => sum + item.quantity);
 });
 

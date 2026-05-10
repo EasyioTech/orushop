@@ -6,54 +6,56 @@
 .DS_Store
 .atom/
 .build/
-.buildlog/
 .history
 .svn/
 .swiftpm/
 migrate_working_dir/
 
-# IntelliJ related
-*.iml
-*.ipr
-*.iws
 .idea/
-
-# The .vscode folder contains launch configuration and tasks you configure in
-# VS Code which you may wish to be included in version control, so this line
-# is commented out by default.
-#.vscode/
+.vscode/
+.agents/
+.claude/
+data/
+tools/
+scratch/
+graphify-out/
+*.log
+*.bak
+*.tmp
+*.temp
+.DS_Store
 
 # Flutter/Dart/Pub related
-**/doc/api/
-**/ios/Flutter/.last_build_id
 .dart_tool/
+.flutter-plugins
 .flutter-plugins-dependencies
+.packages
 .pub-cache/
 .pub/
-/build/
-/coverage/
+build/
+coverage/
 
-# Symbolication related
-app.*.symbols
+# Android
+android/**/generated/
+android/app/debug
+android/app/profile
+android/app/release
+android/local.properties
+android/key.properties
+*.jks
+*.keystore
+*.ap_
+*.apk
+*.dex
 
-# Obfuscation related
-app.*.map.json
-
-# Android Studio will place build artifacts here
-/android/app/debug
-/android/app/profile
-/android/app/release
-
-# keep graph outputs, skip heavy/local-only files
-
-# optional: commit for shared extraction speed, skip to keep repo small
-graphify-out/cache/
-
-# mtime-based, invalid after git clone - always gitignore this
-graphify-out/manifest.json
-
-# local token tracking, not useful to share
-graphify-out/cost.json
-
-# Scratch directory
-scratch/
+# iOS
+ios/Flutter/Generated.xcconfig
+ios/Flutter/flutter_export_environment.sh
+ios/Flutter/App.framework
+ios/Flutter/App.podspec
+ios/Pods/
+ios/.last_build_id
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+/ServiceDevice.pa

@@ -250,7 +250,7 @@ class _SalesHistoryScreenState extends ConsumerState<SalesHistoryScreen> {
                   ),
                 ),
                 _PaginationButton(
-                  onPressed: _nextPage,
+                  onPressed: historyAsync.whenOrNull(data: (items) => items.length >= _limit ? _nextPage : null),
                   icon: Icons.chevron_right_rounded,
                   label: 'Next',
                   isForward: true,

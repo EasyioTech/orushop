@@ -1,4 +1,5 @@
 import '../database/database_helper.dart';
+import '../database/table_constants.dart';
 import '../models/refund.dart';
 
 class RefundRepository {
@@ -6,13 +7,13 @@ class RefundRepository {
 
   Future<int> create(Refund refund) async {
     final db = await _dbHelper.database;
-    return db.insert('refunds', refund.toMap());
+    return db.insert(TableConstants.refunds, refund.toMap());
   }
 
   Future<Refund?> getById(int id) async {
     final db = await _dbHelper.database;
     final result = await db.query(
-      'refunds',
+      TableConstants.refunds,
       where: 'id = ?',
       whereArgs: [id],
     );
@@ -23,7 +24,7 @@ class RefundRepository {
   Future<List<Refund>> getBySaleId(int saleId) async {
     final db = await _dbHelper.database;
     final result = await db.query(
-      'refunds',
+      TableConstants.refunds,
       where: 'saleId = ?',
       whereArgs: [saleId],
       orderBy: 'createdAt DESC',
@@ -34,7 +35,7 @@ class RefundRepository {
   Future<List<Refund>> getByStatus(String status) async {
     final db = await _dbHelper.database;
     final result = await db.query(
-      'refunds',
+      TableConstants.refunds,
       where: 'status = ?',
       whereArgs: [status],
       orderBy: 'createdAt DESC',
@@ -45,7 +46,7 @@ class RefundRepository {
   Future<List<Refund>> getAll({int limit = 100, int offset = 0}) async {
     final db = await _dbHelper.database;
     final result = await db.query(
-      'refunds',
+      TableConstants.refunds,
       orderBy: 'createdAt DESC',
       limit: limit,
       offset: offset,
@@ -56,7 +57,7 @@ class RefundRepository {
   Future<double> getTotalRefundedAmount(DateTime start, DateTime end) async {
     final db = await _dbHelper.database;
     final result = await db.rawQuery(
-      'SELECT SUM(refundAmount) as total FROM refunds WHERE createdAt BETWEEN ? AND ? AND status = ?',
+      'SELECT SUM(refundAmount) as total FROM ${TableConstants.refunds} WHERE createdAt BETWEEN ? AND ? AND status = ?',
       [start.toIso8601String(), end.toIso8601String(), 'approved'],
     );
     final total = result.first['total'] as double?;
@@ -66,7 +67,7 @@ class RefundRepository {
   Future<int> update(Refund refund) async {
     final db = await _dbHelper.database;
     return db.update(
-      'refunds',
+      TableConstants.refunds,
       refund.toMap(),
       where: 'id = ?',
       whereArgs: [refund.id],
@@ -76,7 +77,7 @@ class RefundRepository {
   Future<int> delete(int id) async {
     final db = await _dbHelper.database;
     return db.delete(
-      'refunds',
+      TableConstants.refunds,
       where: 'id = ?',
       whereArgs: [id],
     );
