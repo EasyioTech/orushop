@@ -9,6 +9,7 @@ import 'package:orushops/features/onboarding/models/shop_models.dart';
 import 'package:orushops/core/repositories/owner_repository.dart';
 import 'package:orushops/core/repositories/owner_provider.dart';
 import 'package:orushops/core/repositories/category_repository.dart';
+import 'package:orushops/core/services/shop_catalog_service.dart';
 
 
 class OnboardingException implements Exception {
@@ -67,6 +68,7 @@ class OnboardingNotifier extends StateNotifier<OnboardingState> {
   final RevenueCatService _revenueCatService;
   final OwnerRepository _ownerRepository;
   final CategoryRepository _categoryRepository;
+  final ShopCatalogService _catalogService;
 
   OnboardingNotifier(
     this._prefs,
@@ -74,6 +76,7 @@ class OnboardingNotifier extends StateNotifier<OnboardingState> {
     this._revenueCatService,
     this._ownerRepository,
     this._categoryRepository,
+    this._catalogService,
   ) : super(OnboardingState()) {
     if (_prefs != null) _loadOnboarding();
   }
@@ -277,6 +280,15 @@ class OnboardingNotifier extends StateNotifier<OnboardingState> {
           'Could not set up your product categories. Please try again.',
         );
       }
+
+      // Sync shop-type specific catalog from Cloudflare
+      try {
+        await _catalogService.syncCatalog(state.shopDetails!.shopType);
+      } catch (e) {
+        debugPrint('Failed to sync catalog from Cloudflare: $e');
+        // We don't throw here to allow user to proceed if catalog sync fails,
+        // but it will be retried later or work with whatever is local.
+      }
     }
 
     state = state.copyWith(isCompleted: true);
@@ -312,7 +324,8 @@ final onboardingProvider = StateNotifierProvider<OnboardingNotifier, OnboardingS
   final revenueCatService = RevenueCatService.instance;
   final ownerRepository = ref.watch(ownerRepositoryProvider);
   final categoryRepository = ref.watch(categoryRepositoryProvider);
+  final catalogService = ref.watch(shopCatalogServiceProvider);
 
-  return OnboardingNotifier(prefs, authService, revenueCatService, ownerRepository, categoryRepository);
+  return OnboardingNotifier(prefs, authService, revenueCatService, ownerRepository, categoryRepository, catalogService);
 });
 

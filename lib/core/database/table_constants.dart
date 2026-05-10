@@ -22,4 +22,7 @@ class TableConstants {
 
   // Variants (v10)
   static const String productVariants = 'product_variants';
+
+  // Global Catalog Lookup (v11)
+  static const String globalCatalog = 'global_catalog_lookup';
 }

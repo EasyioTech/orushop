@@ -11,6 +11,7 @@ import 'migrations/migration_v7.dart';
 import 'migrations/migration_v8.dart';
 import 'migrations/migration_v9.dart';
 import 'migrations/migration_v10.dart';
+import 'migrations/migration_v11.dart';
 import 'table_constants.dart';
 
 class DatabaseHelper {
@@ -42,7 +43,7 @@ class DatabaseHelper {
       final path = join(dbPath, 'OruShops.db');
       return await openDatabase(
         path,
-        version: 10,
+        version: 11,
         onCreate: _onCreate,
         onUpgrade: _onUpgrade,
         onOpen: _onOpen,
@@ -62,6 +63,7 @@ class DatabaseHelper {
     await MigrationV8.up(db);
     await MigrationV9.up(db);
     await MigrationV10.up(db);
+    await MigrationV11.up(db);
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -82,6 +84,7 @@ class DatabaseHelper {
     if (oldVersion < 8) await MigrationV8.up(db);
     if (oldVersion < 9) await MigrationV9.up(db);
     if (oldVersion < 10) await MigrationV10.up(db);
+    if (oldVersion < 11) await MigrationV11.up(db);
   }
 
   Future<void> _onOpen(Database db) async {

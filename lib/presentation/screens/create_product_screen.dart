@@ -18,6 +18,7 @@ import 'package:orushops/features/onboarding/models/shop_catalog_data.dart';
 import 'package:orushops/features/onboarding/models/shop_models.dart';
 import 'package:orushops/providers/shop_provider.dart';
 import 'package:orushops/providers/analytics_provider.dart';
+import 'package:orushops/core/services/shop_catalog_service.dart';
 
 class CreateProductScreen extends ConsumerStatefulWidget {
   const CreateProductScreen({super.key});
@@ -74,6 +75,8 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
   final Map<String, _VariantOverride> _variantOverrides = {};
   final _newSizeController = TextEditingController();
   final _newColorController = TextEditingController();
+  
+  List<CatalogItem> _catalogSuggestions = [];
 
   @override
   void dispose() {
@@ -112,6 +115,8 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
       _loadCategories();
     });
 
+    _nameController.addListener(_onNameChanged);
+
     _skuController.addListener(() {
       final sku = _skuController.text.trim();
       if (sku.length >= 8) {
@@ -146,6 +151,47 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
       if (_isLoose) _isService = false;
       if (_isService) _isLoose = false;
     });
+  }
+
+  void _onNameChanged() {
+    final query = _nameController.text.trim();
+    if (query.length < 2) {
+      if (_catalogSuggestions.isNotEmpty) {
+        setState(() => _catalogSuggestions = []);
+      }
+      return;
+    }
+
+    _searchCatalog(query);
+  }
+
+  Future<void> _searchCatalog(String query) async {
+    final shopType = ref.read(shopTypeProvider);
+    final service = ref.read(shopCatalogServiceProvider);
+    
+    final results = await service.searchLocal(query, shopType);
+    if (!mounted) return;
+    
+    setState(() {
+      _catalogSuggestions = results;
+    });
+  }
+
+  void _onSuggestionSelected(CatalogItem item) {
+    setState(() {
+      _nameController.text = item.name;
+      _catalogSuggestions = [];
+      
+      if (item.category != null) {
+        final matchingCat = _categories.firstWhere(
+          (c) => c.name.toLowerCase() == item.category!.toLowerCase(),
+          orElse: () => _categories.first,
+        );
+        _onCategoryChanged(matchingCat);
+      }
+    });
+    HapticFeedback.selectionClick();
+    FocusScope.of(context).unfocus();
   }
 
   Future<void> _lookupGlobalProduct(String sku) async {
@@ -582,6 +628,34 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
               ],
             ),
           ),
+          if (_catalogSuggestions.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4)),
+                ],
+              ),
+              child: ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                padding: EdgeInsets.zero,
+                itemCount: _catalogSuggestions.length,
+                separatorBuilder: (_, __) => Divider(height: 1, color: Colors.grey.shade100),
+                itemBuilder: (context, index) {
+                  final item = _catalogSuggestions[index];
+                  return ListTile(
+                    leading: const Icon(CupertinoIcons.sparkles, color: AppTheme.primaryColor, size: 20),
+                    title: Text(item.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+                    subtitle: item.category != null ? Text(item.category!) : null,
+                    onTap: () => _onSuggestionSelected(item),
+                  );
+                },
+              ),
+            ),
+          ],
           const SizedBox(height: 24),
           Row(
             children: [
