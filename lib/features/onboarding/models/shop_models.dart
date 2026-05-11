@@ -315,7 +315,8 @@ enum ProductTemplate {
   variantMatrix,    // 3 — clothing, footwear with size/color
   serialized,       // 4 — electronics with serial/warranty
   bulkUom,          // 5 — grocery/agri sold by weight/volume (loose)
-  serviceLabor,     // 6 — haircut, repair, consultation (no stock)
+  batchMultiUom,    // 6 — pharma/bulk with both batch and unit conversion (e.g. Strip vs Tablet)
+  serviceLabor,     // 7 — haircut, repair, consultation (no stock)
 }
 
 /// Per-shop-type product field configuration.
@@ -338,6 +339,11 @@ class ProductFieldConfig {
   final bool hasWarranty;
   final bool hasRecipe;
   final bool hasIsbn;          // Books
+  final bool hasReorderLevel;
+  final bool hasPackagingUnit;
+  final bool hasServiceDuration;
+  final bool hasStaffCommission;
+
   final String defaultUnit;
   final List<String> unitOptions;
   final double defaultTaxRate;
@@ -366,6 +372,11 @@ class ProductFieldConfig {
     this.hasWarranty = false,
     this.hasRecipe = false,
     this.hasIsbn = false,
+    this.hasReorderLevel = true,
+    this.hasPackagingUnit = false,
+    this.hasServiceDuration = false,
+    this.hasStaffCommission = false,
+
     this.defaultUnit = 'Piece',
     this.unitOptions = const ['Piece'],
     this.defaultTaxRate = 18.0,
@@ -384,6 +395,8 @@ class ProductFieldConfig {
     defaultUnit: 'Session',
     unitOptions: ['Session', 'Hour', 'Visit', 'Job'],
     hasMrp: false,
+    hasServiceDuration: true,
+    hasStaffCommission: true,
     template: ProductTemplate.serviceLabor,
   );
 }

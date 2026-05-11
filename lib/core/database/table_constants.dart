@@ -25,4 +25,8 @@ class TableConstants {
 
   // Global Catalog Lookup (v11)
   static const String globalCatalog = 'global_catalog_lookup';
+
+  // Procurement Templates (v12)
+  static const String inventoryStandard = 'inventory_standard';
+  static const String inventorySerialized = 'inventory_serialized';
 }

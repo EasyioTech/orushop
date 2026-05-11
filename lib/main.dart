@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/cupertino.dart';
 import 'firebase_options.dart';
 
@@ -39,6 +40,18 @@ void main() async {
 
   final prefs = results[1] as SharedPreferences;
   initializeSharedPrefs(prefs);
+
+  // Initialize Crashlytics with collection disabled by default
+  // Collection is enabled only if user has granted analytics consent
+  await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(false);
+
+  // Set custom error handler to respect user consent
+  FlutterError.onError = (errorDetails) {
+    final hasAnalyticsConsent = prefs.getBool('analytics_consent_v1') ?? false;
+    if (hasAnalyticsConsent) {
+      FirebaseCrashlytics.instance.recordFlutterError(errorDetails);
+    }
+  };
 
   runApp(
     ProviderScope(

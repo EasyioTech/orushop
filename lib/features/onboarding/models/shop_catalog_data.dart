@@ -24,10 +24,11 @@ class ShopCatalog {
           hasExpiryDate: true, hasBatchNumber: true, hasMrp: true,
           hasHsnCode: true, hasTaxRate: true, hasBrand: true,
           hasManufacturer: true, hasSchedule: true, hasUnit: true,
+          hasPackagingUnit: true, hasReorderLevel: true,
           isLoose: true,
           defaultUnit: 'Strip', unitOptions: ['Strip', 'Box', 'Bottle', 'Piece'],
           defaultTaxRate: 12.0,
-          template: ProductTemplate.batchExpiry,
+          template: ProductTemplate.batchMultiUom,
         ),
       ),
       ShopCategory(
@@ -37,10 +38,11 @@ class ShopCatalog {
           hasExpiryDate: true, hasBatchNumber: true, hasMrp: true,
           hasHsnCode: true, hasTaxRate: true, hasBrand: true,
           hasManufacturer: true, hasSchedule: true, hasUnit: true,
+          hasPackagingUnit: true, hasReorderLevel: true,
           isLoose: true,
           defaultUnit: 'Bottle', unitOptions: ['Bottle', 'Sachet'],
           defaultTaxRate: 12.0,
-          template: ProductTemplate.batchExpiry,
+          template: ProductTemplate.batchMultiUom,
         ),
       ),
       ShopCategory(
@@ -426,10 +428,11 @@ class ShopCatalog {
         productFields: ProductFieldConfig(
           hasExpiryDate: true, hasMrp: true, hasTaxRate: true, hasBrand: true,
           hasUnit: true, hasRecipe: true,
+          hasPackagingUnit: true, hasReorderLevel: true,
           isLoose: true,
           defaultUnit: 'Piece', unitOptions: ['Piece', 'Loaf', 'Pack', 'Dozen'],
           defaultTaxRate: 5.0,
-          template: ProductTemplate.bulkUom,
+          template: ProductTemplate.batchMultiUom,
         ),
       ),
       ShopCategory(

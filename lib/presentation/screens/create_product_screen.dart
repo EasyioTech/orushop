@@ -51,6 +51,12 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
   final _isbnController = TextEditingController();
   final _colorController = TextEditingController();
   final _sizeController = TextEditingController();
+  final _reorderLevelController = TextEditingController(text: '5');
+  final _packagingUnitController = TextEditingController();
+  final _conversionFactorController = TextEditingController(text: '1');
+  final _serviceDurationController = TextEditingController();
+  final _staffCommissionController = TextEditingController();
+
 
   final _scannerController = MobileScannerController();
   final _imagePicker = ImagePicker();
@@ -67,6 +73,7 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
   int _currentStep = 0;
   File? _productImage;
   String? _externalImageUrl;
+  ProductTemplate? _templateOverride;
 
   // Variant matrix state
   final List<String> _variantSizes = [];
@@ -101,6 +108,12 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
     _isbnController.dispose();
     _colorController.dispose();
     _sizeController.dispose();
+    _reorderLevelController.dispose();
+    _packagingUnitController.dispose();
+    _conversionFactorController.dispose();
+    _serviceDurationController.dispose();
+    _staffCommissionController.dispose();
+
     _scannerController.dispose();
     _newSizeController.dispose();
     _newColorController.dispose();
@@ -148,6 +161,11 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
       _expiryDate = null;
       _isLoose = fields.isLoose;
       _isService = fields.isService;
+      _reorderLevelController.text = '5'; // default
+      _packagingUnitController.text = fields.hasPackagingUnit ? 'Box' : '';
+      _conversionFactorController.text = '1';
+      _templateOverride = null;
+
       if (_isLoose) _isService = false;
       if (_isService) _isLoose = false;
     });
@@ -196,20 +214,71 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
 
   Future<void> _lookupGlobalProduct(String sku) async {
     final catalog = ref.read(globalCatalogServiceProvider);
-    final product = await catalog.searchBySKU(sku);
-    if (product != null && mounted && _nameController.text.isEmpty) {
+    final shopType = ref.read(shopDetailsProvider)?.shopType;
+    final globalProduct = await catalog.searchBySKU(sku, shopType?.name);
+    if (globalProduct != null && mounted && _nameController.text.isEmpty) {
       setState(() {
-        _nameController.text = product.name;
-        _priceController.text = product.typicalPrice.toString();
-        _costController.text = product.typicalCost.toString();
-        _externalImageUrl = product.imageUrl;
+        _nameController.text = globalProduct.name;
+        _priceController.text = globalProduct.typicalPrice.toString();
+        _costController.text = (globalProduct.typicalCost) > 0 ? globalProduct.typicalCost.toString() : '';
+        _wholesalePriceController.text = (globalProduct.wholesalePrice ?? 0) > 0 ? globalProduct.wholesalePrice.toString() : '';
+        _brandController.text = globalProduct.brand ?? '';
+        _skuController.text = globalProduct.sku;
+        _isService = globalProduct.isService;
+        _isLoose = globalProduct.isLoose;
+        _externalImageUrl = globalProduct.imageUrl;
+        
+        // Auto-fill new 29-column fields
+        _mrpController.text = (globalProduct.mrp ?? 0) > 0 ? globalProduct.mrp.toString() : '';
+        _hsnController.text = globalProduct.hsnCode ?? '';
+        _taxController.text = (globalProduct.taxRate ?? 0) > 0 ? globalProduct.taxRate.toString() : '';
+        _manufacturerController.text = globalProduct.manufacturer ?? '';
+        _initialQtyController.text = (globalProduct.initialStock ?? 0).toString();
+        _reorderLevelController.text = (globalProduct.reorderLevel ?? 5).toString();
+        _selectedUnit = globalProduct.uom ?? 'Piece';
+        _packagingUnitController.text = globalProduct.packagingUnit ?? '';
+        _conversionFactorController.text = (globalProduct.conversionFactor ?? 1).toString();
+        _batchNumberController.text = globalProduct.batchNumber ?? '';
+        _serialNumberController.text = globalProduct.serialNumber ?? '';
+        _imeiController.text = globalProduct.imeiNumber ?? '';
+        _warrantyController.text = globalProduct.warrantyPeriod ?? '';
+        _scheduleController.text = globalProduct.medicineSchedule ?? '';
+        _recipeController.text = globalProduct.recipeInstructions ?? '';
+        _weightController.text = globalProduct.weightVolume ?? '';
+        _isbnController.text = globalProduct.isbnNumber ?? '';
+        
+        if (globalProduct.expiryDate != null) {
+          try {
+            _expiryDate = DateTime.parse(globalProduct.expiryDate!);
+          } catch (_) {}
+        }
+
+        // Use the template from cloud if available
+        if (globalProduct.template != null) {
+          _templateOverride = ProductTemplate.values.firstWhere(
+            (e) => e.name == globalProduct.template,
+            orElse: () => ProductTemplate.standardRetail,
+          );
+        }
+
         final matchingCat = _categories.firstWhere(
-          (c) => c.name.toLowerCase() == product.category.toLowerCase(),
+          (c) => c.name.toLowerCase() == (globalProduct.category).toLowerCase() ||
+                 (globalProduct.template != null && c.productFields.template.name == globalProduct.template),
           orElse: () => _categories.first,
         );
         _onCategoryChanged(matchingCat);
+        
+        // Re-apply override after _onCategoryChanged reset it
+        if (globalProduct.template != null) {
+          _templateOverride = ProductTemplate.values.firstWhere(
+            (e) => e.name == globalProduct.template,
+            orElse: () => ProductTemplate.standardRetail,
+          );
+        }
+
         if (_currentStep == 1) _currentStep = 2; // Auto-advance
       });
+
       HapticFeedback.mediumImpact();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -218,7 +287,7 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
               children: [
                 const Icon(CupertinoIcons.sparkles, color: Colors.white, size: 20),
                 const SizedBox(width: 12),
-                Text('Found: ${product.name}'),
+                Text('Found: ${globalProduct.name}'),
               ],
             ),
             duration: const Duration(seconds: 2),
@@ -303,6 +372,14 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
         imagePath: imagePath,
         createdAt: now,
         updatedAt: now,
+        template: _effectiveTemplate,
+        reorderLevel: double.tryParse(_reorderLevelController.text),
+        packagingUnit: _packagingUnitController.text.trim().isEmpty ? null : _packagingUnitController.text.trim(),
+        conversionFactor: double.tryParse(_conversionFactorController.text),
+        serviceDuration: int.tryParse(_serviceDurationController.text),
+        staffCommission: double.tryParse(_staffCommissionController.text),
+        warrantyExpiry: _warrantyController.text.trim().isEmpty ? null : _warrantyController.text.trim(),
+        status: 'Available',
         expiryDate: _expiryDate?.toIso8601String(),
         batchNumber: _batchNumberController.text.trim().isEmpty ? null : _batchNumberController.text.trim(),
         isService: _isService,
@@ -311,13 +388,10 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
         costPrice: double.tryParse(_costController.text),
       );
 
-      final dbHelper = DatabaseHelper();
-      final db = await dbHelper.database;
-
+      final db = await DatabaseHelper().database;
       await db.transaction((txn) async {
-        final productMap = product.toMap();
-        productMap.remove('id');
-        final productId = await txn.insert(TableConstants.products, productMap);
+        final productRepo = ref.read(productRepositoryProvider);
+        final productId = await productRepo.create(product, txn: txn);
 
         if (_isVariantTemplate && _variantOverrides.isNotEmpty) {
           // Insert variant rows; stock is tracked in product_variants, not product_batches
@@ -340,6 +414,8 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
               price: varPrice,
               stock: varStock,
               costPrice: cost > 0 ? cost : null,
+              mrp: double.tryParse(ov.mrp.text),
+              barcode: ov.barcode.text.trim().isEmpty ? null : ov.barcode.text.trim(),
               createdAt: now,
               updatedAt: now,
             );
@@ -351,6 +427,10 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
               .fold<double>(0, (s, ov) => s + (double.tryParse(ov.stock.text) ?? 0));
           await txn.rawUpdate(
             'UPDATE products SET quantity = ? WHERE id = ?',
+            [totalStock, productId],
+          );
+          await txn.rawUpdate(
+            'UPDATE inventory_standard SET quantity = ? WHERE productId = ?',
             [totalStock, productId],
           );
         } else if (initialQty > 0) {
@@ -506,8 +586,14 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
     );
   }
 
-  bool get _isVariantTemplate =>
-      _selectedCategory?.productFields.template == ProductTemplate.variantMatrix;
+  ProductTemplate get _effectiveTemplate =>
+      _templateOverride ?? _selectedCategory?.productFields.template ?? ProductTemplate.standardRetail;
+
+  bool get _isVariantTemplate => _effectiveTemplate == ProductTemplate.variantMatrix;
+
+  bool get _isBatchTemplate => 
+      _effectiveTemplate == ProductTemplate.batchExpiry || 
+      _effectiveTemplate == ProductTemplate.batchMultiUom;
 
   int get _totalSteps => _isVariantTemplate ? 5 : 4;
 
@@ -643,7 +729,7 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
                 physics: const NeverScrollableScrollPhysics(),
                 padding: EdgeInsets.zero,
                 itemCount: _catalogSuggestions.length,
-                separatorBuilder: (_, __) => Divider(height: 1, color: Colors.grey.shade100),
+                separatorBuilder: (_, _) => Divider(height: 1, color: Colors.grey.shade100),
                 itemBuilder: (context, index) {
                   final item = _catalogSuggestions[index];
                   return ListTile(
@@ -840,7 +926,7 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
               ],
             ),
           ),
-          if (_selectedCategory?.productFields.hasExpiryDate ?? false) ...[
+          if ((_selectedCategory?.productFields.hasExpiryDate ?? false) || _isBatchTemplate) ...[
             const SizedBox(height: 24),
             _buildBigCard(
               child: ListTile(
@@ -852,7 +938,7 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
               ),
             ),
           ],
-          if (_selectedCategory?.productFields.hasBatchNumber ?? false) ...[
+          if ((_selectedCategory?.productFields.hasBatchNumber ?? false) || _isBatchTemplate) ...[
             const SizedBox(height: 16),
             _buildBigCard(
               child: Column(
@@ -1146,7 +1232,6 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
   }
 
   Widget _buildStepVariants() {
-    final basePrice = double.tryParse(_priceController.text) ?? 0;
 
     Widget chipInput({
       required String label,
@@ -1284,10 +1369,14 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
             ...combos.map((combo) {
               final (size, color) = combo;
               final key = '$size|$color';
+              final baseMrp = double.tryParse(_mrpController.text) ?? 0;
+              final basePrice = double.tryParse(_priceController.text) ?? 0;
               final ov = _variantOverrides.putIfAbsent(key, () => _VariantOverride(
                 price: basePrice > 0 ? basePrice.toStringAsFixed(0) : '',
+                mrp: baseMrp > 0 ? baseMrp.toStringAsFixed(0) : '',
                 stock: '0',
                 sku: '',
+                barcode: '',
               ));
               final label = [size, color].where((s) => s.isNotEmpty).join(' / ');
               return Padding(
@@ -1313,7 +1402,21 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
                               ],
                             ),
                           ),
-                          const SizedBox(width: 16),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('MRP ₹', style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                                TextField(
+                                  controller: ov.mrp,
+                                  keyboardType: TextInputType.number,
+                                  decoration: const InputDecoration(border: UnderlineInputBorder(), hintText: '0'),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 12),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1327,8 +1430,30 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
                               ],
                             ),
                           ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            flex: 2,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Barcode', style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                                TextField(
+                                  controller: ov.barcode,
+                                  decoration: const InputDecoration(
+                                    border: UnderlineInputBorder(),
+                                    hintText: 'Scan/Type',
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                           const SizedBox(width: 16),
                           Expanded(
+                            flex: 3,
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -1444,13 +1569,19 @@ class _VariantOverride {
   final TextEditingController price;
   final TextEditingController stock;
   final TextEditingController sku;
-  _VariantOverride({String? price, String? stock, String? sku})
+  final TextEditingController mrp;
+  final TextEditingController barcode;
+  _VariantOverride({String? price, String? stock, String? sku, String? mrp, String? barcode})
       : price = TextEditingController(text: price ?? ''),
         stock = TextEditingController(text: stock ?? ''),
-        sku = TextEditingController(text: sku ?? '');
+        sku = TextEditingController(text: sku ?? ''),
+        mrp = TextEditingController(text: mrp ?? ''),
+        barcode = TextEditingController(text: barcode ?? '');
   void dispose() {
     price.dispose();
     stock.dispose();
     sku.dispose();
+    mrp.dispose();
+    barcode.dispose();
   }
 }

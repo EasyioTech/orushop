@@ -5,7 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:sqflite/sqflite.dart';
 import '../database/database_helper.dart';
 import '../database/table_constants.dart';
-import '../features/onboarding/models/shop_models.dart';
+import '../../features/onboarding/models/shop_models.dart';
 
 final shopCatalogServiceProvider = Provider((ref) => ShopCatalogService(ref.watch(databaseHelperProvider)));
 final databaseHelperProvider = Provider((ref) => DatabaseHelper());
@@ -13,11 +13,13 @@ final databaseHelperProvider = Provider((ref) => DatabaseHelper());
 class CatalogItem {
   final String name;
   final String? category;
+  final String? sku;
   final ShopType shopType;
 
   CatalogItem({
     required this.name, 
     this.category,
+    this.sku,
     required this.shopType,
   });
 
@@ -25,6 +27,7 @@ class CatalogItem {
     return {
       'name': name,
       'category': category,
+      'sku': sku,
       'shopType': shopType.name,
     };
   }
@@ -33,6 +36,7 @@ class CatalogItem {
     return CatalogItem(
       name: map['name'],
       category: map['category'],
+      sku: map['sku'],
       shopType: ShopType.values.firstWhere(
         (e) => e.name == map['shopType'],
         orElse: () => ShopType.other,
@@ -41,58 +45,49 @@ class CatalogItem {
   }
 }
 
+
 class ShopCatalogService {
   final DatabaseHelper _dbHelper;
-  static const String _baseUrl = 'https://catalog.retaildost.workers.dev'; // Placeholder
+  static const String _baseUrl = 'https://catalog-api.gamingcristy19.workers.dev'; 
 
   ShopCatalogService(this._dbHelper);
 
   /// Downloads the catalog for a specific shop type and stores it locally.
   Future<void> syncCatalog(ShopType shopType) async {
     try {
-      debugPrint('📥 Syncing catalog for ${shopType.name} from Cloudflare...');
-      
-      // Simulating a fetch from Cloudflare. 
-      // In a real app, this URL would point to a worker or R2 bucket.
-      final response = await http.get(Uri.parse('$_baseUrl/catalog?type=${shopType.name}'));
-      
+      debugPrint('📥 Syncing full catalog for ${shopType.name} from Cloudflare...');
+
+      final response = await http.get(Uri.parse('$_baseUrl/catalog?type=${shopType.name}&limit=500'));
+
       if (response.statusCode == 200) {
-        final List<dynamic> data = json.decode(response.body);
-        final db = await _dbHelper.database;
+        final dynamic decoded = json.decode(response.body);
 
-        await db.transaction((txn) async {
-          // Clear existing data for THIS shop type before syncing
-          await txn.delete(
-            TableConstants.globalCatalog, 
-            where: 'shopType = ?', 
-            whereArgs: [shopType.name],
-          );
-          
-          final batch = txn.batch();
-          for (var item in data) {
-            batch.insert(TableConstants.globalCatalog, {
-              'name': item['n'] ?? item['name'],
-              'category': item['c'] ?? item['category'],
-              'shopType': shopType.name,
-            });
-          }
-          await batch.commit(noResult: true);
-        });
+        // Handle new API response format: {success, data, count, total, limit, offset}
+        List<Map<String, dynamic>> data = [];
+        if (decoded is Map && decoded.containsKey('data')) {
+          data = List<Map<String, dynamic>>.from(decoded['data'] ?? []);
+        } else if (decoded is List) {
+          // Fallback for old format (array)
+          data = decoded.cast<Map<String, dynamic>>();
+        }
 
-        debugPrint('✅ Successfully synced ${data.length} products for ${shopType.name}');
+        if (data.isNotEmpty) {
+          debugPrint('✅ Received ${data.length} items. Seeding database...');
+          await _dbHelper.seedDatabase(data, shopType.name);
+          debugPrint('✅ Successfully synced and seeded ${data.length} products for ${shopType.name}');
+        } else {
+          debugPrint('⚠️ No catalog data returned for ${shopType.name}');
+        }
       } else {
-        // If the URL fails (which it will since it's a placeholder), 
-        // we'll log it but not crash onboarding if we want a silent background fetch.
-        // However, the user wants it at onboarding, so we should handle errors.
         throw Exception('Failed to download catalog: ${response.statusCode}');
       }
     } catch (e) {
       debugPrint('⚠️ Catalog Sync Error: $e');
-      // For demo purposes, if it fails, we might want to seed some mock data 
-      // so the user can see the "Fast Lookup" working.
+      // Seed mock data in debug mode only for testing
       if (kDebugMode) {
         await _seedMockData(shopType);
       }
+      // In production, silently continue — catalog will be empty but app won't crash
     }
   }
 
@@ -134,10 +129,11 @@ class ShopCatalogService {
     final db = await _dbHelper.database;
     final List<Map<String, dynamic>> maps = await db.query(
       TableConstants.globalCatalog,
-      where: 'shopType = ? AND name LIKE ?',
-      whereArgs: [shopType.name, '%$query%'],
+      where: 'shopType = ? AND (name LIKE ? OR sku LIKE ?)',
+      whereArgs: [shopType.name, '%$query%', '%$query%'],
       limit: 20,
     );
+
 
     return List.generate(maps.length, (i) {
       return CatalogItem.fromMap(maps[i]);

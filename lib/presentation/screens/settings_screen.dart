@@ -10,6 +10,9 @@ import '../../core/database/database_helper.dart';
 import 'package:orushops/providers/products_provider.dart';
 import '../../core/repositories/owner_repository.dart';
 import '../../core/repositories/owner_provider.dart';
+import '../../core/services/global_catalog_service.dart';
+import '../../core/services/compliance_service.dart';
+import '../../core/services/auth_service.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -125,7 +128,37 @@ class SettingsScreen extends ConsumerWidget {
                     ),
                   ],
                 ),
-                // Procurement
+                // Privacy & Compliance
+                _SettingsSection(
+                  title: 'Privacy & Compliance',
+                  children: [
+                    _ActionButton(
+                      icon: Icons.privacy_tip_rounded,
+                      label: 'Privacy Policy',
+                      subtitle: 'View our privacy policy',
+                      onTap: () => ref.read(complianceServiceProvider).launchPrivacyPolicy(),
+                    ),
+                    _ActionButton(
+                      icon: Icons.description_rounded,
+                      label: 'Terms of Service',
+                      subtitle: 'View terms and conditions',
+                      onTap: () => ref.read(complianceServiceProvider).launchTermsOfService(),
+                    ),
+                    _SwitchSettingTile(
+                      icon: Icons.analytics_rounded,
+                      label: 'Analytics & Crash Reports',
+                      subtitle: 'Help us improve by sharing anonymous data',
+                      value: ref.watch(complianceServiceProvider).hasAnalyticsConsent,
+                      onChanged: (val) => ref.read(complianceServiceProvider).acceptAnalytics(val),
+                    ),
+                    _ActionButton(
+                      icon: Icons.delete_outline_rounded,
+                      label: 'Request Data Deletion',
+                      subtitle: 'Delete all your data from our servers',
+                      onTap: () => _showDataDeletionDialog(context, ref),
+                    ),
+                  ],
+                ),
                 // Data Management
                 _SettingsSection(
                   title: 'Data Management',
@@ -290,6 +323,72 @@ class SettingsScreen extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  void _showDataDeletionDialog(BuildContext context, WidgetRef ref) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Your Data?'),
+        content: const Text(
+          'This will request permanent deletion of all your data from our servers including your account, products, sales records, and khata. This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppTheme.errorColor),
+            onPressed: () {
+              Navigator.pop(context);
+              _performDataDeletion(context, ref);
+            },
+            child: const Text('Delete My Data'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _performDataDeletion(BuildContext context, WidgetRef ref) async {
+    final scaffold = ScaffoldMessenger.of(context);
+    final complianceService = ref.read(complianceServiceProvider);
+    final authState = ref.read(authStateProvider);
+
+    scaffold.showSnackBar(const SnackBar(content: Text('Requesting data deletion...')));
+
+    try {
+      final user = authState.value;
+      if (user == null) {
+        scaffold.showSnackBar(
+          const SnackBar(
+            content: Text('Error: Not authenticated'),
+            backgroundColor: AppTheme.errorColor,
+          ),
+        );
+        return;
+      }
+
+      await complianceService.requestDataDeletion(user.uid);
+
+      scaffold.showSnackBar(
+        const SnackBar(
+          content: Text('Data deletion request submitted. You will be logged out.'),
+          backgroundColor: AppTheme.successColor,
+          duration: Duration(seconds: 2),
+        ),
+      );
+
+      await Future.delayed(const Duration(milliseconds: 500));
+    } catch (e) {
+      scaffold.showSnackBar(
+        SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
+    }
   }
 }
 
@@ -898,7 +997,7 @@ class _FactoryResetButton extends ConsumerWidget {
     try {
       await DatabaseHelper().clearAllData();
       ref.invalidate(productsProvider);
-      
+
       scaffold.showSnackBar(
         const SnackBar(
           content: Text("All data cleared successfully!"),
@@ -906,6 +1005,74 @@ class _FactoryResetButton extends ConsumerWidget {
           duration: Duration(seconds: 1),
         ),
       );
+    } catch (e) {
+      scaffold.showSnackBar(
+        SnackBar(
+          content: Text("Error: $e"),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
+    }
+  }
+
+  void _showDataDeletionDialog(BuildContext context, WidgetRef ref) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Delete Your Data?"),
+        content: const Text(
+          "This will request permanent deletion of all your data from our servers including your account, products, sales records, and khata. This action cannot be undone.",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppTheme.errorColor),
+            onPressed: () {
+              Navigator.pop(context);
+              _performDataDeletion(context, ref);
+            },
+            child: const Text("Delete My Data"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _performDataDeletion(BuildContext context, WidgetRef ref) async {
+    final scaffold = ScaffoldMessenger.of(context);
+    final complianceService = ref.read(complianceServiceProvider);
+    final authState = ref.read(authStateProvider);
+
+    scaffold.showSnackBar(const SnackBar(content: Text("Requesting data deletion...")));
+
+    try {
+      final user = authState.value;
+      if (user == null) {
+        scaffold.showSnackBar(
+          const SnackBar(
+            content: Text("Error: Not authenticated"),
+            backgroundColor: AppTheme.errorColor,
+          ),
+        );
+        return;
+      }
+
+      await complianceService.requestDataDeletion(user.uid);
+
+      scaffold.showSnackBar(
+        const SnackBar(
+          content: Text("Data deletion request submitted. You will be logged out."),
+          backgroundColor: AppTheme.successColor,
+          duration: Duration(seconds: 2),
+        ),
+      );
+
+      // Add small delay to show the snackbar before logout
+      await Future.delayed(const Duration(milliseconds: 500));
+      // Logout will be handled by the auth state listener
     } catch (e) {
       scaffold.showSnackBar(
         SnackBar(
@@ -993,10 +1160,21 @@ class _SeedCatalogButton extends ConsumerWidget {
 
   Future<void> _performSeed(BuildContext context, WidgetRef ref) async {
     final scaffold = ScaffoldMessenger.of(context);
-    scaffold.showSnackBar(const SnackBar(content: Text("Seeding catalog data...")));
+    scaffold.showSnackBar(const SnackBar(content: Text("Fetching catalog data from cloud...")));
 
     try {
-      await DatabaseHelper().seedDatabase();
+      final ownerDetails = await ref.read(ownerDetailsStreamProvider.future);
+      final shopType = ownerDetails?['shopType'] ?? 'grocery_supermarket';
+      
+      final catalogData = await ref.read(globalCatalogServiceProvider).downloadCatalogForShopType(shopType);
+      
+      if (catalogData.isEmpty) {
+        scaffold.showSnackBar(const SnackBar(content: Text("Failed to download catalog or no items found for this shop type.")));
+        return;
+      }
+
+      scaffold.showSnackBar(const SnackBar(content: Text("Seeding database...")));
+      await DatabaseHelper().seedDatabase(catalogData, shopType);
       ref.invalidate(productsProvider);
 
       scaffold.showSnackBar(

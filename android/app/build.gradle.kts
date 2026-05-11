@@ -23,11 +23,17 @@ android {
     }
 
     signingConfigs {
+        getByName("debug") {
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+            storeFile = file("$rootDir/debug.keystore")
+            storePassword = "android"
+        }
         create("release") {
             keyAlias = System.getenv("KEY_ALIAS") ?: "orushops"
-            keyPassword = System.getenv("KEY_PASSWORD") ?: ""
-            storeFile = file(System.getenv("STORE_FILE") ?: "orushops-release.jks")
-            storePassword = System.getenv("STORE_PASSWORD") ?: ""
+            keyPassword = System.getenv("KEY_PASSWORD") ?: "OruShops@123"
+            storeFile = file(System.getenv("STORE_FILE") ?: "$rootDir/app/orushops-release.jks")
+            storePassword = System.getenv("STORE_PASSWORD") ?: "OruShops@123"
         }
     }
 
@@ -40,6 +46,9 @@ android {
     }
 
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("debug")
+        }
         release {
             signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = true

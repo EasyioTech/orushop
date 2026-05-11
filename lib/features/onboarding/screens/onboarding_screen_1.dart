@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orushops/core/theme/app_theme.dart';
+import 'package:orushops/providers/shared_prefs_provider.dart';
 import '../widgets/onboarding_page.dart';
 
-class OnboardingScreen1 extends StatelessWidget {
+class OnboardingScreen1 extends ConsumerWidget {
   final VoidCallback onNext;
 
   const OnboardingScreen1({
@@ -10,8 +12,68 @@ class OnboardingScreen1 extends StatelessWidget {
     required this.onNext,
   });
 
+  void _showComplianceModal(BuildContext context, WidgetRef ref) {
+    final prefs = ref.read(sharedPreferencesProvider);
+    final privacyAccepted = prefs.getBool('privacy_policy_accepted_v1') ?? false;
+    final termsAccepted = prefs.getBool('terms_of_service_accepted_v1') ?? false;
+
+    if (!privacyAccepted || !termsAccepted) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Privacy & Terms'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('To continue, you must accept our Privacy Policy and Terms of Service.'),
+                const SizedBox(height: 16),
+                CheckboxListTile(
+                  value: privacyAccepted,
+                  onChanged: privacyAccepted ? null : (_) {
+                    prefs.setBool('privacy_policy_accepted_v1', true);
+                    ref.invalidate(sharedPreferencesProvider);
+                  },
+                  title: const Text('I accept the Privacy Policy', style: TextStyle(fontSize: 13)),
+                  contentPadding: EdgeInsets.zero,
+                ),
+                CheckboxListTile(
+                  value: termsAccepted,
+                  onChanged: termsAccepted ? null : (_) {
+                    prefs.setBool('terms_of_service_accepted_v1', true);
+                    ref.invalidate(sharedPreferencesProvider);
+                  },
+                  title: const Text('I accept the Terms of Service', style: TextStyle(fontSize: 13)),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            if (!privacyAccepted || !termsAccepted)
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Later'),
+              ),
+            if (privacyAccepted && termsAccepted)
+              ElevatedButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Continue'),
+              ),
+          ],
+        ),
+      );
+    }
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _showComplianceModal(context, ref);
+    });
+
     return OnboardingPage(
       currentStep: 1,
       totalSteps: 6,

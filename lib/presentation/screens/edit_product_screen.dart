@@ -63,6 +63,8 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
   final _newVariantPriceCtrl = TextEditingController();
   final _newVariantStockCtrl = TextEditingController();
 
+  ProductTemplate? _currentTemplate;
+
   @override
   void initState() {
     super.initState();
@@ -86,8 +88,11 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
     _isbnController = TextEditingController(text: widget.product.isbn ?? '');
     _colorController = TextEditingController(text: widget.product.color ?? '');
     _sizeController = TextEditingController(text: widget.product.size ?? '');
-    _batchNumberController = TextEditingController();
-    _expiryDate = null;
+    _batchNumberController = TextEditingController(text: widget.product.batchNumber ?? '');
+    if (widget.product.expiryDate != null) {
+      _expiryDate = DateTime.tryParse(widget.product.expiryDate!);
+    }
+    _currentTemplate = widget.product.template;
 
     _selectedSubcategory = widget.product.subcategory;
     _selectedUnit = widget.product.unit;
@@ -110,20 +115,20 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
     final shopType = ref.read(shopTypeProvider);
     final catalog = ShopCatalog.forType(shopType);
     if (!mounted) return;
-    
+
     setState(() {
       _categories = catalog;
-      
+
       // Prioritize finding the exact category name in the new shop catalog
       final matchingCat = _categories.firstWhere(
         (cat) => cat.name == widget.product.category,
-        orElse: () => _categories.isNotEmpty ? _categories.first : ShopCategory(
+        orElse: () => ShopCategory(
           name: widget.product.category,
           subcategories: [],
           productFields: ProductFieldConfig.basic(),
         ),
       );
-      
+
       _selectedCategory = matchingCat;
       
       // Synchronize subcategory if applicable
@@ -147,6 +152,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
       _selectedCategory = cat;
       _selectedSubcategory = cat.subcategories.isNotEmpty ? cat.subcategories.first : null;
       _selectedUnit = fields.defaultUnit;
+      _currentTemplate = fields.template;
       _isLoose = fields.isLoose;
       _isService = fields.isService;
       if (_isLoose) _isService = false;
@@ -232,13 +238,14 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
         isLoose: _isLoose,
         wholesalePrice: double.tryParse(_wholesalePriceController.text),
         costPrice: double.tryParse(_costController.text),
+        template: _currentTemplate ?? widget.product.template,
         updatedAt: DateTime.now(),
       );
 
       await ProductCrudService().updateProduct(updated);
 
       // Persist variant changes for variantMatrix products
-      if (_selectedCategory?.productFields.template == ProductTemplate.variantMatrix) {
+      if (_currentTemplate == ProductTemplate.variantMatrix) {
         final repo = VariantRepository();
         for (final idStr in _deletedVariantIds) {
           await repo.delete(int.parse(idStr));
@@ -408,25 +415,26 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                   // ── STOCK CARD ──────────────────────────────────────────
                   _stockCard(currentStock, isOutOfStock, isLowStock),
                   const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 56,
-                    child: ElevatedButton.icon(
-                      onPressed: _showAddStockSheet,
-                      icon: const Icon(Icons.add_circle_outline_rounded, size: 22),
-                      label: const Text(
-                        'Add Stock',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primaryColor,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        elevation: 4,
-                        shadowColor: AppTheme.primaryColor.withValues(alpha: 0.3),
+                  if (widget.product.template != ProductTemplate.serviceLabor)
+                    SizedBox(
+                      width: double.infinity,
+                      height: 56,
+                      child: ElevatedButton.icon(
+                        onPressed: _showAddStockSheet,
+                        icon: const Icon(Icons.add_circle_outline_rounded, size: 22),
+                        label: const Text(
+                          'Add Stock',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primaryColor,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          elevation: 4,
+                          shadowColor: AppTheme.primaryColor.withValues(alpha: 0.3),
+                        ),
                       ),
                     ),
-                  ),
                   const SizedBox(height: 32),
 
                   // ── CATEGORY CHIPS ──────────────────────────────────────
@@ -719,14 +727,14 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
             icon: Icons.scale_outlined,
           ),
 
-          if (fields.hasBatchNumber) ...[
+          if (_currentTemplate == ProductTemplate.batchExpiry || fields.hasBatchNumber) ...[
             const SizedBox(height: 20),
             _label('Batch Number'),
             const SizedBox(height: 8),
             _field(controller: _batchNumberController, hint: 'Enter batch number', icon: Icons.layers_outlined),
           ],
 
-          if (fields.hasExpiryDate) ...[
+          if (_currentTemplate == ProductTemplate.batchExpiry || fields.hasExpiryDate) ...[
             const SizedBox(height: 20),
             _label('Expiry Date'),
             const SizedBox(height: 8),
@@ -1161,6 +1169,8 @@ class _AddStockBottomSheet extends ConsumerStatefulWidget {
 class _AddStockBottomSheetState extends ConsumerState<_AddStockBottomSheet> {
   final _qtyController = TextEditingController();
   final _costController = TextEditingController();
+  final _serialNumberController = TextEditingController();
+  final _imeiController = TextEditingController();
   DateTime? _expiryDate;
   bool _loading = false;
 
@@ -1168,6 +1178,8 @@ class _AddStockBottomSheetState extends ConsumerState<_AddStockBottomSheet> {
   void dispose() {
     _qtyController.dispose();
     _costController.dispose();
+    _serialNumberController.dispose();
+    _imeiController.dispose();
     super.dispose();
   }
 
@@ -1204,6 +1216,20 @@ class _AddStockBottomSheetState extends ConsumerState<_AddStockBottomSheet> {
       );
       return;
     }
+
+    // Serialized template requires IMEI or serial number
+    if (widget.product.template == ProductTemplate.serialized) {
+      final serial = _serialNumberController.text.trim();
+      final imei = _imeiController.text.trim();
+      if (serial.isEmpty && imei.isEmpty) {
+        HapticFeedback.heavyImpact();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Enter serial number or IMEI')),
+        );
+        return;
+      }
+    }
+
     final expiry = _expiryDate ?? DateTime.now().add(const Duration(days: 365));
 
     setState(() => _loading = true);
@@ -1213,6 +1239,10 @@ class _AddStockBottomSheetState extends ConsumerState<_AddStockBottomSheet> {
         quantity: qty,
         costPrice: cost,
         expiryDate: expiry,
+        batchNumber: null,
+        template: widget.product.template,
+        serialNumber: _serialNumberController.text.trim(),
+        imei: _imeiController.text.trim(),
       );
 
       HapticFeedback.mediumImpact();
@@ -1318,6 +1348,40 @@ class _AddStockBottomSheetState extends ConsumerState<_AddStockBottomSheet> {
             ),
           ),
           const SizedBox(height: 20),
+
+          // Serial/IMEI fields (serialized products only)
+          if (widget.product.template == ProductTemplate.serialized) ...[
+            const Text('Serial Number', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _serialNumberController,
+              keyboardType: TextInputType.text,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              decoration: InputDecoration(
+                hintText: 'Enter serial number',
+                filled: true,
+                fillColor: AppTheme.backgroundColor,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text('IMEI (if applicable)', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _imeiController,
+              keyboardType: TextInputType.text,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              decoration: InputDecoration(
+                hintText: 'Enter IMEI',
+                filled: true,
+                fillColor: AppTheme.backgroundColor,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              ),
+            ),
+            const SizedBox(height: 20),
+          ],
 
           // Expiry Date (optional)
           GestureDetector(

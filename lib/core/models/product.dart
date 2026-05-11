@@ -1,4 +1,7 @@
+import '../../features/onboarding/models/shop_models.dart';
+
 class Product {
+
   final int id;
   final String name;
   final String sku;
@@ -25,6 +28,17 @@ class Product {
   final String? imagePath;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final ProductTemplate template;
+  
+  // Additional Inventory Metadata (from migration v12)
+  final double? reorderLevel;
+  final String? packagingUnit;
+  final double? conversionFactor;
+  final int? serviceDuration;
+  final double? staffCommission;
+  final String? warrantyExpiry;
+  final String? status;
+
   final double? liveBatchQuantity;
   final String? expiryDate;
   final String? batchNumber;
@@ -64,6 +78,14 @@ class Product {
     this.imagePath,
     required this.createdAt,
     required this.updatedAt,
+    this.template = ProductTemplate.standardRetail,
+    this.reorderLevel = 0.0,
+    this.packagingUnit,
+    this.conversionFactor,
+    this.serviceDuration,
+    this.staffCommission,
+    this.warrantyExpiry,
+    this.status = 'Available',
     this.liveBatchQuantity,
     this.expiryDate,
     this.batchNumber,
@@ -72,6 +94,7 @@ class Product {
     this.wholesalePrice,
     this.costPrice,
   });
+
 
   double get displayQuantity => liveBatchQuantity ?? quantity;
 
@@ -102,6 +125,14 @@ class Product {
       'imagePath': imagePath,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
+      'template': template.name,
+      'reorderLevel': reorderLevel,
+      'packagingUnit': packagingUnit,
+      'conversionFactor': conversionFactor,
+      'serviceDuration': serviceDuration,
+      'staffCommission': staffCommission,
+      'warrantyExpiry': warrantyExpiry,
+      'status': status,
       'expiryDate': expiryDate,
       'batchNumber': batchNumber,
       'isService': isService ? 1 : 0,
@@ -109,6 +140,7 @@ class Product {
       'wholesalePrice': wholesalePrice,
       'costPrice': costPrice,
     };
+
     if (id != 0) {
       map['id'] = id;
     }
@@ -143,6 +175,17 @@ class Product {
       imagePath: map['imagePath'] as String?,
       createdAt: DateTime.parse(map['createdAt'] as String),
       updatedAt: DateTime.parse(map['updatedAt'] as String),
+      template: ProductTemplate.values.firstWhere(
+        (e) => e.name == (map['template'] as String? ?? 'standardRetail'),
+        orElse: () => ProductTemplate.standardRetail,
+      ),
+      reorderLevel: map['reorderLevel'] != null ? (map['reorderLevel'] as num).toDouble() : 0.0,
+      packagingUnit: map['packagingUnit'] as String?,
+      conversionFactor: map['conversionFactor'] != null ? (map['conversionFactor'] as num).toDouble() : null,
+      serviceDuration: map['serviceDuration'] as int?,
+      staffCommission: map['staffCommission'] != null ? (map['staffCommission'] as num).toDouble() : null,
+      warrantyExpiry: map['warrantyExpiry'] as String?,
+      status: map['status'] as String? ?? 'Available',
       liveBatchQuantity: map['liveBatchQuantity'] != null ? (map['liveBatchQuantity'] as num).toDouble() : null,
       expiryDate: map['expiryDate'] as String?,
       batchNumber: map['batchNumber'] as String?,
@@ -151,6 +194,7 @@ class Product {
       wholesalePrice: map['wholesalePrice'] != null ? (map['wholesalePrice'] as num).toDouble() : null,
       costPrice: map['costPrice'] != null ? (map['costPrice'] as num).toDouble() : null,
     );
+
   }
 
   Product copyWith({
@@ -180,6 +224,14 @@ class Product {
     String? imagePath,
     DateTime? createdAt,
     DateTime? updatedAt,
+    ProductTemplate? template,
+    double? reorderLevel,
+    String? packagingUnit,
+    double? conversionFactor,
+    int? serviceDuration,
+    double? staffCommission,
+    String? warrantyExpiry,
+    String? status,
     double? liveBatchQuantity,
     String? expiryDate,
     String? batchNumber,
@@ -187,6 +239,7 @@ class Product {
     bool? isLoose,
     double? wholesalePrice,
     double? costPrice,
+
   }) {
     return Product(
       id: id ?? this.id,
@@ -215,6 +268,14 @@ class Product {
       imagePath: imagePath ?? this.imagePath,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      template: template ?? this.template,
+      reorderLevel: reorderLevel ?? this.reorderLevel,
+      packagingUnit: packagingUnit ?? this.packagingUnit,
+      conversionFactor: conversionFactor ?? this.conversionFactor,
+      serviceDuration: serviceDuration ?? this.serviceDuration,
+      staffCommission: staffCommission ?? this.staffCommission,
+      warrantyExpiry: warrantyExpiry ?? this.warrantyExpiry,
+      status: status ?? this.status,
       liveBatchQuantity: liveBatchQuantity ?? this.liveBatchQuantity,
       expiryDate: expiryDate ?? this.expiryDate,
       batchNumber: batchNumber ?? this.batchNumber,
@@ -223,6 +284,7 @@ class Product {
       wholesalePrice: wholesalePrice ?? this.wholesalePrice,
       costPrice: costPrice ?? this.costPrice,
     );
+
   }
 }
 

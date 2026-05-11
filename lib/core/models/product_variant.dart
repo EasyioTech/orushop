@@ -7,6 +7,8 @@ class ProductVariant {
   final double price;
   final double stock;
   final double? costPrice;
+  final double? mrp;
+  final String? barcode;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -19,6 +21,8 @@ class ProductVariant {
     required this.price,
     required this.stock,
     this.costPrice,
+    this.mrp,
+    this.barcode,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -39,6 +43,8 @@ class ProductVariant {
       'price': price,
       'stock': stock,
       'costPrice': costPrice,
+      'mrp': mrp,
+      'barcode': barcode,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
     };
@@ -56,6 +62,8 @@ class ProductVariant {
       price: (map['price'] as num).toDouble(),
       stock: (map['stock'] as num? ?? 0).toDouble(),
       costPrice: map['costPrice'] != null ? (map['costPrice'] as num).toDouble() : null,
+      mrp: map['mrp'] != null ? (map['mrp'] as num).toDouble() : null,
+      barcode: map['barcode'] as String?,
       createdAt: DateTime.parse(map['createdAt'] as String),
       updatedAt: DateTime.parse(map['updatedAt'] as String),
     );
@@ -70,6 +78,8 @@ class ProductVariant {
     double? price,
     double? stock,
     double? costPrice,
+    double? mrp,
+    String? barcode,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -82,6 +92,8 @@ class ProductVariant {
       price: price ?? this.price,
       stock: stock ?? this.stock,
       costPrice: costPrice ?? this.costPrice,
+      mrp: mrp ?? this.mrp,
+      barcode: barcode ?? this.barcode,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );

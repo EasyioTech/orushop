@@ -7,6 +7,7 @@ import 'package:orushops/core/database/table_constants.dart';
 import 'package:orushops/core/theme/app_theme.dart';
 import 'package:orushops/core/services/global_catalog_service.dart';
 import 'package:orushops/providers/products_provider.dart';
+import 'package:orushops/providers/shop_provider.dart';
 
 class _ScannedItem {
   final GlobalProduct product;
@@ -67,7 +68,8 @@ class _BatchScanScreenState extends ConsumerState<BatchScanScreen> {
     }
     
     final catalog = ref.read(globalCatalogServiceProvider);
-    final product = await catalog.searchBySKU(sku);
+    final shopType = ref.read(shopDetailsProvider)?.shopType;
+    final product = await catalog.searchBySKU(sku, shopType?.name);
 
     if (product != null) {
       _addItemToList(product);
