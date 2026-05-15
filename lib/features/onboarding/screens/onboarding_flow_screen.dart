@@ -10,6 +10,7 @@ import 'onboarding_screen_9.dart';
 import 'onboarding_screen_17.dart';
 import 'onboarding_shop_basic_details_screen.dart';
 import 'onboarding_shop_additional_details_screen.dart';
+import 'package:orushops/core/theme/app_theme.dart';
 
 class OnboardingFlowScreen extends ConsumerStatefulWidget {
   const OnboardingFlowScreen({super.key});
@@ -41,7 +42,7 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
       messenger.showSnackBar(
         SnackBar(
           content: Text(message),
-          backgroundColor: Colors.redAccent,
+          backgroundColor: AppTheme.errorColor,
           duration: const Duration(seconds: 5),
         ),
       );
@@ -115,6 +116,7 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
       child: Stack(
         children: [
           Scaffold(
+            resizeToAvoidBottomInset: true,
             body: PageView(
               controller: _pageController,
               onPageChanged: (page) => setState(() => _currentPage = page),
@@ -147,7 +149,7 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
                   verificationId: _otpVerificationId ?? '',
                   phone: _otpPhone ?? '',
                   onNext: () => _pageController.jumpToPage(4),
-                  onBack: _previousPage,
+                  onBack: _goBack,
                 ),
                 // Shop Setup Path (Indices 4, 5)
                 OnboardingShopBasicDetailsScreen(
@@ -178,16 +180,16 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
                       messenger.showSnackBar(
                         SnackBar(
                           content: Text(e.message),
-                          backgroundColor: Colors.redAccent,
+                          backgroundColor: AppTheme.errorColor,
                           duration: const Duration(seconds: 6),
                         ),
                       );
                     } catch (e) {
                       messenger.showSnackBar(
-                        const SnackBar(
-                          content: Text('Something went wrong. Please try again.'),
-                          backgroundColor: Colors.redAccent,
-                          duration: Duration(seconds: 5),
+                        SnackBar(
+                          content: const Text('Something went wrong. Please try again.'),
+                          backgroundColor: AppTheme.errorColor,
+                          duration: const Duration(seconds: 5),
                         ),
                       );
                     } finally {
@@ -201,7 +203,7 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
           ),
           if (_isLoading)
             Container(
-              color: Colors.black.withValues(alpha: 0.3),
+              color: AppTheme.primaryDark.withValues(alpha: 0.3),
               child: const Center(
                 child: CircularProgressIndicator(color: Colors.white),
               ),

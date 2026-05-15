@@ -15,12 +15,11 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'REPLACE_WITH_ANDROID_API_KEY',
-    appId: 'REPLACE_WITH_ANDROID_APP_ID',
-    messagingSenderId: 'REPLACE_WITH_GCM_SENDER_ID',
-    projectId: 'REPLACE_WITH_FIREBASE_PROJECT_ID',
-    databaseURL: 'https://REPLACE_WITH_FIREBASE_PROJECT_ID.firebaseio.com',
-    storageBucket: 'REPLACE_WITH_FIREBASE_PROJECT_ID.appspot.com',
+    apiKey: 'AIzaSyB7aPMD23kKoOe3aCI5HEG5MgxXRJ21hZg',
+    appId: '1:412357819576:android:a06eeee71561b5178a084d',
+    messagingSenderId: '412357819576',
+    projectId: 'orushops-110',
+    storageBucket: 'orushops-110.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(

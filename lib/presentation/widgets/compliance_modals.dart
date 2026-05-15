@@ -5,7 +5,7 @@ import '../../core/services/compliance_service.dart';
 class PrivacyPolicyModal extends ConsumerWidget {
   final VoidCallback onAccept;
 
-  const PrivacyPolicyModal({required this.onAccept, Key? key}) : super(key: key);
+  const PrivacyPolicyModal({required this.onAccept, super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -77,7 +77,7 @@ class PrivacyPolicyModal extends ConsumerWidget {
 class TermsOfServiceModal extends ConsumerWidget {
   final VoidCallback onAccept;
 
-  const TermsOfServiceModal({required this.onAccept, Key? key}) : super(key: key);
+  const TermsOfServiceModal({required this.onAccept, super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -138,7 +138,7 @@ class TermsOfServiceModal extends ConsumerWidget {
 class AnalyticsConsentModal extends ConsumerWidget {
   final VoidCallback onAccept;
 
-  const AnalyticsConsentModal({required this.onAccept, Key? key}) : super(key: key);
+  const AnalyticsConsentModal({required this.onAccept, super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

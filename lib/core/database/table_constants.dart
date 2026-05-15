@@ -29,4 +29,7 @@ class TableConstants {
   // Procurement Templates (v12)
   static const String inventoryStandard = 'inventory_standard';
   static const String inventorySerialized = 'inventory_serialized';
+
+  // Customers (v17)
+  static const String customers = 'customers';
 }

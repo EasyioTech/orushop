@@ -3,8 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:orushops/core/theme/app_theme.dart';
 
-import '../../core/theme/app_theme.dart';
 import '../../core/repositories/analytics_repository.dart';
 import '../../providers/analytics_provider.dart';
 import '../../providers/navigation_provider.dart';
@@ -89,45 +89,41 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             sliver: SliverGrid(
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 2,
-                mainAxisSpacing: 16,
-                crossAxisSpacing: 16,
-                childAspectRatio: 1.05,
+                mainAxisSpacing: 12,
+                crossAxisSpacing: 12,
+                childAspectRatio: 2.1,
               ),
               delegate: SliverChildListDelegate([
-                _ActionCard(
+                _ActionPill(
                   icon: CupertinoIcons.add_circled_solid,
                   label: 'New Sale',
-                  subtitle: 'Start Billing',
                   color: AppTheme.accentColor,
                   onTap: () {
                     HapticFeedback.mediumImpact();
                     ref.read(navigationIndexProvider.notifier).state = 1;
                   },
                 ),
-                _ActionCard(
+                _ActionPill(
                   icon: CupertinoIcons.cube_box_fill,
                   label: 'Stock',
-                  subtitle: 'Inventory',
                   color: const Color(0xFF6366F1),
                   onTap: () {
                     HapticFeedback.selectionClick();
                     ref.read(navigationIndexProvider.notifier).state = 2;
                   },
                 ),
-                _ActionCard(
+                _ActionPill(
                   icon: CupertinoIcons.book_fill,
                   label: 'Khata',
-                  subtitle: 'Ledger Book',
                   color: const Color(0xFFF59E0B),
                   onTap: () {
                     HapticFeedback.selectionClick();
                     ref.read(navigationIndexProvider.notifier).state = 3;
                   },
                 ),
-                _ActionCard(
+                _ActionPill(
                   icon: CupertinoIcons.chart_bar_square_fill,
                   label: 'Reports',
-                  subtitle: 'Shop Insights',
                   color: const Color(0xFF10B981),
                   onTap: () {
                     HapticFeedback.selectionClick();
@@ -452,19 +448,17 @@ class _HeroStatItem extends StatelessWidget {
   }
 }
 
-// ── ACTION CARD ──────────────────────────────────────────────────────────────
+// ── ACTION PILL ──────────────────────────────────────────────────────────────
 
-class _ActionCard extends StatelessWidget {
+class _ActionPill extends StatelessWidget {
   final IconData icon;
   final String label;
-  final String subtitle;
   final Color color;
   final VoidCallback onTap;
 
-  const _ActionCard({
+  const _ActionPill({
     required this.icon,
     required this.label,
-    required this.subtitle,
     required this.color,
     required this.onTap,
   });
@@ -474,13 +468,13 @@ class _ActionCard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(24),
         border: Border.all(color: AppTheme.borderColor.withValues(alpha: 0.8), width: 1),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 16,
-            offset: const Offset(0, 8),
+            color: AppTheme.primaryDark.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -490,43 +484,30 @@ class _ActionCard extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.all(22),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
                     color: color.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Icon(icon, color: color, size: 26),
+                  child: Icon(icon, color: color, size: 20),
                 ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      label,
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w900,
-                        color: AppTheme.textPrimary,
-                        letterSpacing: -0.8,
-                        height: 1.1,
-                      ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    label,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      color: AppTheme.textPrimary,
+                      letterSpacing: -0.5,
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      subtitle,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: AppTheme.textSecondary,
-                        letterSpacing: 0.2,
-                      ),
-                    ),
-                  ],
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ],
             ),
@@ -536,6 +517,7 @@ class _ActionCard extends StatelessWidget {
     );
   }
 }
+
 
 // ── TOP PRODUCTS SECTION ─────────────────────────────────────────────────────
 
@@ -595,7 +577,7 @@ class _TopProductCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(28),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
+            color: AppTheme.primaryDark.withValues(alpha: 0.03),
             blurRadius: 15,
             offset: const Offset(0, 8),
           ),
@@ -658,7 +640,7 @@ class _AlertSection extends StatelessWidget {
               borderRadius: BorderRadius.circular(32),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
+                  color: AppTheme.primaryDark.withValues(alpha: 0.04),
                   blurRadius: 30,
                   offset: const Offset(0, 15),
                 ),

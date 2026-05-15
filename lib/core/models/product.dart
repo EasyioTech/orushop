@@ -99,6 +99,25 @@ class Product {
   double get displayQuantity => liveBatchQuantity ?? quantity;
 
   Map<String, dynamic> toMap() {
+    return {
+      ...toCoreMap(),
+      'reorderLevel': reorderLevel,
+      'packagingUnit': packagingUnit,
+      'conversionFactor': conversionFactor,
+      'serviceDuration': serviceDuration,
+      'staffCommission': staffCommission,
+      'warrantyExpiry': warrantyExpiry,
+      'status': status,
+      'expiryDate': expiryDate,
+      'batchNumber': batchNumber,
+      'isService': isService ? 1 : 0,
+      'isLoose': isLoose ? 1 : 0,
+      'wholesalePrice': wholesalePrice,
+      'costPrice': costPrice,
+    };
+  }
+
+  Map<String, dynamic> toCoreMap() {
     final map = {
       'name': name,
       'sku': sku,
@@ -126,44 +145,68 @@ class Product {
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
       'template': template.name,
-      'reorderLevel': reorderLevel,
-      'packagingUnit': packagingUnit,
-      'conversionFactor': conversionFactor,
-      'serviceDuration': serviceDuration,
-      'staffCommission': staffCommission,
-      'warrantyExpiry': warrantyExpiry,
-      'status': status,
-      'expiryDate': expiryDate,
-      'batchNumber': batchNumber,
       'isService': isService ? 1 : 0,
       'isLoose': isLoose ? 1 : 0,
       'wholesalePrice': wholesalePrice,
       'costPrice': costPrice,
     };
-
-    if (id != 0) {
-      map['id'] = id;
-    }
+    if (id != 0) map['id'] = id;
     return map;
   }
 
+  Map<String, dynamic> toInventoryStandardMap(int productId, {double? liveQty}) {
+    return {
+      'productId': productId,
+      'sellingPrice': price,
+      'mrp': mrp,
+      'costPrice': costPrice,
+      'wholesalePrice': wholesalePrice,
+      'quantity': liveQty ?? quantity,
+      'reorderLevel': reorderLevel,
+      'unit': unit,
+      'packagingUnit': packagingUnit,
+      'conversionFactor': conversionFactor,
+      'serviceDuration': serviceDuration,
+      'staffCommission': staffCommission,
+    };
+  }
+
+  Map<String, dynamic> toInventorySerializedMap(int productId) {
+    return {
+      'productId': productId,
+      'serialNumber': serialNumber,
+      'imei': imei,
+      'warrantyExpiry': warrantyExpiry,
+      'sellingPrice': price,
+      'mrp': mrp,
+      'costPrice': costPrice,
+      'status': status,
+    };
+  }
+
   factory Product.fromMap(Map<String, dynamic> map) {
+    // Prefer joined inventory fields if available
+    final double priceValue = ((map['standardPrice'] ?? map['price'] ?? 0.0) as num).toDouble();
+    final double quantityValue = ((map['standardQty'] ?? map['quantity'] ?? 0.0) as num).toDouble();
+    final double? mrpValue = map['standardMrp'] ?? map['mrp'];
+    final double? costPriceValue = map['standardCost'] ?? map['costPrice'];
+
     return Product(
       id: map['id'] as int,
       name: map['name'] as String,
       sku: map['sku'] as String,
-      price: (map['price'] as num).toDouble(),
-      quantity: (map['quantity'] as num).toDouble(),
+      price: priceValue,
+      quantity: quantityValue,
       category: map['category'] as String,
       subcategory: map['subcategory'] as String?,
       unit: (map['unit'] as String?) ?? 'Piece',
-      mrp: map['mrp'] != null ? (map['mrp'] as num).toDouble() : null,
+      mrp: mrpValue != null ? (mrpValue as num).toDouble() : null,
       hsnCode: map['hsnCode'] as String?,
       taxRate: map['taxRate'] != null ? (map['taxRate'] as num).toDouble() : 0.0,
       brand: map['brand'] as String?,
       manufacturer: map['manufacturer'] as String?,
-      serialNumber: map['serialNumber'] as String?,
-      imei: map['imei'] as String?,
+      serialNumber: (map['serialNo'] ?? map['serialNumber']) as String?,
+      imei: (map['serialImei'] ?? map['imei']) as String?,
       warranty: map['warranty'] as String?,
       schedule: map['schedule'] as String?,
       weight: map['weight'] as String?,
@@ -192,9 +235,8 @@ class Product {
       isService: (map['isService'] as int? ?? 0) == 1,
       isLoose: (map['isLoose'] as int? ?? 0) == 1,
       wholesalePrice: map['wholesalePrice'] != null ? (map['wholesalePrice'] as num).toDouble() : null,
-      costPrice: map['costPrice'] != null ? (map['costPrice'] as num).toDouble() : null,
+      costPrice: costPriceValue != null ? (costPriceValue as num).toDouble() : null,
     );
-
   }
 
   Product copyWith({

@@ -106,7 +106,7 @@ class _OnboardingScreen17State extends State<OnboardingScreen17> {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: selected ? AppTheme.accentColor : Colors.grey[300]!,
+            color: selected ? AppTheme.accentColor : AppTheme.slate300,
             width: 2,
           ),
           color: selected ? AppTheme.accentColor.withValues(alpha: 0.02) : Colors.white,
@@ -115,7 +115,7 @@ class _OnboardingScreen17State extends State<OnboardingScreen17> {
           children: [
             Icon(
               selected ? Icons.check_circle : Icons.circle_outlined,
-              color: selected ? AppTheme.accentColor : Colors.grey[400],
+              color: selected ? AppTheme.accentColor : AppTheme.slate400,
             ),
             const SizedBox(width: 16),
             Expanded(

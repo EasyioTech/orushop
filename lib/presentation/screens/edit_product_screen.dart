@@ -287,7 +287,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('No')),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Yes, Delete', style: TextStyle(color: Colors.red)),
+            child: const Text('Yes, Delete', style: TextStyle(color: AppTheme.errorColor)),
           ),
         ],
       ),
@@ -394,7 +394,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                 ),
                 Container(
                   decoration: BoxDecoration(
-                    color: Colors.red.withValues(alpha: 0.2),
+                    color: AppTheme.errorColor.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: IconButton(
@@ -458,12 +458,12 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                               color: selected ? AppTheme.primaryColor : Colors.white,
                               borderRadius: BorderRadius.circular(14),
                               border: Border.all(
-                                color: selected ? AppTheme.primaryColor : Colors.grey.shade200,
+                                color: selected ? AppTheme.primaryColor : AppTheme.slate200,
                                 width: selected ? 2 : 1,
                               ),
                               boxShadow: selected
                                   ? [BoxShadow(color: AppTheme.primaryColor.withValues(alpha: 0.25), blurRadius: 8, offset: const Offset(0, 3))]
-                                  : [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 4)],
+                                  : [BoxShadow(color: AppTheme.primaryDark.withValues(alpha: 0.04), blurRadius: 4)],
                             ),
                             child: Text(
                               cat.name,
@@ -496,7 +496,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                             ),
                             backgroundColor: Colors.white,
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                            side: BorderSide(color: sel ? AppTheme.primaryColor : Colors.grey.shade200),
+                            side: BorderSide(color: sel ? AppTheme.primaryColor : AppTheme.slate200),
                           );
                         }).toList(),
                       ),
@@ -557,7 +557,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: Colors.grey.shade200),
+                        border: Border.all(color: AppTheme.slate200),
                       ),
                       child: Row(
                         children: [
@@ -624,7 +624,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
   }
 
   Widget _stockCard(double stock, bool outOfStock, bool lowStock) {
-    final color = outOfStock ? Colors.red : lowStock ? Colors.orange : AppTheme.primaryColor;
+    final color = outOfStock ? AppTheme.errorColor : lowStock ? AppTheme.warningColor : AppTheme.primaryColor;
     final msg = outOfStock
         ? 'Out of stock — add stock now'
         : lowStock
@@ -636,7 +636,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 4))],
+        boxShadow: [BoxShadow(color: AppTheme.primaryDark.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       child: Row(
         children: [
@@ -672,7 +672,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.grey.shade100),
+        border: Border.all(color: AppTheme.slate100),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -753,7 +753,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                 decoration: BoxDecoration(
                   color: AppTheme.backgroundColor,
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: Colors.grey.shade200),
+                  border: Border.all(color: AppTheme.slate200),
                 ),
                 child: Row(
                   children: [
@@ -761,7 +761,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                     const SizedBox(width: 12),
                     Text(
                       _expiryDate == null ? 'Select Expiry Date' : DateFormat('MMM dd, yyyy').format(_expiryDate!),
-                      style: TextStyle(color: _expiryDate == null ? Colors.grey : AppTheme.textPrimary, fontWeight: FontWeight.w600),
+                      style: TextStyle(color: _expiryDate == null ? AppTheme.slate500 : AppTheme.textPrimary, fontWeight: FontWeight.w600),
                     ),
                   ],
                 ),
@@ -832,7 +832,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
             const SizedBox(height: 20),
             _label('Drug Schedule'),
             const SizedBox(height: 4),
-            Text('H = prescription, H1 = dangerous, X = narcotic', style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+            Text('H = prescription, H1 = dangerous, X = narcotic', style: TextStyle(fontSize: 12, color: AppTheme.slate500)),
             const SizedBox(height: 8),
             DropdownButtonFormField<String>(
               initialValue: _scheduleController.text.isEmpty ? null : _scheduleController.text,
@@ -893,7 +893,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
             const SizedBox(width: 8),
             _label('Size / Color Variants'),
             const Spacer(),
-            Text('${_variants.length} combos', style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+            Text('${_variants.length} combos', style: TextStyle(fontSize: 12, color: AppTheme.slate500)),
           ],
         ),
         const SizedBox(height: 12),
@@ -905,13 +905,13 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
             decoration: BoxDecoration(
               color: AppTheme.backgroundColor,
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: Colors.grey.shade200),
+              border: Border.all(color: AppTheme.slate200),
             ),
             child: Row(
               children: [
-                Icon(Icons.info_outline, size: 16, color: Colors.grey.shade400),
+                Icon(Icons.info_outline, size: 16, color: AppTheme.slate400),
                 const SizedBox(width: 8),
-                Text('No variants yet. Add below.', style: TextStyle(color: Colors.grey.shade500, fontSize: 13)),
+                Text('No variants yet. Add below.', style: TextStyle(color: AppTheme.slate500, fontSize: 13)),
               ],
             ),
           )
@@ -924,7 +924,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
               decoration: BoxDecoration(
                 color: AppTheme.backgroundColor,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey.shade200),
+                border: Border.all(color: AppTheme.slate200),
               ),
               child: Row(
                 children: [
@@ -935,12 +935,12 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                         Text(v.label, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
                         const SizedBox(height: 2),
                         Text('₹${v.price.toStringAsFixed(0)}  ·  ${v.stock % 1 == 0 ? v.stock.toInt() : v.stock.toStringAsFixed(2)} in stock',
-                          style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+                          style: TextStyle(fontSize: 12, color: AppTheme.slate600)),
                       ],
                     ),
                   ),
                   IconButton(
-                    icon: Icon(Icons.delete_outline_rounded, color: Colors.red.shade400, size: 20),
+                    icon: Icon(Icons.delete_outline_rounded, color: AppTheme.errorColor, size: 20),
                     onPressed: () {
                       setState(() {
                         if (v.id > 0) _deletedVariantIds.add(v.id.toString());
@@ -1115,13 +1115,13 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
       decoration: BoxDecoration(
         color: AppTheme.backgroundColor,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: value ? AppTheme.primaryColor.withValues(alpha: 0.4) : Colors.grey.shade200),
+        border: Border.all(color: value ? AppTheme.primaryColor.withValues(alpha: 0.4) : AppTheme.slate200),
       ),
       child: SwitchListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        secondary: Icon(icon, color: value ? AppTheme.primaryColor : Colors.grey.shade400, size: 22),
+        secondary: Icon(icon, color: value ? AppTheme.primaryColor : AppTheme.slate400, size: 22),
         title: Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
-        subtitle: Text(subtitle, style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+        subtitle: Text(subtitle, style: TextStyle(fontSize: 12, color: AppTheme.slate600)),
         value: value,
         onChanged: onChanged,
         activeThumbColor: AppTheme.primaryColor,
@@ -1286,7 +1286,7 @@ class _AddStockBottomSheetState extends ConsumerState<_AddStockBottomSheet> {
             child: Container(
               width: 40,
               height: 4,
-              decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
+              decoration: BoxDecoration(color: AppTheme.slate300, borderRadius: BorderRadius.circular(2)),
             ),
           ),
           const SizedBox(height: 20),
@@ -1303,7 +1303,7 @@ class _AddStockBottomSheetState extends ConsumerState<_AddStockBottomSheet> {
             style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w900),
             decoration: InputDecoration(
               hintText: '0',
-              hintStyle: TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: Colors.grey.shade300),
+              hintStyle: TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: AppTheme.slate300),
               filled: true,
               fillColor: AppTheme.backgroundColor,
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),

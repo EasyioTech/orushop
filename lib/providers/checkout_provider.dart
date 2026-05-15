@@ -10,7 +10,7 @@ import '../core/models/khata_entry.dart';
 import 'khata_provider.dart';
 import 'analytics_provider.dart';
 import 'products_provider.dart';
-import 'sale_provider.dart' show saleRepositoryProvider;
+import 'sale_provider.dart' show saleRepositoryProvider, customerRepositoryProvider;
 
 class CheckoutState {
   final bool isLoading;
@@ -58,6 +58,17 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
       debugPrint('Checkout: Starting saveSale');
       state = state.copyWith(isLoading: true, error: null);
 
+      // Get or create customer if phone is provided
+      final customerRepository = _ref.read(customerRepositoryProvider);
+      int? customerId;
+      if (customerPhone != null && customerPhone.isNotEmpty) {
+        final customer = await customerRepository.getOrCreateByPhone(
+          customerPhone,
+          customerName ?? 'Customer',
+        );
+        customerId = customer.id;
+      }
+
       final sale = Sale(
         id: 0,
         totalAmount: subtotal.toDouble(),
@@ -66,6 +77,7 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
         paymentMethod: paymentMethod,
         customerPhone: customerPhone,
         customerName: customerName,
+        customerId: customerId,
         status: paymentMethod == 'Khata' ? 'pending' : 'completed',
         createdAt: DateTime.now(),
       );
@@ -76,6 +88,11 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
         items: items,
       );
       debugPrint('Checkout: Repository processing complete');
+
+      // Update customer purchase stats after successful sale
+      if (customerId != null) {
+        await customerRepository.updateAfterSale(customerId, finalAmount);
+      }
 
       // ── Khata Integration ──────────────────────────────────────────────────
       if (paymentMethod == 'Khata' && customerPhone != null) {
@@ -137,17 +154,9 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
       // Surgical in-place stock decrement — no full reload, no empty-screen flash
       _ref.read(paginatedProductsProvider.notifier).decrementStock(soldItems);
 
-      // Invalidate analytics providers to ensure homepage and reports are fresh
-      debugPrint('Checkout: Invalidating analytics providers...');
-      _ref.invalidate(dailySalesTotalProvider);
-      _ref.invalidate(topProductsProvider);
-      _ref.invalidate(lowStockProductsProvider);
-      _ref.invalidate(expiringBatchesProvider);
-      _ref.invalidate(salesHistoryProvider);
-      
-      // Also increment revision for components still using the legacy revision pattern
+      // Increment revision to trigger global refresh of all analytics-dependent providers
+      debugPrint('Checkout: Syncing analytics revision...');
       _ref.read(analyticsRevisionProvider.notifier).state++;
-      debugPrint('Checkout: Synchronization triggered');
 
       final checkoutResult = {
         'sale': result['sale'],

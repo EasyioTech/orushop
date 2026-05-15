@@ -177,7 +177,7 @@ class _SyncCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withValues(alpha: 0.02),
+              color: AppTheme.primaryDark.withValues(alpha: 0.02),
               blurRadius: 10,
               offset: const Offset(0, 4)),
         ],
@@ -199,7 +199,7 @@ class _SyncCard extends StatelessWidget {
                     isOffline
                         ? Icons.cloud_off_rounded
                         : Icons.cloud_sync_rounded,
-                    color: isOffline ? Colors.grey : AppTheme.primaryColor,
+                    color: isOffline ? AppTheme.slate500 : AppTheme.primaryColor,
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -239,20 +239,20 @@ class _SyncCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.orange.withValues(alpha: 0.08),
+                  color: AppTheme.warningColor.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Row(
                   children: [
                     Icon(Icons.info_outline_rounded,
-                        size: 14, color: Colors.orange),
+                        size: 14, color: AppTheme.warningColor),
                     SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         'Connect to internet to sync your data.',
                         style: TextStyle(
                           fontSize: 12,
-                          color: Colors.orange,
+                          color: AppTheme.warningColor,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -325,7 +325,7 @@ class _BackupCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withValues(alpha: 0.02),
+              color: AppTheme.primaryDark.withValues(alpha: 0.02),
               blurRadius: 10,
               offset: const Offset(0, 4)),
         ],
@@ -340,10 +340,10 @@ class _BackupCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.orange.withValues(alpha: 0.1),
+                    color: AppTheme.warningColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(Icons.backup_rounded, color: Colors.orange),
+                  child: const Icon(Icons.backup_rounded, color: AppTheme.warningColor),
                 ),
                 const SizedBox(width: 16),
                 const Text(
@@ -369,10 +369,10 @@ class _BackupCard extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16)),
-                  backgroundColor: Colors.orange,
+                  backgroundColor: AppTheme.warningColor,
                   foregroundColor: Colors.white,
                   elevation: 0,
-                  disabledBackgroundColor: Colors.orange.withValues(alpha: 0.4),
+                  disabledBackgroundColor: AppTheme.warningColor.withValues(alpha: 0.4),
                 ),
                 icon: syncState.isBackingUp
                     ? const SizedBox(
@@ -422,7 +422,7 @@ class _StatusCard extends StatelessWidget {
     final color = isSuccess
         ? AppTheme.successColor
         : isNetworkError
-            ? Colors.orange
+            ? AppTheme.warningColor
             : AppTheme.errorColor;
     final icon = isSuccess
         ? Icons.check_circle_rounded

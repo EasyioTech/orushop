@@ -38,7 +38,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.error_outline, size: 64, color: Colors.grey[400]),
+                  Icon(Icons.error_outline, size: 64, color: AppTheme.slate400),
                   const SizedBox(height: 16),
                   const Text('No offerings available', style: TextStyle(fontSize: 16)),
                   const SizedBox(height: 24),
@@ -91,7 +91,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
                           border: Border.all(
-                            color: Colors.grey[300]!,
+                            color: AppTheme.slate300,
                             width: 2,
                           ),
                           borderRadius: BorderRadius.circular(12),
@@ -115,7 +115,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
                             const SizedBox(height: 8),
                             Text(
                               package.storeProduct.description,
-                              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                              style: TextStyle(fontSize: 12, color: AppTheme.slate600),
                             ),
                           ],
                         ),
@@ -129,8 +129,8 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
                     child: ElevatedButton(
                       onPressed: paywalState.isPurchasing ? null : () => Navigator.pop(context),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.grey[300],
-                        foregroundColor: Colors.black,
+                        backgroundColor: AppTheme.slate300,
+                        foregroundColor: AppTheme.primaryDark,
                       ),
                       child: paywalState.isPurchasing
                           ? const SizedBox(
@@ -151,7 +151,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.error_outline, size: 64, color: Colors.grey[400]),
+              Icon(Icons.error_outline, size: 64, color: AppTheme.slate400),
               const SizedBox(height: 16),
               Text('Error loading offerings: $err', textAlign: TextAlign.center),
             ],

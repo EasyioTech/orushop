@@ -25,9 +25,9 @@ android {
     signingConfigs {
         getByName("debug") {
             keyAlias = "androiddebugkey"
-            keyPassword = "android"
+            keyPassword = "Easyioroot@123"
             storeFile = file("$rootDir/debug.keystore")
-            storePassword = "android"
+            storePassword = "Easyioroot@123"
         }
         create("release") {
             keyAlias = System.getenv("KEY_ALIAS") ?: "orushops"

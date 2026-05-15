@@ -137,156 +137,138 @@ class SaleRepository {
 
           // 2. Process each item
         for (final item in items) {
-          // FETCH product meta (quantity + isService) for this item
+          // FETCH product meta (quantity, isService, template) for this item
           final List<Map<String, dynamic>> productResult = await txn.query(
             TableConstants.products,
-            columns: ['quantity', 'isService'],
+            columns: ['quantity', 'isService', 'template', 'name', 'costPrice'],
             where: 'id = ?',
             whereArgs: [item.productId],
           );
 
-          final isServiceProduct = productResult.isNotEmpty
-              ? (productResult.first['isService'] as int? ?? 0) == 1
-              : false;
-
-          // Service products: record sale item but skip all stock deduction
-          if (isServiceProduct) {
-            final saleItem = SaleItem(
-              id: 0,
-              saleId: saleId,
-              productId: item.productId,
-              variantId: item.variantId,
-              quantity: item.quantity,
-              unitPrice: item.unitPrice,
-              totalPrice: item.quantity * item.unitPrice,
-              batchIds: [],
-            );
-            final saleItemId = await addItem(txn, saleItem);
-            processedItems.add(saleItem.copyWith(id: saleItemId));
-            continue;
+          if (productResult.isEmpty) {
+            throw TransactionException('Product ${item.productId} not found');
           }
 
-          // Variant products: deduct from product_variants.stock instead of batches
-          if (item.variantId != null) {
-            final List<Map<String, dynamic>> varRows = await txn.query(
-              TableConstants.productVariants,
-              columns: ['stock'],
-              where: 'id = ?',
-              whereArgs: [item.variantId],
-            );
-            if (varRows.isEmpty) {
-              throw Exception('Variant ${item.variantId} not found');
+          final productData = productResult.first;
+          final isService = (productData['isService'] as int? ?? 0) == 1;
+          final template = productData['template'] as String? ?? 'standardRetail';
+          final productName = productData['name'] as String? ?? 'Unknown Product';
+          final usedBatchIds = <int>[];
+
+          // --- STOCK DEDUCTION LOGIC ---
+          if (isService) {
+            debugPrint('SaleRepository: Skipping stock deduction for service: $productName');
+          } else if (template == 'variantMatrix') {
+            if (item.variantId == null) {
+              throw TransactionException('Variant ID missing for variant product: $productName');
             }
-            final varStock = (varRows.first['stock'] as num).toDouble();
-            if (varStock < item.quantity) {
-              throw InsufficientStockException(item.productName, item.quantity, varStock);
-            }
-            final updated = await txn.rawUpdate(
+            final variantCount = await txn.rawUpdate(
               'UPDATE ${TableConstants.productVariants} SET stock = stock - ?, updatedAt = ? WHERE id = ? AND stock >= ?',
               [item.quantity, DateTime.now().toIso8601String(), item.variantId, item.quantity],
             );
-            if (updated == 0) {
-              throw TransactionException('Race condition on variant ${item.variantId}');
+            if (variantCount == 0) {
+              final varData = await txn.query(TableConstants.productVariants, columns: ['stock'], where: 'id = ?', whereArgs: [item.variantId]);
+              final currentStock = varData.isNotEmpty ? (varData.first['stock'] as num).toDouble() : 0.0;
+              throw InsufficientStockException(productName, item.quantity, currentStock);
             }
-            final saleItem = SaleItem(
-              id: 0,
-              saleId: saleId,
-              productId: item.productId,
-              variantId: item.variantId,
-              quantity: item.quantity,
-              unitPrice: item.unitPrice,
-              totalPrice: item.quantity * item.unitPrice,
-              batchIds: [],
-            );
-            final saleItemId = await addItem(txn, saleItem);
-            processedItems.add(saleItem.copyWith(id: saleItemId));
-            continue;
-          }
-
-          // Fetch batches inside transaction with a row-level lock (implicit in txn)
-          final List<Map<String, dynamic>> batchMaps = await txn.query(
-            TableConstants.productBatches,
-            where: 'productId = ? AND quantity > 0',
-            whereArgs: [item.productId],
-            orderBy: 'expiryDate ASC', // FIFO logic
-          );
-
-          var batches = batchMaps.map((m) => ProductBatch.fromMap(m)).toList();
-
-          // Calculate what we have in batches
-          var totalAvailableInBatches = batches.fold<double>(0.0, (sum, b) => sum + b.quantity);
-
-          final productTotal = productResult.isNotEmpty ? (productResult.first['quantity'] as num).toDouble() : 0.0;
-          
-          // AUTOMATIC SYNC: If batches are missing but product table says we have stock,
-          // or if product table has more than batches, create a correction batch.
-          if (productTotal > totalAvailableInBatches) {
-            final gap = productTotal - totalAvailableInBatches;
-            debugPrint('SaleRepository: Stock discrepancy detected for ${item.productName}. Batches: $totalAvailableInBatches, Product Total: $productTotal. Creating auto-batch for gap: $gap');
-            
-            final batchId = await txn.insert(TableConstants.productBatches, {
-              'productId': item.productId,
-              'quantity': gap,
-              'costPrice': 0.0,
-              'batchNumber': 'AUTO-CORRECT',
-              'expiryDate': DateTime.now().add(const Duration(days: 3650)).toIso8601String(),
-              'createdAt': DateTime.now().toIso8601String(),
-            });
-            
-            final newBatch = ProductBatch(
-              id: batchId,
-              productId: item.productId,
-              quantity: gap,
-              costPrice: 0.0,
-              expiryDate: DateTime.now().add(const Duration(days: 3650)),
-              createdAt: DateTime.now(),
-            );
-            batches.add(newBatch);
-            totalAvailableInBatches += gap;
-          }
-
-          // Final Validation against synced total
-          if (totalAvailableInBatches < item.quantity) {
-            throw InsufficientStockException(item.productName, item.quantity, totalAvailableInBatches);
-          }
-
-          final usedBatchIds = <int>[];
-          var remainingQty = item.quantity;
-
-          // 3. Deduct from batches (FIFO)
-          for (final batch in batches) {
-            if (remainingQty <= 0) break;
-
-            final deductQty = remainingQty > batch.quantity ? batch.quantity : remainingQty;
-            
-            final count = await txn.rawUpdate(
-              'UPDATE ${TableConstants.productBatches} SET quantity = quantity - ? WHERE id = ? AND quantity >= ?',
-              [deductQty, batch.id, deductQty],
+          } else if (template == 'serialized') {
+            final availableSerials = await txn.query(
+              TableConstants.inventorySerialized,
+              where: 'productId = ? AND status = ?',
+              whereArgs: [item.productId, 'Available'],
+              limit: item.quantity.toInt(),
             );
 
-            if (count == 0) {
-              throw TransactionException('Race condition detected for batch ${batch.id}. Stock was modified externally.');
+            if (availableSerials.length < item.quantity) {
+              throw InsufficientStockException(productName, item.quantity, availableSerials.length.toDouble());
             }
 
-            usedBatchIds.add(batch.id);
-            remainingQty -= deductQty;
+            for (final serial in availableSerials) {
+              await txn.update(
+                TableConstants.inventorySerialized,
+                {'status': 'Sold'},
+                where: 'id = ?',
+                whereArgs: [serial['id']],
+              );
+            }
+          } else {
+            // Standard / Batch / Bulk
+            final batchMaps = await txn.query(
+              TableConstants.productBatches,
+              where: 'productId = ? AND quantity > 0',
+              whereArgs: [item.productId],
+              orderBy: 'expiryDate ASC',
+            );
+
+            var batches = batchMaps.map((m) => ProductBatch.fromMap(m)).toList();
+            var totalAvailableInBatches = batches.fold<double>(0.0, (sum, b) => sum + b.quantity);
+            final productTotal = (productData['quantity'] as num).toDouble();
+            
+            // Sync batches if master quantity is higher (auto-correction)
+            if (productTotal > totalAvailableInBatches) {
+              final gap = productTotal - totalAvailableInBatches;
+              final batchId = await txn.insert(TableConstants.productBatches, {
+                'productId': item.productId,
+                'quantity': gap,
+                'costPrice': (productData['costPrice'] as num?)?.toDouble() ?? 0.0,
+                'batchNumber': 'AUTO-CORRECT',
+                'expiryDate': DateTime.now().add(const Duration(days: 3650)).toIso8601String(),
+                'createdAt': DateTime.now().toIso8601String(),
+              });
+              
+              batches.add(ProductBatch(
+                id: batchId,
+                productId: item.productId,
+                quantity: gap,
+                costPrice: 0.0,
+                expiryDate: DateTime.now().add(const Duration(days: 3650)),
+                createdAt: DateTime.now(),
+              ));
+              totalAvailableInBatches += gap;
+            }
+
+            if (totalAvailableInBatches < item.quantity) {
+              throw InsufficientStockException(productName, item.quantity, totalAvailableInBatches);
+            }
+
+            var remainingQty = item.quantity;
+            for (final batch in batches) {
+              if (remainingQty <= 0) break;
+              final deductQty = remainingQty > batch.quantity ? batch.quantity : remainingQty;
+              
+              await txn.rawUpdate(
+                'UPDATE ${TableConstants.productBatches} SET quantity = quantity - ? WHERE id = ?',
+                [deductQty, batch.id],
+              );
+
+              usedBatchIds.add(batch.id);
+              remainingQty -= deductQty;
+            }
+
+            // Update inventory_standard
+            await txn.rawUpdate(
+              'UPDATE ${TableConstants.inventoryStandard} SET quantity = quantity - ? WHERE productId = ?',
+              [item.quantity, item.productId],
+            );
           }
 
-          // 4. Update summary quantity in products table for fast lookups
-          await txn.rawUpdate(
-            'UPDATE ${TableConstants.products} SET quantity = quantity - ? WHERE id = ?',
-            [item.quantity, item.productId],
-          );
+          // COMMON: Update master product total for all physical goods
+          if (!isService) {
+            await txn.rawUpdate(
+              'UPDATE ${TableConstants.products} SET quantity = quantity - ?, updatedAt = ? WHERE id = ?',
+              [item.quantity, DateTime.now().toIso8601String(), item.productId],
+            );
+          }
 
-          // 5. Create Sale Item record
+          // Create Sale Item record
           final saleItem = SaleItem(
             id: 0,
             saleId: saleId,
             productId: item.productId,
             variantId: item.variantId,
             quantity: item.quantity,
-            unitPrice: item.unitPrice.toDouble(),
-            totalPrice: (item.quantity * item.unitPrice).toDouble(),
+            unitPrice: item.unitPrice,
+            totalPrice: item.quantity * item.unitPrice,
             batchIds: usedBatchIds,
           );
 

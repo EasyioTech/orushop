@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:cloud_firestore/cloud_firestore.dart';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import './catalog_data.dart';
@@ -237,13 +237,24 @@ class GlobalCatalogService {
     try {
       debugPrint('☁️ Fetching from Cloudflare D1: catalog/$sku?type=$shopType');
       
-      // Use the new type-aware routing
-      final typeParam = shopType != null ? '&type=$shopType' : '';
+      final String apiType = (shopType ?? '').toLowerCase();
+      final typeParam = apiType.isNotEmpty ? '&type=$apiType' : '';
       final uri = Uri.parse('https://catalog-api.gamingcristy19.workers.dev/catalog?sku=$sku$typeParam');
       final response = await http.get(uri);
 
       if (response.statusCode == 200) {
-        final List<dynamic> data = json.decode(response.body);
+        final dynamic decoded = json.decode(response.body);
+        List<dynamic> data = [];
+        if (decoded is List) {
+          data = decoded;
+        } else if (decoded is Map) {
+          if (decoded.containsKey('data')) {
+            data = decoded['data'] ?? [];
+          } else if (decoded.containsKey('results')) {
+            data = decoded['results'] ?? [];
+          }
+        }
+        
         if (data.isNotEmpty) {
           debugPrint('✅ Found in Cloudflare D1: $sku');
           return GlobalProduct.fromMap(data.first);
@@ -262,13 +273,27 @@ class GlobalCatalogService {
   /// Downloads the full catalog for a specific shop type from Cloudflare API
   Future<List<Map<String, dynamic>>> downloadCatalogForShopType(String shopType) async {
     try {
-      debugPrint('☁️ Downloading catalog for shopType: $shopType from Cloudflare D1');
-      final uri = Uri.parse('https://catalog-api.gamingcristy19.workers.dev/catalog?type=$shopType&limit=5000&offset=0');
+      final apiType = shopType.toLowerCase();
+      debugPrint('☁️ Downloading catalog for shopType: $apiType from Cloudflare D1');
+      final uri = Uri.parse('https://catalog-api.gamingcristy19.workers.dev/catalog?type=$apiType&limit=5000&offset=0');
       final response = await http.get(uri);
 
       if (response.statusCode == 200) {
-        final List<dynamic> data = json.decode(response.body);
-        return data.cast<Map<String, dynamic>>();
+        final dynamic decoded = json.decode(response.body);
+        
+        if (decoded is List) {
+          return decoded.cast<Map<String, dynamic>>();
+        } else if (decoded is Map) {
+          if (decoded.containsKey('data')) {
+            return List<Map<String, dynamic>>.from(decoded['data'] ?? []);
+          } else if (decoded.containsKey('results')) {
+            return List<Map<String, dynamic>>.from(decoded['results'] ?? []);
+          }
+        }
+        return [];
+      } else if (response.statusCode == 400) {
+        debugPrint('⚠️ Catalog not available for $apiType (400): ${response.body}');
+        return [];
       } else {
         debugPrint('⚠️ Cloudflare API Error: ${response.statusCode} - ${response.body}');
         return [];

@@ -1,3 +1,11 @@
+enum Sector {
+  dailyEssentials,
+  specializedRetail,
+  apparelLifestyle,
+  hobbyHomeLeisure,
+  serviceOriented,
+}
+
 enum ShopType {
   medical,
   grocery,
@@ -15,181 +23,213 @@ enum ShopType {
 class ShopTypeConfig {
   final ShopType type;
   final String displayName;
+  final Sector sector;
   final List<String> defaultCategories;
   final ShopFeatures features;
+  final bool supportMultiBranch;
+  final bool minimalFieldsMode;
+  final List<String> allowedPaymentMethods;
+  final bool requiresSupplierData;
 
   ShopTypeConfig({
     required this.type,
     required this.displayName,
+    required this.sector,
     required this.defaultCategories,
     required this.features,
+    required this.supportMultiBranch,
+    required this.minimalFieldsMode,
+    required this.allowedPaymentMethods,
+    required this.requiresSupplierData,
   });
 
   static final Map<ShopType, ShopTypeConfig> configs = {
     ShopType.medical: ShopTypeConfig(
       type: ShopType.medical,
       displayName: 'Medical / Pharmacy',
+      sector: Sector.specializedRetail,
       defaultCategories: ['Tablets', 'Syrups', 'Injections', 'Surgical Items', 'Baby Care', 'Vitamins'],
       features: ShopFeatures(
         expiryDateTracking: true,
         batchNumber: true,
         serialNumberTracking: false,
         gstTaxInvoicing: true,
-        sizeVariant: false,
-        recipeIngredients: false,
         lowStockAlerts: true,
-        prescriptionRequired: true,
       ),
+      supportMultiBranch: true,
+      minimalFieldsMode: false,
+      allowedPaymentMethods: ['Cash', 'Card', 'Khata'],
+      requiresSupplierData: true,
     ),
     ShopType.grocery: ShopTypeConfig(
       type: ShopType.grocery,
       displayName: 'Grocery / Kirana Store',
+      sector: Sector.dailyEssentials,
       defaultCategories: ['Atta & Grains', 'Dal & Pulses', 'Oil & Ghee', 'Spices', 'Dairy', 'Beverages', 'Snacks', 'Packaged Food'],
       features: ShopFeatures(
         expiryDateTracking: true,
         batchNumber: false,
         serialNumberTracking: false,
         gstTaxInvoicing: true,
-        sizeVariant: false,
-        recipeIngredients: false,
         lowStockAlerts: true,
-        prescriptionRequired: false,
       ),
+      supportMultiBranch: false,
+      minimalFieldsMode: true,
+      allowedPaymentMethods: ['Cash', 'Card', 'Khata'],
+      requiresSupplierData: true,
     ),
     ShopType.electronics: ShopTypeConfig(
       type: ShopType.electronics,
       displayName: 'Electronics & Appliances',
+      sector: Sector.specializedRetail,
       defaultCategories: ['TV', 'Refrigerator', 'AC', 'Washing Machine', 'Small Appliances'],
       features: ShopFeatures(
         expiryDateTracking: false,
         batchNumber: false,
         serialNumberTracking: true,
         gstTaxInvoicing: true,
-        sizeVariant: false,
-        recipeIngredients: false,
         lowStockAlerts: true,
-        prescriptionRequired: false,
       ),
+      supportMultiBranch: true,
+      minimalFieldsMode: false,
+      allowedPaymentMethods: ['Cash', 'Card', 'Cheque'],
+      requiresSupplierData: true,
     ),
     ShopType.clothing: ShopTypeConfig(
       type: ShopType.clothing,
       displayName: 'Clothing & Apparel',
+      sector: Sector.apparelLifestyle,
       defaultCategories: ["Men's Wear", "Women's Wear", "Kids' Wear", 'Innerwear', 'Ethnic Wear', 'Accessories'],
       features: ShopFeatures(
         expiryDateTracking: false,
         batchNumber: false,
         serialNumberTracking: false,
         gstTaxInvoicing: true,
-        sizeVariant: true,
-        recipeIngredients: false,
         lowStockAlerts: true,
-        prescriptionRequired: false,
       ),
+      supportMultiBranch: true,
+      minimalFieldsMode: false,
+      allowedPaymentMethods: ['Cash', 'Card', 'Khata'],
+      requiresSupplierData: true,
     ),
     ShopType.bakery: ShopTypeConfig(
       type: ShopType.bakery,
       displayName: 'Bakery & Confectionery',
+      sector: Sector.dailyEssentials,
       defaultCategories: ['Bread (White, Brown, Multigrain)', 'Cakes', 'Pastries', 'Biscuits', 'Rusk', 'Cookies'],
       features: ShopFeatures(
         expiryDateTracking: true,
         batchNumber: false,
         serialNumberTracking: false,
         gstTaxInvoicing: true,
-        sizeVariant: false,
-        recipeIngredients: false,
         lowStockAlerts: true,
-        prescriptionRequired: false,
       ),
+      supportMultiBranch: false,
+      minimalFieldsMode: true,
+      allowedPaymentMethods: ['Cash', 'Card'],
+      requiresSupplierData: false,
     ),
     ShopType.stationery: ShopTypeConfig(
       type: ShopType.stationery,
       displayName: 'Stationery & Books',
+      sector: Sector.hobbyHomeLeisure,
       defaultCategories: ['Notebooks', 'Pens & Pencils', 'Books', 'Paper Products', 'Art Supplies'],
       features: ShopFeatures(
         expiryDateTracking: false,
         batchNumber: false,
         serialNumberTracking: false,
         gstTaxInvoicing: true,
-        sizeVariant: false,
-        recipeIngredients: false,
         lowStockAlerts: true,
-        prescriptionRequired: false,
       ),
+      supportMultiBranch: false,
+      minimalFieldsMode: true,
+      allowedPaymentMethods: ['Cash', 'Card'],
+      requiresSupplierData: true,
     ),
     ShopType.hardware: ShopTypeConfig(
       type: ShopType.hardware,
       displayName: 'Hardware & Tools',
+      sector: Sector.dailyEssentials,
       defaultCategories: ['Hand Tools', 'Power Tools', 'Building Materials', 'Fasteners', 'Safety Equipment'],
       features: ShopFeatures(
         expiryDateTracking: false,
         batchNumber: false,
         serialNumberTracking: true,
         gstTaxInvoicing: true,
-        sizeVariant: false,
-        recipeIngredients: false,
         lowStockAlerts: true,
-        prescriptionRequired: false,
       ),
+      supportMultiBranch: false,
+      minimalFieldsMode: false,
+      allowedPaymentMethods: ['Cash', 'Card', 'Cheque'],
+      requiresSupplierData: true,
     ),
     ShopType.cosmetics: ShopTypeConfig(
       type: ShopType.cosmetics,
       displayName: 'Cosmetics & Beauty',
+      sector: Sector.apparelLifestyle,
       defaultCategories: ['Skincare', 'Makeup', 'Haircare', 'Fragrances', 'Bath & Body'],
       features: ShopFeatures(
         expiryDateTracking: true,
         batchNumber: false,
         serialNumberTracking: false,
         gstTaxInvoicing: true,
-        sizeVariant: true,
-        recipeIngredients: false,
         lowStockAlerts: true,
-        prescriptionRequired: false,
       ),
+      supportMultiBranch: true,
+      minimalFieldsMode: false,
+      allowedPaymentMethods: ['Cash', 'Card', 'Khata'],
+      requiresSupplierData: true,
     ),
     ShopType.mobile: ShopTypeConfig(
       type: ShopType.mobile,
       displayName: 'Mobile & Accessories',
+      sector: Sector.specializedRetail,
       defaultCategories: ['Mobile Phones', 'Chargers & Cables', 'Protective Cases', 'Screen Protectors', 'Power Banks'],
       features: ShopFeatures(
         expiryDateTracking: false,
         batchNumber: false,
         serialNumberTracking: true,
         gstTaxInvoicing: true,
-        sizeVariant: true,
-        recipeIngredients: false,
         lowStockAlerts: true,
-        prescriptionRequired: false,
       ),
+      supportMultiBranch: true,
+      minimalFieldsMode: false,
+      allowedPaymentMethods: ['Cash', 'Card', 'Cheque'],
+      requiresSupplierData: true,
     ),
     ShopType.restaurant: ShopTypeConfig(
       type: ShopType.restaurant,
       displayName: 'Restaurant',
+      sector: Sector.serviceOriented,
       defaultCategories: ['Main Course', 'Appetizers', 'Desserts', 'Beverages', 'Condiments'],
       features: ShopFeatures(
         expiryDateTracking: true,
         batchNumber: false,
         serialNumberTracking: false,
         gstTaxInvoicing: true,
-        sizeVariant: false,
-        recipeIngredients: true,
         lowStockAlerts: true,
-        prescriptionRequired: false,
       ),
+      supportMultiBranch: false,
+      minimalFieldsMode: true,
+      allowedPaymentMethods: ['Cash', 'Card', 'UPI'],
+      requiresSupplierData: true,
     ),
     ShopType.other: ShopTypeConfig(
       type: ShopType.other,
       displayName: 'Other',
+      sector: Sector.hobbyHomeLeisure,
       defaultCategories: [],
       features: ShopFeatures(
         expiryDateTracking: false,
         batchNumber: false,
         serialNumberTracking: false,
         gstTaxInvoicing: true,
-        sizeVariant: false,
-        recipeIngredients: false,
         lowStockAlerts: true,
-        prescriptionRequired: false,
       ),
+      supportMultiBranch: false,
+      minimalFieldsMode: true,
+      allowedPaymentMethods: ['Cash', 'Card'],
+      requiresSupplierData: false,
     ),
   };
 
@@ -201,20 +241,14 @@ class ShopFeatures {
   bool batchNumber;
   bool serialNumberTracking;
   bool gstTaxInvoicing;
-  bool sizeVariant;
-  bool recipeIngredients;
   bool lowStockAlerts;
-  bool prescriptionRequired;
 
   ShopFeatures({
     required this.expiryDateTracking,
     required this.batchNumber,
     required this.serialNumberTracking,
     required this.gstTaxInvoicing,
-    required this.sizeVariant,
-    required this.recipeIngredients,
     required this.lowStockAlerts,
-    required this.prescriptionRequired,
   });
 
   ShopFeatures copy() {
@@ -223,10 +257,7 @@ class ShopFeatures {
       batchNumber: batchNumber,
       serialNumberTracking: serialNumberTracking,
       gstTaxInvoicing: gstTaxInvoicing,
-      sizeVariant: sizeVariant,
-      recipeIngredients: recipeIngredients,
       lowStockAlerts: lowStockAlerts,
-      prescriptionRequired: prescriptionRequired,
     );
   }
 
@@ -236,10 +267,7 @@ class ShopFeatures {
       'batchNumber': batchNumber,
       'serialNumberTracking': serialNumberTracking,
       'gstTaxInvoicing': gstTaxInvoicing,
-      'sizeVariant': sizeVariant,
-      'recipeIngredients': recipeIngredients,
       'lowStockAlerts': lowStockAlerts,
-      'prescriptionRequired': prescriptionRequired,
     };
   }
 }

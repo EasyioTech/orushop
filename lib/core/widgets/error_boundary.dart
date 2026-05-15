@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../exceptions/backend_exception.dart';
+import '../theme/app_theme.dart';
 
 class ErrorBoundary extends StatefulWidget {
   final Widget child;
@@ -76,7 +77,7 @@ class _ErrorBoundaryState extends State<ErrorBoundary> {
                 Icon(
                   _isNetworkError ? Icons.wifi_off_rounded : Icons.error_outline_rounded,
                   size: 64,
-                  color: _isNetworkError ? Colors.orange : Colors.red[700],
+                  color: _isNetworkError ? AppTheme.warningColor : AppTheme.errorColor,
                 ),
                 const SizedBox(height: 16),
                 Text(
@@ -96,7 +97,7 @@ class _ErrorBoundaryState extends State<ErrorBoundary> {
                       : 'The app encountered an error. Your data is safe.',
                   style: TextStyle(
                     fontSize: 14,
-                    color: Colors.grey[600],
+                    color: AppTheme.slate600,
                     height: 1.4,
                   ),
                   textAlign: TextAlign.center,
@@ -150,10 +151,10 @@ class OfflineBanner extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.all(4),
                       decoration: BoxDecoration(
-                        color: Colors.orange.withValues(alpha: 0.15),
+                        color: AppTheme.warningColor.withValues(alpha: 0.15),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.wifi_off_rounded, color: Colors.orange, size: 14),
+                      child: const Icon(Icons.wifi_off_rounded, color: AppTheme.warningColor, size: 14),
                     ),
                     const SizedBox(width: 10),
                     const Text(

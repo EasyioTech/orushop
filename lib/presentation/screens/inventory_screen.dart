@@ -304,14 +304,23 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                             ],
                           ),
                         )
-                      : SliverList(
-                          delegate: SliverChildBuilderDelegate(
-                            (context, index) => _InventoryItemCard(
-                              product: filtered[index],
-                              onAddStock: () =>
-                                  _showAddStockSheet(context, filtered[index]),
+                      : SliverPadding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          sliver: SliverGrid(
+                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              childAspectRatio: 1.8,
+                              crossAxisSpacing: 12,
+                              mainAxisSpacing: 12,
                             ),
-                            childCount: filtered.length,
+                            delegate: SliverChildBuilderDelegate(
+                              (context, index) => _InventoryItemPill(
+                                product: filtered[index],
+                                onAddStock: () =>
+                                    _showAddStockSheet(context, filtered[index]),
+                              ),
+                              childCount: filtered.length,
+                            ),
                           ),
                         ),
                 ),
@@ -401,7 +410,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                   backgroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(20),
-                    side: BorderSide(color: isSelected ? AppTheme.primaryColor : Colors.grey.shade200),
+                    side: BorderSide(color: isSelected ? AppTheme.primaryColor : AppTheme.slate200),
                   ),
                 ),
               );
@@ -451,7 +460,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                   backgroundColor: Colors.transparent,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
-                    side: BorderSide(color: isSelected ? AppTheme.primaryColor.withValues(alpha: 0.3) : Colors.grey.shade200),
+                    side: BorderSide(color: isSelected ? AppTheme.primaryColor.withValues(alpha: 0.3) : AppTheme.slate200),
                   ),
                 ),
               );
@@ -656,9 +665,9 @@ class _InventoryItemCardState extends ConsumerState<_InventoryItemCard> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.delete_outline, color: Colors.red),
+              leading: const Icon(Icons.delete_outline, color: AppTheme.errorColor),
               title: const Text('Delete Product'),
-              textColor: Colors.red,
+              textColor: AppTheme.errorColor,
               onTap: () {
                 Navigator.pop(ctx);
                 _confirmDelete(context, ref);
@@ -688,7 +697,7 @@ class _InventoryItemCardState extends ConsumerState<_InventoryItemCard> {
               Navigator.pop(ctx);
               _deleteProduct(context, ref);
             },
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+            child: const Text('Delete', style: TextStyle(color: AppTheme.errorColor)),
           ),
         ],
       ),
@@ -791,24 +800,83 @@ class _InventoryItemCardState extends ConsumerState<_InventoryItemCard> {
       addTag('SN', product.serialNumber!, Icons.numbers_outlined);
     }
 
-    if (fields.hasImei && product.imei != null && product.imei!.isNotEmpty) {
-      addTag('IMEI', product.imei!, Icons.smartphone_outlined);
-    }
+class _InventoryItemPill extends ConsumerStatefulWidget {
+  final dynamic product;
+  final VoidCallback onAddStock;
 
-    if (fields.hasWarranty && product.warranty != null && product.warranty!.isNotEmpty) {
-      addTag('Warranty', product.warranty!, Icons.verified_user_outlined);
-    }
+  const _InventoryItemPill({
+    required this.product,
+    required this.onAddStock,
+  });
 
-    if (fields.hasHsnCode && product.hsnCode != null && product.hsnCode!.isNotEmpty) {
-      addTag('HSN', product.hsnCode!, Icons.article_outlined);
-    }
+  @override
+  ConsumerState<_InventoryItemPill> createState() => _InventoryItemPillState();
+}
 
-    if (tags.isEmpty) return const SizedBox.shrink();
+class _InventoryItemPillState extends ConsumerState<_InventoryItemPill> {
+  void _openEdit() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CreateProductScreen(
+          editProduct: widget.product,
+        ),
+      ),
+    );
+  }
 
-    return Padding(
-      padding: const EdgeInsets.only(top: 4),
-      child: Wrap(
-        children: tags,
+  void _showProductMenu(BuildContext context, WidgetRef ref) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) => Container(
+        padding: const EdgeInsets.symmetric(vertical: 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.add_box_rounded, color: AppTheme.primaryColor),
+              title: const Text('Add Stock', style: TextStyle(fontWeight: FontWeight.bold)),
+              onTap: () {
+                Navigator.pop(context);
+                widget.onAddStock();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.edit_rounded, color: AppTheme.primaryColor),
+              title: const Text('Edit Product', style: TextStyle(fontWeight: FontWeight.bold)),
+              onTap: () {
+                Navigator.pop(context);
+                _openEdit();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete_outline_rounded, color: AppTheme.errorColor),
+              title: const Text('Delete Product', style: TextStyle(color: AppTheme.errorColor, fontWeight: FontWeight.bold)),
+              onTap: () async {
+                final confirm = await showDialog<bool>(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('Delete Product?'),
+                    content: const Text('This action cannot be undone.'),
+                    actions: [
+                      TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+                      TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete', style: TextStyle(color: AppTheme.errorColor))),
+                    ],
+                  ),
+                );
+
+                if (confirm == true) {
+                  await ProductCrudService().deleteProduct(widget.product.id);
+                  ref.invalidate(productsProvider);
+                  if (context.mounted) Navigator.pop(context);
+                }
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -819,68 +887,68 @@ class _InventoryItemCardState extends ConsumerState<_InventoryItemCard> {
     final bool isOutOfStock = widget.product.quantity == 0;
     
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppTheme.borderColor.withValues(alpha: 0.4), width: 1),
+        border: Border.all(color: AppTheme.slate200, width: 1.5),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            color: AppTheme.slate900.withValues(alpha: 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
+      clipBehavior: Clip.antiAlias,
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(20),
         child: InkWell(
-          borderRadius: BorderRadius.circular(20),
-          onLongPress: () => _showProductMenu(context, ref),
-          onTap: _openEdit,
+          onLongPress: () {
+            HapticFeedback.heavyImpact();
+            _showProductMenu(context, ref);
+          },
+          onTap: () {
+            HapticFeedback.selectionClick();
+            _openEdit();
+          },
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             child: Row(
               children: [
-                // 1. Product Image
+                // Product Icon/Image
                 Container(
-                  width: 60,
-                  height: 60,
+                  width: 48,
+                  height: 48,
                   decoration: BoxDecoration(
-                    color: AppTheme.backgroundColor,
+                    color: AppTheme.slate50,
                     borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: AppTheme.slate100, width: 1),
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(14),
                     child: widget.product.imageUrl != null && widget.product.imageUrl!.isNotEmpty
                         ? Image.network(
                             widget.product.imageUrl!,
-                            fit: BoxFit.contain,
+                            fit: BoxFit.cover,
                             errorBuilder: (context, error, stackTrace) => _buildPlaceholderIcon(),
                           )
-                        : widget.product.imagePath != null && widget.product.imagePath!.isNotEmpty
-                            ? Image.file(
-                                File(widget.product.imagePath!),
-                                fit: BoxFit.contain,
-                                errorBuilder: (context, error, stackTrace) => _buildPlaceholderIcon(),
-                              )
-                            : _buildPlaceholderIcon(),
+                        : _buildPlaceholderIcon(),
                   ),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 12),
                 
-                // 2. Product Info
+                // Info
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
                         widget.product.name,
                         style: const TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 16,
-                          color: AppTheme.textPrimary,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 14,
+                          color: AppTheme.slate900,
                           letterSpacing: -0.5,
                         ),
                         maxLines: 1,
@@ -889,53 +957,50 @@ class _InventoryItemCardState extends ConsumerState<_InventoryItemCard> {
                       const SizedBox(height: 4),
                       Row(
                         children: [
-                          Text(
-                            'Stock: ',
-                            style: TextStyle(
-                              color: AppTheme.textSecondary.withValues(alpha: 0.6),
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          Text(
-                            '${widget.product.quantity}',
-                            style: TextStyle(
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
                               color: isOutOfStock 
-                                ? AppTheme.errorColor 
-                                : (isLowStock ? AppTheme.warningColor : AppTheme.successColor),
-                              fontSize: 14,
-                              fontWeight: FontWeight.w800,
+                                ? AppTheme.errorColor.withValues(alpha: 0.1)
+                                : (isLowStock ? AppTheme.warningColor.withValues(alpha: 0.1) : AppTheme.successColor.withValues(alpha: 0.1)),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  isOutOfStock ? Icons.error_outline_rounded : Icons.inventory_2_outlined,
+                                  size: 10,
+                                  color: isOutOfStock 
+                                    ? AppTheme.errorColor 
+                                    : (isLowStock ? AppTheme.warningColor : AppTheme.successColor),
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '${widget.product.quantity.toInt()} left',
+                                  style: TextStyle(
+                                    color: isOutOfStock 
+                                      ? AppTheme.errorColor 
+                                      : (isLowStock ? AppTheme.warningColor : AppTheme.successColor),
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          if (isOutOfStock || isLowStock)
-                            _StatusBadge(
-                              label: isOutOfStock ? 'OUT' : 'LOW',
-                              color: isOutOfStock ? AppTheme.errorColor : AppTheme.warningColor,
+                          const SizedBox(width: 6),
+                          Text(
+                            '₹${widget.product.salePrice}',
+                            style: const TextStyle(
+                              color: AppTheme.slate500,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
                             ),
+                          ),
                         ],
                       ),
-                      ref.watch(shopCategoriesProvider).when(
-                        data: (categories) => _buildProductInfoTags(widget.product as Product, categories),
-                        loading: () => const SizedBox.shrink(),
-                        error: (error, stackTrace) => const SizedBox.shrink(),
-                      ),
                     ],
-                  ),
-                ),
-                
-                // 3. Edit Button
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryColor.withValues(alpha: 0.08),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.edit_rounded,
-                    color: AppTheme.primaryColor,
-                    size: 18,
                   ),
                 ),
               ],
@@ -950,12 +1015,13 @@ class _InventoryItemCardState extends ConsumerState<_InventoryItemCard> {
     return Center(
       child: Icon(
         Icons.inventory_2_rounded,
-        size: 24,
-        color: AppTheme.textSecondary.withValues(alpha: 0.4),
+        size: 20,
+        color: AppTheme.textSecondary.withValues(alpha: 0.3),
       ),
     );
   }
 }
+
 
 class _StatusBadge extends StatelessWidget {
   final String label;
@@ -1065,10 +1131,12 @@ class _AddStockBottomSheetState extends ConsumerState<_AddStockBottomSheet> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
-                        'Quantity',
+                        'QUANTITY',
                         style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 11,
+                          color: AppTheme.slate500,
+                          letterSpacing: 1.2,
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -1076,17 +1144,28 @@ class _AddStockBottomSheetState extends ConsumerState<_AddStockBottomSheet> {
                         controller: _qtyController,
                         focusNode: _qtyFocusNode,
                         keyboardType: TextInputType.number,
+                        textAlign: TextAlign.center,
                         style: const TextStyle(
-                          fontSize: 32,
-                          fontWeight: FontWeight.bold,
+                          fontSize: 28,
+                          fontWeight: FontWeight.w900,
+                          color: AppTheme.primaryColor,
                         ),
                         decoration: InputDecoration(
                           hintText: '0',
                           filled: true,
-                          fillColor: AppTheme.backgroundColor,
+                          fillColor: AppTheme.slate50,
+                          contentPadding: const EdgeInsets.symmetric(vertical: 20),
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
+                            borderRadius: BorderRadius.circular(20),
                             borderSide: BorderSide.none,
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(20),
+                            borderSide: const BorderSide(color: AppTheme.slate200, width: 1.5),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(20),
+                            borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2.5),
                           ),
                         ),
                       ),
@@ -1099,28 +1178,42 @@ class _AddStockBottomSheetState extends ConsumerState<_AddStockBottomSheet> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
-                        'Cost Price',
+                        'COST PRICE',
                         style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 11,
+                          color: AppTheme.slate500,
+                          letterSpacing: 1.2,
                         ),
                       ),
                       const SizedBox(height: 12),
                       TextField(
                         controller: _costController,
                         keyboardType: TextInputType.number,
+                        textAlign: TextAlign.center,
                         style: const TextStyle(
-                          fontSize: 32,
-                          fontWeight: FontWeight.bold,
+                          fontSize: 28,
+                          fontWeight: FontWeight.w900,
+                          color: AppTheme.successColor,
                         ),
                         decoration: InputDecoration(
                           prefixText: '₹',
+                          prefixStyle: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                           hintText: '0',
                           filled: true,
-                          fillColor: AppTheme.backgroundColor,
+                          fillColor: AppTheme.slate50,
+                          contentPadding: const EdgeInsets.symmetric(vertical: 20),
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
+                            borderRadius: BorderRadius.circular(20),
                             borderSide: BorderSide.none,
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(20),
+                            borderSide: const BorderSide(color: AppTheme.slate200, width: 1.5),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(20),
+                            borderSide: const BorderSide(color: AppTheme.successColor, width: 2.5),
                           ),
                         ),
                       ),

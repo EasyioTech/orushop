@@ -80,20 +80,29 @@ class ReceiptService {
     String currencySymbol,
   ) {
     final buffer = StringBuffer();
-    buffer.writeln('$storeName - Receipt #${sale.id}');
-    buffer.writeln('Date: ${DateFormatter.formatDate(sale.createdAt)}');
-    buffer.writeln('---');
+    buffer.writeln('📜 *RECEIPT FROM ${storeName.toUpperCase()}*');
+    buffer.writeln('------------------------------------------');
+    buffer.writeln('Receipt: #${sale.id.toString().padLeft(6, '0')}');
+    buffer.writeln('Date: ${DateFormatter.formatDateTime(sale.createdAt)}');
+    buffer.writeln('------------------------------------------');
+    buffer.writeln('ITEMS:');
 
     for (final item in items) {
       final amount = item.quantity * item.unitPrice;
       buffer.writeln(
-        '${item.quantity}x ${CurrencyFormatter.format(item.unitPrice)} = ${CurrencyFormatter.format(amount)}',
+        '• Item #${item.productId}: ${item.quantity} x ${CurrencyFormatter.format(item.unitPrice)} = *${CurrencyFormatter.format(amount)}*',
       );
     }
 
-    buffer.writeln('---');
-    buffer.writeln('Total: ${CurrencyFormatter.format(sale.finalAmount)}');
+    buffer.writeln('------------------------------------------');
+    if (sale.discountAmount > 0) {
+      buffer.writeln('Subtotal: ${CurrencyFormatter.format(sale.totalAmount)}');
+      buffer.writeln('Discount: -${CurrencyFormatter.format(sale.discountAmount)}');
+    }
+    buffer.writeln('*TOTAL: ${CurrencyFormatter.format(sale.finalAmount)}*');
     buffer.writeln('Payment: ${sale.paymentMethod}');
+    buffer.writeln('------------------------------------------');
+    buffer.writeln('Thank you for shopping with us! 🙏');
 
     return buffer.toString();
   }

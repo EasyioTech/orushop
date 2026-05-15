@@ -192,13 +192,19 @@ class _SalesHistoryScreenState extends ConsumerState<SalesHistoryScreen> {
                       ],
                     );
                   }
-                  return ListView.builder(
+                  return GridView.builder(
                     physics: const AlwaysScrollableScrollPhysics(),
                     padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      childAspectRatio: 2.1,
+                      crossAxisSpacing: 12,
+                      mainAxisSpacing: 12,
+                    ),
                     itemCount: sales.length,
                     itemBuilder: (context, index) {
                       final sale = sales[index];
-                      return _SalesHistoryTile(sale: sale);
+                      return _SalesHistoryPill(sale: sale);
                     },
                   );
                 },
@@ -220,7 +226,7 @@ class _SalesHistoryScreenState extends ConsumerState<SalesHistoryScreen> {
               color: Colors.white,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
+                  color: AppTheme.primaryDark.withValues(alpha: 0.05),
                   blurRadius: 10,
                   offset: const Offset(0, -5),
                 ),
@@ -349,71 +355,15 @@ class _RefundHistorySection extends ConsumerWidget {
             child: Text(
               'No refunds',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Colors.grey[600],
+                    color: AppTheme.slate600,
                   ),
             ),
           );
         }
         return Column(
           children: refunds.map((refund) {
-            return Card(
+            return Container(
               margin: const EdgeInsets.only(bottom: 12),
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                CurrencyFormatter.format(refund.refundAmount),
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .titleSmall
-                                    ?.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                refund.reason,
-                                style: Theme.of(context).textTheme.bodySmall,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: _getStatusColor(refund.status),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            refund.status.toUpperCase(),
-                            style: Theme.of(context)
-                                .textTheme
-                                .labelSmall
-                                ?.copyWith(
-                                  color: Colors.white,
-                                ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    if (refund.notes != null && refund.notes!.isNotEmpty) ...[
-                      const SizedBox(height: 8),
-                      Text(
-                        refund.notes!,
                         style: Theme.of(context).textTheme.bodySmall,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
@@ -423,7 +373,7 @@ class _RefundHistorySection extends ConsumerWidget {
                     Text(
                       DateFormat('MMM d, h:mm a').format(refund.createdAt),
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: Colors.grey[600],
+                            color: AppTheme.slate600,
                           ),
                     ),
                   ],
@@ -448,38 +398,82 @@ class _RefundHistorySection extends ConsumerWidget {
   }
 }
 
-class _SalesHistoryTile extends ConsumerWidget {
+class _SalesHistoryPill extends StatelessWidget {
   final dynamic sale;
 
-  const _SalesHistoryTile({required this.sale});
+  const _SalesHistoryPill({required this.sale});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: ListTile(
-        title: Text(
-          CurrencyFormatter.format(sale.finalAmount),
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-        ),
-        subtitle: Text(
-          '${sale.itemCount} items • ${sale.paymentMethod}',
-          style: Theme.of(context).textTheme.bodySmall,
-        ),
-        trailing: Text(
-          DateFormat('MMM d, h:mm a').format(sale.createdAt),
-          style: Theme.of(context).textTheme.bodySmall,
-        ),
-        onTap: () {
-          Navigator.push(
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppTheme.borderColor.withValues(alpha: 0.6), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.primaryDark.withValues(alpha: 0.02),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => Navigator.push(
             context,
-            MaterialPageRoute(
-              builder: (context) => SaleDetailScreen(saleId: sale.id),
+            MaterialPageRoute(builder: (_) => SaleDetailScreen(saleId: sale.id!)),
+          ),
+          borderRadius: BorderRadius.circular(24),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: AppTheme.slate100,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: const Icon(
+                    Icons.receipt_long_rounded,
+                    color: AppTheme.primaryColor,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        CurrencyFormatter.format(sale.finalAmount),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 18,
+                          color: AppTheme.slate900,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        DateFormat('MMM d, h:mm a').format(sale.createdAt),
+                        style: TextStyle(
+                          color: AppTheme.slate500,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.chevron_right_rounded, color: AppTheme.slate300),
+              ],
             ),
-          );
-        },
+          ),
+        ),
       ),
     );
   }
@@ -520,51 +514,33 @@ class SaleDetailScreen extends ConsumerWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          'Sale #${detail.saleId}',
-                          style: Theme.of(context).textTheme.bodySmall,
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: AppTheme.slate100,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            'SALE #${detail.saleId}',
+                            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: AppTheme.slate500, letterSpacing: 0.5),
+                          ),
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 16),
                         Text(
                           CurrencyFormatter.format(detail.finalAmount),
-                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: AppTheme.successColor,
-                              ),
+                          style: const TextStyle(
+                            fontSize: 32,
+                            fontWeight: FontWeight.w900,
+                            color: AppTheme.primaryColor,
+                            letterSpacing: -1,
+                          ),
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 24),
                         Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Payment Method',
-                                  style: Theme.of(context).textTheme.bodySmall,
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  detail.paymentMethod,
-                                  style: Theme.of(context).textTheme.titleSmall,
-                                ),
-                              ],
-                            ),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Text(
-                                  'Date & Time',
-                                  style: Theme.of(context).textTheme.bodySmall,
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  DateFormat('MMM d, y · h:mm a')
-                                      .format(detail.createdAt),
-                                  style: Theme.of(context).textTheme.titleSmall,
-                                ),
-                              ],
-                            ),
+                            _DetailInfo(label: 'PAYMENT', value: detail.paymentMethod, icon: Icons.payments_outlined),
+                            const SizedBox(width: 12),
+                            _DetailInfo(label: 'DATE', value: DateFormat('MMM d, h:mm a').format(detail.createdAt), icon: Icons.calendar_today_rounded),
                           ],
                         ),
                       ],
@@ -580,46 +556,37 @@ class SaleDetailScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 12),
                 ...detail.items.map((item) {
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    item.productName,
-                                    style:
-                                        Theme.of(context).textTheme.titleSmall,
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    '${item.quantity} × ${CurrencyFormatter.format(item.unitPrice)}',
-                                    style: Theme.of(context).textTheme.bodySmall,
-                                  ),
-                                ],
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: AppTheme.slate100),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                item.productName,
+                                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: AppTheme.slate900),
                               ),
-                            ),
-                            const SizedBox(width: 16),
-                            Text(
-                              CurrencyFormatter.format(item.subtotal),
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .titleSmall
-                                  ?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                            ),
-                          ],
+                              const SizedBox(height: 4),
+                              Text(
+                                '${item.quantity} × ${CurrencyFormatter.format(item.price)}',
+                                style: TextStyle(fontSize: 12, color: AppTheme.slate500, fontWeight: FontWeight.w600),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
+                        Text(
+                          CurrencyFormatter.format(item.price * item.quantity),
+                          style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: AppTheme.slate900),
+                        ),
+                      ],
                     ),
                   );
                 }),
@@ -747,3 +714,44 @@ class SaleDetailScreen extends ConsumerWidget {
 }
 
 
+class _DetailInfo extends StatelessWidget {
+  final String label;
+  final String value;
+  final IconData icon;
+
+  const _DetailInfo({required this.label, required this.value, required this.icon});
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppTheme.slate50,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppTheme.slate100),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, size: 12, color: AppTheme.slate400),
+                const SizedBox(width: 4),
+                Text(
+                  label,
+                  style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: AppTheme.slate400, letterSpacing: 0.5),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              value,
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppTheme.slate900),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

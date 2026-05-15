@@ -47,10 +47,7 @@ final shopDetailsProvider = Provider<ShopDetails?>((ref) {
       batchNumber: ownerDetails['features']?['batchNumber'] ?? false,
       serialNumberTracking: ownerDetails['features']?['serialNumberTracking'] ?? false,
       gstTaxInvoicing: ownerDetails['features']?['gstTaxInvoicing'] ?? true,
-      sizeVariant: ownerDetails['features']?['sizeVariant'] ?? false,
-      recipeIngredients: ownerDetails['features']?['recipeIngredients'] ?? false,
       lowStockAlerts: ownerDetails['features']?['lowStockAlerts'] ?? true,
-      prescriptionRequired: ownerDetails['features']?['prescriptionRequired'] ?? false,
     ),
   );
 });

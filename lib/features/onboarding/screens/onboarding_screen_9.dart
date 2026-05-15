@@ -178,7 +178,7 @@ class _OnboardingScreen9State extends State<OnboardingScreen9>
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
+    final size = MediaQuery.sizeOf(context);
 
     return Scaffold(
       backgroundColor: Colors.white,

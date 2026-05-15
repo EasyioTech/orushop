@@ -12,42 +12,34 @@ class ProductRepository {
     // Logic inside a local closure to be used with or without external txn
     Future<int> internalCreate(dynamic ex) async {
       // 1. Insert into core products table
-      final productMap = product.toMap();
-      if (product.id == 0) productMap.remove('id');
-      final productId = await ex.insert(TableConstants.products, productMap);
+      final coreMap = product.toCoreMap();
+      if (product.id == 0) coreMap.remove('id');
+      final productId = await ex.insert(TableConstants.products, coreMap);
       
       // 2. Insert into template-specific table
-      if (product.template == ProductTemplate.standardRetail || 
-          product.template == ProductTemplate.bulkUom || 
-          product.template == ProductTemplate.batchMultiUom ||
-          product.template == ProductTemplate.batchExpiry ||
-          product.template == ProductTemplate.variantMatrix ||
-          product.template == ProductTemplate.serviceLabor) {
-        await ex.insert(TableConstants.inventoryStandard, {
-          'productId': productId,
-          'sellingPrice': product.price,
-          'mrp': product.mrp,
-          'costPrice': product.costPrice,
-          'wholesalePrice': product.wholesalePrice,
-          'quantity': product.quantity,
-          'reorderLevel': product.reorderLevel,
-          'unit': product.unit,
-          'packagingUnit': product.packagingUnit,
-          'conversionFactor': product.conversionFactor,
-          'serviceDuration': product.serviceDuration,
-          'staffCommission': product.staffCommission,
-        });
-      } else if (product.template == ProductTemplate.serialized) {
-        await ex.insert(TableConstants.inventorySerialized, {
-          'productId': productId,
-          'serialNumber': product.serialNumber,
-          'imei': product.imei,
-          'warrantyExpiry': product.warrantyExpiry,
-          'sellingPrice': product.price,
-          'mrp': product.mrp,
-          'costPrice': product.costPrice,
-          'status': product.status,
-        });
+      if (product.template == ProductTemplate.serialized) {
+        await ex.insert(
+          TableConstants.inventorySerialized, 
+          product.toInventorySerializedMap(productId)
+        );
+      } else {
+        // Standard, Bulk, Batch, Variant, Service all use inventory_standard for base price/qty
+        await ex.insert(
+          TableConstants.inventoryStandard, 
+          product.toInventoryStandardMap(productId)
+        );
+
+        // 3. Handle Initial Stock for physical goods (Create a default batch)
+        if (!product.isService && product.quantity > 0 && product.template != ProductTemplate.variantMatrix) {
+          await ex.insert(TableConstants.productBatches, {
+            'productId': productId,
+            'quantity': product.quantity,
+            'costPrice': product.costPrice ?? 0.0,
+            'batchNumber': product.batchNumber ?? 'INITIAL',
+            'expiryDate': product.expiryDate ?? DateTime.now().add(const Duration(days: 365)).toIso8601String(),
+            'createdAt': DateTime.now().toIso8601String(),
+          });
+        }
       }
       return productId;
     }
@@ -144,55 +136,56 @@ class ProductRepository {
       // 1. Update core products table
       final count = await ex.update(
         TableConstants.products,
-        product.toMap(),
+        product.toCoreMap(),
         where: 'id = ?',
         whereArgs: [product.id],
       );
 
-      // 2. Update template-specific table
-      if (product.template == ProductTemplate.standardRetail ||
-          product.template == ProductTemplate.bulkUom ||
-          product.template == ProductTemplate.batchMultiUom ||
-          product.template == ProductTemplate.batchExpiry ||
-          product.template == ProductTemplate.variantMatrix ||
-          product.template == ProductTemplate.serviceLabor) {
-        // Read live quantity from product_batches to avoid overwriting with stale value
-        final liveQtyResult = await ex.rawQuery(
-          'SELECT SUM(quantity) as q FROM ${TableConstants.productBatches} WHERE productId = ?',
-          [product.id],
-        );
-        final liveQty = (liveQtyResult.isNotEmpty && liveQtyResult.first['q'] != null)
-            ? (liveQtyResult.first['q'] as num).toDouble()
-            : product.quantity;
-
+        // Cleanup ALL template-specific tables first to handle template changes correctly
         await ex.delete(TableConstants.inventoryStandard, where: 'productId = ?', whereArgs: [product.id]);
-        await ex.insert(TableConstants.inventoryStandard, {
-          'productId': product.id,
-          'sellingPrice': product.price,
-          'mrp': product.mrp,
-          'costPrice': product.costPrice,
-          'wholesalePrice': product.wholesalePrice,
-          'quantity': liveQty,
-          'reorderLevel': product.reorderLevel,
-          'unit': product.unit,
-          'packagingUnit': product.packagingUnit,
-          'conversionFactor': product.conversionFactor,
-          'serviceDuration': product.serviceDuration,
-          'staffCommission': product.staffCommission,
-        });
-      } else if (product.template == ProductTemplate.serialized) {
         await ex.delete(TableConstants.inventorySerialized, where: 'productId = ?', whereArgs: [product.id]);
-        await ex.insert(TableConstants.inventorySerialized, {
-          'productId': product.id,
-          'serialNumber': product.serialNumber,
-          'imei': product.imei,
-          'warrantyExpiry': product.warrantyExpiry,
-          'sellingPrice': product.price,
-          'mrp': product.mrp,
-          'costPrice': product.costPrice,
-          'status': product.status,
-        });
-      }
+
+        if (product.template == ProductTemplate.serialized) {
+          await ex.insert(
+            TableConstants.inventorySerialized, 
+            product.toInventorySerializedMap(product.id)
+          );
+        } else {
+          // Standard, Bulk, Batch, Variant, Service
+          // Read live quantity from product_batches (physical) or variants (variantMatrix)
+          double liveQty = product.quantity;
+          
+          if (product.template == ProductTemplate.variantMatrix) {
+            final varQtyResult = await ex.rawQuery(
+              'SELECT SUM(stock) as q FROM ${TableConstants.productVariants} WHERE productId = ?',
+              [product.id],
+            );
+            if (varQtyResult.isNotEmpty && varQtyResult.first['q'] != null) {
+              liveQty = (varQtyResult.first['q'] as num).toDouble();
+            }
+          } else if (!product.isService) {
+            final batchQtyResult = await ex.rawQuery(
+              'SELECT SUM(quantity) as q FROM ${TableConstants.productBatches} WHERE productId = ?',
+              [product.id],
+            );
+            if (batchQtyResult.isNotEmpty && batchQtyResult.first['q'] != null) {
+              liveQty = (batchQtyResult.first['q'] as num).toDouble();
+            }
+          }
+
+          await ex.insert(
+            TableConstants.inventoryStandard, 
+            product.toInventoryStandardMap(product.id, liveQty: liveQty)
+          );
+
+          // Update master product quantity to match live calculated quantity
+          await ex.update(
+            TableConstants.products,
+            {'quantity': liveQty, 'updatedAt': DateTime.now().toIso8601String()},
+            where: 'id = ?',
+            whereArgs: [product.id],
+          );
+        }
       return count;
     }
 
@@ -206,11 +199,19 @@ class ProductRepository {
 
   Future<int> delete(int id) async {
     final db = await _dbHelper.database;
-    return db.delete(
-      TableConstants.products,
-      where: 'id = ?',
-      whereArgs: [id],
-    );
+    return db.transaction((txn) async {
+      // Cleanup all related tables
+      await txn.delete(TableConstants.inventoryStandard, where: 'productId = ?', whereArgs: [id]);
+      await txn.delete(TableConstants.inventorySerialized, where: 'productId = ?', whereArgs: [id]);
+      await txn.delete(TableConstants.productBatches, where: 'productId = ?', whereArgs: [id]);
+      await txn.delete(TableConstants.productVariants, where: 'productId = ?', whereArgs: [id]);
+      
+      return await txn.delete(
+        TableConstants.products,
+        where: 'id = ?',
+        whereArgs: [id],
+      );
+    });
   }
 
   Future<double> getTotalQuantity(int productId) async {

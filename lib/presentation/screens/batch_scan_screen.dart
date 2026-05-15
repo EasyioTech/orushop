@@ -217,7 +217,7 @@ class _BatchScanScreenState extends ConsumerState<BatchScanScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: AppTheme.primaryDark,
       body: Stack(
         children: [
           MobileScanner(
@@ -228,7 +228,7 @@ class _BatchScanScreenState extends ConsumerState<BatchScanScreen> {
           // Custom Scanner Overlay
           Positioned.fill(
             child: Container(
-              color: Colors.black26,
+              color: AppTheme.slate400,
               child: Center(
                 child: Container(
                   width: 280,
@@ -271,7 +271,7 @@ class _BatchScanScreenState extends ConsumerState<BatchScanScreen> {
                       IconButton(
                         onPressed: () => Navigator.pop(context),
                         icon: const Icon(Icons.close_rounded, color: Colors.white, size: 28),
-                        style: IconButton.styleFrom(backgroundColor: Colors.black45),
+                        style: IconButton.styleFrom(backgroundColor: AppTheme.slate500),
                       ),
                       const Spacer(),
                       if (_scannedItems.isNotEmpty)
@@ -298,7 +298,7 @@ class _BatchScanScreenState extends ConsumerState<BatchScanScreen> {
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.95),
                         borderRadius: BorderRadius.circular(12),
-                        boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 10)],
+                        boxShadow: const [BoxShadow(color: AppTheme.slate400, blurRadius: 10)],
                       ),
                       child: Row(
                         children: [

@@ -202,7 +202,7 @@ class AnalyticsRepository {
 
     final row = result.isNotEmpty ? result.first : {};
     final totalReturns = await db.rawQuery(
-      'SELECT SUM(refundAmount) as refunded FROM returns WHERE createdAt >= ? AND createdAt < ?',
+      'SELECT SUM(refundAmount) as refunded FROM ${TableConstants.refunds} WHERE createdAt >= ? AND createdAt < ?',
       [start.toIso8601String(), end.add(const Duration(days: 1)).toIso8601String()],
     );
 

@@ -14,6 +14,9 @@ import 'migrations/migration_v11.dart';
 import 'migrations/migration_v12.dart';
 import 'migrations/migration_v13.dart';
 import 'migrations/migration_v14.dart';
+import 'migrations/migration_v15.dart';
+import 'migrations/migration_v16.dart';
+import 'migrations/migration_v17.dart';
 
 
 import 'table_constants.dart';
@@ -43,24 +46,26 @@ class DatabaseHelper {
 
   Future<Database> _initDatabase() async {
     try {
+      debugPrint('DB: Getting databases path...');
       final dbPath = await getDatabasesPath();
       final path = join(dbPath, 'OruShops.db');
+      debugPrint('DB: Opening database at $path...');
       return await openDatabase(
         path,
-        version: 14,
-
-
+        version: 17,
         onCreate: _onCreate,
         onUpgrade: _onUpgrade,
         onOpen: _onOpen,
       );
     } catch (e) {
+      debugPrint('DB: Init error: $e');
       AppLogger.e(_tag, '_initDatabase error', e);
       throw Exception('Failed to initialize database: $e');
     }
   }
 
   Future<void> _onCreate(Database db, int version) async {
+    debugPrint('DB: Creating database v$version...');
     await MigrationV1.up(db);
     await MigrationV3.up(db);
     await MigrationV4.up(db);
@@ -73,8 +78,10 @@ class DatabaseHelper {
     await MigrationV12.migrate(db);
     await MigrationV13.up(db);
     await MigrationV14.up(db);
-
-
+    await MigrationV15.up(db);
+    await MigrationV16.up(db);
+    await MigrationV17.up(db);
+    debugPrint('DB: Database creation complete.');
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -99,8 +106,9 @@ class DatabaseHelper {
     if (oldVersion < 12) await MigrationV12.migrate(db);
     if (oldVersion < 13) await MigrationV13.up(db);
     if (oldVersion < 14) await MigrationV14.up(db);
-
-
+    if (oldVersion < 15) await MigrationV15.up(db);
+    if (oldVersion < 16) await MigrationV16.up(db);
+    if (oldVersion < 17) await MigrationV17.up(db);
   }
 
   Future<void> _onOpen(Database db) async {
@@ -146,6 +154,7 @@ class DatabaseHelper {
         TableConstants.productCategories,
         TableConstants.productSubcategories,
         TableConstants.productVariants,
+        TableConstants.customers,
       ];
 
       for (final table in tables) {

@@ -52,23 +52,44 @@ class ShopCatalogService {
 
   ShopCatalogService(this._dbHelper);
 
+  /// Maps ShopType to the string expected by the catalog API.
+  String _getApiStoreType(ShopType shopType) {
+    switch (shopType) {
+      case ShopType.medical:
+        return 'medical';
+      case ShopType.grocery:
+        return 'grocery';
+      case ShopType.electronics:
+        return 'electronics';
+      case ShopType.clothing:
+        return 'clothing';
+      default:
+        // Default to a known type or handle as unsupported
+        return shopType.name.toLowerCase();
+    }
+  }
+
   /// Downloads the catalog for a specific shop type and stores it locally.
   Future<void> syncCatalog(ShopType shopType) async {
     try {
-      debugPrint('📥 Syncing full catalog for ${shopType.name} from Cloudflare...');
+      final apiType = _getApiStoreType(shopType);
+      debugPrint('📥 Syncing full catalog for $apiType from Cloudflare...');
 
-      final response = await http.get(Uri.parse('$_baseUrl/catalog?type=${shopType.name}&limit=500'));
+      final response = await http.get(Uri.parse('$_baseUrl/catalog?type=$apiType&limit=500'));
 
       if (response.statusCode == 200) {
         final dynamic decoded = json.decode(response.body);
 
-        // Handle new API response format: {success, data, count, total, limit, offset}
+        // Handle both formats: {success, data, ...} and direct array
         List<Map<String, dynamic>> data = [];
-        if (decoded is Map && decoded.containsKey('data')) {
-          data = List<Map<String, dynamic>>.from(decoded['data'] ?? []);
-        } else if (decoded is List) {
-          // Fallback for old format (array)
+        if (decoded is List) {
           data = decoded.cast<Map<String, dynamic>>();
+        } else if (decoded is Map) {
+          if (decoded.containsKey('data')) {
+            data = List<Map<String, dynamic>>.from(decoded['data'] ?? []);
+          } else if (decoded.containsKey('results')) {
+            data = List<Map<String, dynamic>>.from(decoded['results'] ?? []);
+          }
         }
 
         if (data.isNotEmpty) {
@@ -78,16 +99,20 @@ class ShopCatalogService {
         } else {
           debugPrint('⚠️ No catalog data returned for ${shopType.name}');
         }
+      } else if (response.statusCode == 400) {
+        debugPrint('⚠️ Catalog not available for $apiType (400): ${response.body}');
+        // Silently return, no need to throw for unsupported store types
       } else {
+        debugPrint('❌ Catalog Sync Failed: ${response.statusCode}');
+        debugPrint('❌ Response Body: ${response.body}');
         throw Exception('Failed to download catalog: ${response.statusCode}');
       }
     } catch (e) {
-      debugPrint('⚠️ Catalog Sync Error: $e');
+      debugPrint('⚠️ Catalog Sync Error Details: $e');
       // Seed mock data in debug mode only for testing
       if (kDebugMode) {
         await _seedMockData(shopType);
       }
-      // In production, silently continue — catalog will be empty but app won't crash
     }
   }
 

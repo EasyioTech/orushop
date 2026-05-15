@@ -5,10 +5,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:orushops/core/theme/app_theme.dart';
 import 'firebase_options.dart';
 
 import 'core/database/database_helper.dart';
-import 'core/theme/app_theme.dart';
 import 'presentation/screens/home_screen.dart';
 import 'core/widgets/error_boundary.dart';
 import 'core/services/auth_service.dart';
@@ -28,24 +28,39 @@ import 'providers/products_provider.dart';
 import 'providers/analytics_provider.dart';
 
 void main() async {
+  debugPrint('App starting...');
   WidgetsFlutterBinding.ensureInitialized();
 
-  final results = await Future.wait([
-    Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    ),
-    SharedPreferences.getInstance(),
+  debugPrint('Initializing SharedPreferences...');
+  final prefs = await SharedPreferences.getInstance();
+  
+  debugPrint('Initializing Firebase...');
+  try {
+    if (Firebase.apps.isEmpty) {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+    }
+  } catch (e) {
+    if (e.toString().contains('duplicate-app')) {
+      debugPrint('Firebase already initialized: $e');
+    } else {
+      debugPrint('Firebase init error: $e');
+      // Continue anyway, maybe it works?
+    }
+  }
+
+  debugPrint('Initializing Database...');
+  await Future.wait([
     DatabaseHelper().database,
   ]);
-
-  final prefs = results[1] as SharedPreferences;
+  
+  debugPrint('Initializing SharedPrefs Provider...');
   initializeSharedPrefs(prefs);
 
-  // Initialize Crashlytics with collection disabled by default
-  // Collection is enabled only if user has granted analytics consent
+  debugPrint('Initializing Crashlytics...');
   await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(false);
 
-  // Set custom error handler to respect user consent
   FlutterError.onError = (errorDetails) {
     final hasAnalyticsConsent = prefs.getBool('analytics_consent_v1') ?? false;
     if (hasAnalyticsConsent) {
@@ -53,6 +68,7 @@ void main() async {
     }
   };
 
+  debugPrint('Running App...');
   runApp(
     ProviderScope(
       overrides: [
@@ -261,7 +277,7 @@ class _AppNavBar extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
+            color: AppTheme.primaryDark.withValues(alpha: 0.02),
             blurRadius: 10,
             offset: const Offset(0, -2),
           ),

@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:orushops/core/services/revenue_cat_service.dart';
 import 'package:orushops/providers/subscription_provider.dart';
-
+import 'package:orushops/core/theme/app_theme.dart';
 class PaywallScreen extends ConsumerStatefulWidget {
   final VoidCallback? onPurchaseSuccess;
   final VoidCallback? onDismiss;
@@ -198,7 +198,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.error_outline, size: 48, color: Colors.red),
+              Icon(Icons.error_outline, size: 48, color: AppTheme.errorColor),
               const SizedBox(height: 16),
               Text('Error loading offerings: $error'),
               const SizedBox(height: 16),
@@ -229,9 +229,9 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Purchase successful! Welcome to OruShops Pro'),
-            backgroundColor: Colors.green,
+          SnackBar(
+            content: const Text('Purchase successful! Welcome to OruShops Pro'),
+            backgroundColor: AppTheme.successColor,
           ),
         );
         widget.onPurchaseSuccess?.call();
@@ -242,7 +242,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Purchase failed: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppTheme.errorColor,
           ),
         );
       }
@@ -262,9 +262,9 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Purchases restored successfully'),
-            backgroundColor: Colors.green,
+          SnackBar(
+            content: const Text('Purchases restored successfully'),
+            backgroundColor: AppTheme.successColor,
           ),
         );
         // Refresh subscription status
@@ -276,7 +276,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Restore failed: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppTheme.errorColor,
           ),
         );
       }
@@ -350,7 +350,7 @@ class _PackageCard extends StatelessWidget {
                       package.storeProduct.description,
                       style: TextStyle(
                         fontSize: 12,
-                        color: Colors.grey[600],
+                        color: AppTheme.slate600,
                       ),
                     ),
                   ],

@@ -7,6 +7,7 @@ class Sale {
   final String? transactionId;
   final String? customerPhone;
   final String? customerName;
+  final int? customerId;
   final String status;
   final DateTime createdAt;
 
@@ -19,6 +20,7 @@ class Sale {
     this.transactionId,
     this.customerPhone,
     this.customerName,
+    this.customerId,
     required this.status,
     required this.createdAt,
   });
@@ -33,6 +35,7 @@ class Sale {
       'transactionId': transactionId,
       'customerPhone': customerPhone,
       'customerName': customerName,
+      'customerId': customerId,
       'status': status,
       'createdAt': createdAt.toIso8601String(),
     };
@@ -48,6 +51,7 @@ class Sale {
       transactionId: map['transactionId'] as String?,
       customerPhone: map['customerPhone'] as String?,
       customerName: map['customerName'] as String?,
+      customerId: map['customerId'] as int?,
       status: map['status'] as String,
       createdAt: DateTime.parse(map['createdAt'] as String),
     );
@@ -62,6 +66,7 @@ class Sale {
     String? transactionId,
     String? customerPhone,
     String? customerName,
+    int? customerId,
     String? status,
     DateTime? createdAt,
   }) {
@@ -74,6 +79,7 @@ class Sale {
       transactionId: transactionId ?? this.transactionId,
       customerPhone: customerPhone ?? this.customerPhone,
       customerName: customerName ?? this.customerName,
+      customerId: customerId ?? this.customerId,
       status: status ?? this.status,
       createdAt: createdAt ?? this.createdAt,
     );

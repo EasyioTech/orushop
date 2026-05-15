@@ -236,7 +236,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                         border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.1)),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.03),
+                            color: AppTheme.primaryDark.withValues(alpha: 0.03),
                             blurRadius: 10,
                             offset: const Offset(0, 4),
                           ),
@@ -376,142 +376,138 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
       return _buildEmptyState('No sales data available yet.');
     }
     
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 16,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: ListView.separated(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        itemCount: products.length,
-        separatorBuilder: (context, index) => Divider(height: 1, color: AppTheme.backgroundColor, indent: 20, endIndent: 20),
-        itemBuilder: (context, index) {
-          final product = products[index];
-          return ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-            leading: Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: AppTheme.primaryColor.withValues(alpha: 0.05),
-                borderRadius: BorderRadius.circular(12),
+    return Column(
+      children: products.map((product) {
+        return Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: AppTheme.slate100),
+            boxShadow: [
+              BoxShadow(
+                color: AppTheme.primaryDark.withValues(alpha: 0.03),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
               ),
-              child: Center(
-                child: Text(
-                  '${index + 1}',
-                  style: TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.bold),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.inventory_2_rounded, color: AppTheme.primaryColor, size: 20),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Product #${product.productId}',
+                      style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: AppTheme.slate900),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${product.count} Sold',
+                      style: const TextStyle(color: AppTheme.slate500, fontSize: 12, fontWeight: FontWeight.w600),
+                    ),
+                  ],
                 ),
               ),
-            ),
-            title: Text(
-              product.productName,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-            ),
-            trailing: Text(
-              '${product.unitsSold} units',
-              style: TextStyle(color: AppTheme.textSecondary, fontSize: 13, fontWeight: FontWeight.w600),
-            ),
-          );
-        },
-      ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    CurrencyFormatter.format(product.totalRevenue),
+                    style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: AppTheme.primaryColor),
+                  ),
+                  const Text(
+                    'REVENUE',
+                    style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: AppTheme.slate400, letterSpacing: 0.5),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      }).toList(),
     );
   }
 
   Widget _buildPeriodMetrics(dynamic analytics) {
-    return Column(
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: _buildMetricCard(
-                'Gross Sales',
-                CurrencyFormatter.format(analytics.totalSales),
-                Icons.payments_rounded,
-                AppTheme.successColor,
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: _buildMetricCard(
-                'Net Sales',
-                CurrencyFormatter.format(analytics.netSales),
-                Icons.account_balance_wallet_rounded,
-                AppTheme.primaryLight,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            Expanded(
-              child: _buildMetricCard(
-                'Refunds',
-                CurrencyFormatter.format(analytics.refundedAmount),
-                Icons.assignment_return_rounded,
-                AppTheme.warningColor,
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: _buildMetricCard(
-                'Avg Ticket',
-                CurrencyFormatter.format(analytics.averageTransaction),
-                Icons.confirmation_number_rounded,
-                AppTheme.primaryColor,
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildMetricCard(String label, String value, IconData icon, Color color) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppTheme.slate100),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: AppTheme.primaryDark.withValues(alpha: 0.03),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
         ],
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: color, size: 20),
+          _buildMetricPill(
+            icon: Icons.receipt_long_rounded,
+            label: 'Total Transactions',
+            value: '${analytics.count}',
+            color: AppTheme.primaryColor,
           ),
           const SizedBox(height: 12),
+          _buildMetricPill(
+            icon: Icons.payments_rounded,
+            label: 'Total Revenue',
+            value: CurrencyFormatter.format(analytics.total),
+            color: AppTheme.successColor,
+          ),
+          const SizedBox(height: 12),
+          _buildMetricPill(
+            icon: Icons.trending_up_rounded,
+            label: 'Average Sale',
+            value: CurrencyFormatter.format(analytics.average),
+            color: Colors.blueAccent,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMetricPill({
+    required IconData icon,
+    required String label,
+    required String value,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withValues(alpha: 0.1)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: color, size: 20),
+          const SizedBox(width: 12),
           Text(
             label,
-            style: TextStyle(color: AppTheme.textSecondary, fontSize: 13, fontWeight: FontWeight.w500),
+            style: TextStyle(color: AppTheme.slate600, fontWeight: FontWeight.w700, fontSize: 13),
           ),
-          const SizedBox(height: 4),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              value,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-            ),
+          const Spacer(),
+          Text(
+            value,
+            style: TextStyle(color: color, fontWeight: FontWeight.w900, fontSize: 16),
           ),
         ],
       ),
@@ -531,7 +527,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: AppTheme.primaryDark.withValues(alpha: 0.04),
             blurRadius: 16,
             offset: const Offset(0, 8),
           ),
@@ -602,7 +598,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: AppTheme.primaryDark.withValues(alpha: 0.04),
             blurRadius: 16,
             offset: const Offset(0, 8),
           ),
@@ -756,7 +752,7 @@ class _AlertsSection extends ConsumerWidget {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: AppTheme.primaryDark.withValues(alpha: 0.04),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
