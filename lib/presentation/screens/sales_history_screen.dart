@@ -364,20 +364,29 @@ class _RefundHistorySection extends ConsumerWidget {
           children: refunds.map((refund) {
             return Container(
               margin: const EdgeInsets.only(bottom: 12),
-                        style: Theme.of(context).textTheme.bodySmall,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                    const SizedBox(height: 8),
-                    Text(
-                      DateFormat('MMM d, h:mm a').format(refund.createdAt),
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: AppTheme.slate600,
-                          ),
-                    ),
-                  ],
-                ),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppTheme.slate50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppTheme.borderColor),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Amount: ${CurrencyFormatter.format(refund.refundAmount)}',
+                    style: Theme.of(context).textTheme.bodySmall,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    DateFormat('MMM d, h:mm a').format(refund.createdAt),
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: AppTheme.slate600,
+                        ),
+                  ),
+                ],
               ),
             );
           }).toList(),
@@ -576,14 +585,14 @@ class SaleDetailScreen extends ConsumerWidget {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                '${item.quantity} × ${CurrencyFormatter.format(item.price)}',
+                                '${item.quantity} × ${CurrencyFormatter.format(item.unitPrice)}',
                                 style: TextStyle(fontSize: 12, color: AppTheme.slate500, fontWeight: FontWeight.w600),
                               ),
                             ],
                           ),
                         ),
                         Text(
-                          CurrencyFormatter.format(item.price * item.quantity),
+                          CurrencyFormatter.format(item.unitPrice * item.quantity),
                           style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: AppTheme.slate900),
                         ),
                       ],

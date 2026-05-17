@@ -1157,38 +1157,34 @@ class _ProductGridCardState extends ConsumerState<_ProductGridCard> with SingleT
                             ),
                           ),
                         ),
-                        fontWeight: FontWeight.w800,
-                        fontSize: 14,
-                        color: AppTheme.textPrimary,
-                      ),
-                    ),
-                    ScaleTransition(
-                      scale: _scaleAnimation,
-                      child: GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTap: widget.product.displayQuantity <= 0 ? null : () {
-                          HapticFeedback.mediumImpact();
-                          _showQuantityPicker();
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: widget.product.displayQuantity <= 0 
-                                ? AppTheme.slate300 
-                                : AppTheme.primaryColor,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            Icons.add,
-                            color: widget.product.displayQuantity <= 0 
-                                ? AppTheme.slate500 
-                                : Colors.white,
-                            size: 16,
+                      ],
+                      ScaleTransition(
+                        scale: _scaleAnimation,
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: widget.product.displayQuantity <= 0 ? null : () {
+                            HapticFeedback.mediumImpact();
+                            _showQuantityPicker();
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: widget.product.displayQuantity <= 0
+                                  ? AppTheme.slate300
+                                  : AppTheme.primaryColor,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.add,
+                              color: widget.product.displayQuantity <= 0
+                                  ? AppTheme.slate500
+                                  : Colors.white,
+                              size: 16,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
                 ),
               ],
             ),

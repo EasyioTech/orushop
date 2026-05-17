@@ -611,6 +611,34 @@ class _InventoryItemCard extends ConsumerStatefulWidget {
 }
 
 class _InventoryItemCardState extends ConsumerState<_InventoryItemCard> {
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onLongPress: () => _showProductMenu(context, ref),
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                widget.product.name ?? 'Unknown',
+                style: Theme.of(context).textTheme.titleMedium,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Qty: ${widget.product.quantity ?? 0}',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   void _openEdit() {
     HapticFeedback.lightImpact();
     Navigator.push(
@@ -800,6 +828,10 @@ class _InventoryItemCardState extends ConsumerState<_InventoryItemCard> {
       addTag('SN', product.serialNumber!, Icons.numbers_outlined);
     }
 
+    return Wrap(children: tags);
+  }
+}
+
 class _InventoryItemPill extends ConsumerStatefulWidget {
   final dynamic product;
   final VoidCallback onAddStock;
@@ -818,9 +850,7 @@ class _InventoryItemPillState extends ConsumerState<_InventoryItemPill> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => CreateProductScreen(
-          editProduct: widget.product,
-        ),
+        builder: (context) => EditProductScreen(product: widget.product),
       ),
     );
   }
