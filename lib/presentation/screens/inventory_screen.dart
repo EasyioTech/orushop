@@ -8,7 +8,7 @@ import 'package:orushops/core/services/product_crud_service.dart';
 import 'package:orushops/core/theme/app_theme.dart';
 import 'package:orushops/providers/products_provider.dart';
 import 'package:orushops/providers/batch_provider.dart';
-import 'create_product_screen.dart';
+import 'package:orushops/features/inventory/screens/create_product/create_product_screen.dart';
 import 'edit_product_screen.dart';
 import 'inventory_history_screen.dart';
 import 'batch_scan_screen.dart';
@@ -101,7 +101,8 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
           final filtered = products
               .where(
                 (p) =>
-                    (p.name.toLowerCase().contains(_searchQuery) ||
+                    (_searchQuery.isEmpty ||
+                     p.name.toLowerCase().contains(_searchQuery) ||
                      (p.brand?.toLowerCase().contains(_searchQuery) ?? false) ||
                      p.sku.toLowerCase().contains(_searchQuery)) &&
                     (_selectedCategory == 'All' || p.category == _selectedCategory) &&
@@ -1021,7 +1022,7 @@ class _InventoryItemPillState extends ConsumerState<_InventoryItemPill> {
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            '₹${widget.product.salePrice}',
+                            '₹${widget.product.price}',
                             style: const TextStyle(
                               color: AppTheme.slate500,
                               fontSize: 11,

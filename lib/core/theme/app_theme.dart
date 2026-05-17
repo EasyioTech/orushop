@@ -242,5 +242,58 @@ class AppTheme {
       ),
     );
   }
+
+  static InputDecoration premiumDecoration({
+    required String label,
+    required String hint,
+    required Widget prefixIcon,
+    Widget? suffixIcon,
+    String? prefixText,
+    Color? activeColor,
+  }) {
+    final focusColor = activeColor ?? primaryColor;
+    return InputDecoration(
+      labelText: label.isEmpty ? null : label,
+      labelStyle: const TextStyle(
+        color: slate500,
+        fontWeight: FontWeight.w500,
+        fontSize: 14,
+      ),
+      hintText: hint,
+      hintStyle: const TextStyle(color: slate300, fontSize: 14),
+      prefixIcon: prefixIcon,
+      prefixText: prefixText,
+      prefixStyle: const TextStyle(
+        color: textPrimary,
+        fontWeight: FontWeight.bold,
+        fontSize: 16,
+      ),
+      suffixIcon: suffixIcon,
+      filled: true,
+      fillColor: slate50,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide.none,
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: slate200, width: 1.5),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: focusColor, width: 2),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: errorColor, width: 1.5),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: errorColor, width: 2),
+      ),
+    );
+  }
 }
+
 
