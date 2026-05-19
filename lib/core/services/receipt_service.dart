@@ -80,31 +80,41 @@ class ReceiptService {
     String currencySymbol,
   ) {
     final buffer = StringBuffer();
-    buffer.writeln('📜 *RECEIPT FROM ${storeName.toUpperCase()}*');
+    buffer.writeln('*RECEIPT FROM ${storeName.toUpperCase()}*');
     buffer.writeln('------------------------------------------');
     buffer.writeln('Receipt: #${sale.id.toString().padLeft(6, '0')}');
     buffer.writeln('Date: ${DateFormatter.formatDateTime(sale.createdAt)}');
     buffer.writeln('------------------------------------------');
-    buffer.writeln('ITEMS:');
+    buffer.writeln('Item            Qty    Rate     Amount');
+    buffer.writeln('------------------------------------------');
 
     for (final item in items) {
       final amount = item.quantity * item.unitPrice;
-      buffer.writeln(
-        '• Item #${item.productId}: ${item.quantity} x ${CurrencyFormatter.format(item.unitPrice)} = *${CurrencyFormatter.format(amount)}*',
-      );
+      final name = item.productName ?? 'Item #${item.productId}';
+      
+      // Limit item name to 14 characters to preserve strict column alignment
+      final dispName = name.length > 14 ? name.substring(0, 14) : name.padRight(14);
+      
+      final qtyStr = (item.quantity % 1 == 0 ? item.quantity.toInt().toString() : item.quantity.toString()).padLeft(5);
+      final rateStr = CurrencyFormatter.format(item.unitPrice).padLeft(8);
+      final amtStr = CurrencyFormatter.format(amount).padLeft(10);
+      
+      buffer.writeln('$dispName $qtyStr $rateStr $amtStr');
     }
 
     buffer.writeln('------------------------------------------');
     if (sale.discountAmount > 0) {
-      buffer.writeln('Subtotal: ${CurrencyFormatter.format(sale.totalAmount)}');
-      buffer.writeln('Discount: -${CurrencyFormatter.format(sale.discountAmount)}');
+      buffer.writeln('Subtotal: ${CurrencyFormatter.format(sale.totalAmount).padLeft(32)}');
+      buffer.writeln('Discount: -${CurrencyFormatter.format(sale.discountAmount).padLeft(31)}');
     }
     buffer.writeln('*TOTAL: ${CurrencyFormatter.format(sale.finalAmount)}*');
     buffer.writeln('Payment: ${sale.paymentMethod}');
     buffer.writeln('------------------------------------------');
-    buffer.writeln('Thank you for shopping with us! 🙏');
+    buffer.writeln('Thank you for shopping with us!');
+    buffer.writeln('Powered by OruShops');
 
     return buffer.toString();
   }
 }
+
 

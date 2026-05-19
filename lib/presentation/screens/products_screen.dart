@@ -2731,10 +2731,44 @@ class _QtyInputSheetState extends State<_QtyInputSheet> {
   String _display = '';
   String? _error;
 
+  /// When true the numpad counts whole packs (e.g. Strips); otherwise it
+  /// counts the product's base unit (e.g. Tablets).
+  bool _packMode = false;
+
+  /// Pack/wholesale unit name, or null when the product has none.
+  String? get _packName {
+    final p = widget.product.packagingUnit;
+    return (p != null && p.trim().isNotEmpty) ? p.trim() : null;
+  }
+
+  /// Base units contained in one pack. Always >= 1.
+  double get _factor {
+    final f = widget.product.conversionFactor ?? 1;
+    return f > 0 ? f : 1;
+  }
+
+  /// A pack toggle is only meaningful when a pack holds more than one unit.
+  bool get _hasPack => _packName != null && _factor > 1;
+
+  /// The quantity in base units, regardless of which input mode is active.
+  double get _baseQty {
+    final parsed = double.tryParse(_display) ?? 0;
+    return _packMode ? parsed * _factor : parsed;
+  }
+
   @override
   void dispose() {
     _controller.dispose();
     super.dispose();
+  }
+
+  void _setPackMode(bool pack) {
+    if (_packMode == pack) return;
+    setState(() {
+      _packMode = pack;
+      _display = '';
+      _error = null;
+    });
   }
 
   void _tap(String value) {
@@ -2758,7 +2792,7 @@ class _QtyInputSheetState extends State<_QtyInputSheet> {
     final parsed = double.tryParse(_display);
     if (_display.isEmpty || parsed == null || parsed <= 0) {
       _error = null; // empty = not yet entered, keep button disabled silently
-    } else if (widget.remaining != double.infinity && parsed > widget.remaining) {
+    } else if (widget.remaining != double.infinity && _baseQty > widget.remaining) {
       _error = 'Only ${_fmtQty(widget.remaining)} ${widget.product.unit} left';
     } else {
       _error = null;
@@ -2800,13 +2834,43 @@ class _QtyInputSheetState extends State<_QtyInputSheet> {
     );
   }
 
+  Widget _packToggle({required String label, required bool selected, required VoidCallback onTap}) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: selected ? Colors.white : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+            boxShadow: selected
+                ? [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 4, offset: const Offset(0, 1))]
+                : null,
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: selected ? AppTheme.primaryColor : AppTheme.textSecondary,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isLoose = widget.product.isLoose;
     final unit = widget.product.unit;
     final price = widget.product.price;
     final parsed = double.tryParse(_display);
-    final previewAmount = parsed != null ? parsed * price : null;
+    // What the numpad currently counts, and the matching per-unit price.
+    final dispUnit = _packMode ? _packName! : unit;
+    final dispPrice = _packMode ? price * _factor : price;
+    final previewAmount = parsed != null ? _baseQty * price : null;
 
     return Container(
       padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
@@ -2840,7 +2904,7 @@ class _QtyInputSheetState extends State<_QtyInputSheet> {
                           overflow: TextOverflow.ellipsis,
                         ),
                         Text(
-                          isLoose ? 'How much? (in $unit)' : 'How many?',
+                          isLoose ? 'How much? (in $dispUnit)' : 'How many?',
                           style: const TextStyle(fontSize: 14, color: AppTheme.textSecondary),
                         ),
                       ],
@@ -2850,7 +2914,7 @@ class _QtyInputSheetState extends State<_QtyInputSheet> {
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text(
-                        '₹${price % 1 == 0 ? price.toInt() : price.toStringAsFixed(2)} / $unit',
+                        '₹${dispPrice % 1 == 0 ? dispPrice.toInt() : dispPrice.toStringAsFixed(2)} / $dispUnit',
                         style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppTheme.primaryColor),
                       ),
                       if (widget.remaining != double.infinity)
@@ -2864,6 +2928,38 @@ class _QtyInputSheetState extends State<_QtyInputSheet> {
               ),
             ),
             const SizedBox(height: 16),
+
+            // Pack / unit selector — only when a pack holds more than one unit.
+            if (_hasPack) ...[
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: AppTheme.slate100,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Row(
+                    children: [
+                      _packToggle(label: 'By $unit', selected: !_packMode, onTap: () => _setPackMode(false)),
+                      _packToggle(
+                        label: 'By ${_packName!}',
+                        selected: _packMode,
+                        onTap: () => _setPackMode(true),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Text(
+                  '1 ${_packName!} = ${_fmtQty(_factor)} $unit',
+                  style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
 
             // Big display
             Container(
@@ -2886,7 +2982,7 @@ class _QtyInputSheetState extends State<_QtyInputSheet> {
                       ),
                     ),
                   ),
-                  Text(unit, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: AppTheme.textSecondary)),
+                  Text(dispUnit, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: AppTheme.textSecondary)),
                 ],
               ),
             ),
@@ -2904,7 +3000,9 @@ class _QtyInputSheetState extends State<_QtyInputSheet> {
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    '= ₹${previewAmount % 1 == 0 ? previewAmount.toInt() : previewAmount.toStringAsFixed(2)}',
+                    _packMode && parsed != null && parsed > 0
+                        ? '${_fmtQty(_baseQty)} $unit  •  = ₹${previewAmount % 1 == 0 ? previewAmount.toInt() : previewAmount.toStringAsFixed(2)}'
+                        : '= ₹${previewAmount % 1 == 0 ? previewAmount.toInt() : previewAmount.toStringAsFixed(2)}',
                     style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppTheme.successColor),
                   ),
                 ),
@@ -2936,7 +3034,7 @@ class _QtyInputSheetState extends State<_QtyInputSheet> {
                 width: double.infinity,
                 height: 64,
                 child: ElevatedButton(
-                  onPressed: _canAdd ? () => Navigator.pop(context, double.parse(_display)) : null,
+                  onPressed: _canAdd ? () => Navigator.pop(context, _baseQty) : null,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.accentColor,
                     disabledBackgroundColor: AppTheme.slate200,
@@ -2946,7 +3044,7 @@ class _QtyInputSheetState extends State<_QtyInputSheet> {
                   ),
                   child: Text(
                     _canAdd
-                        ? 'Add to Bill  +${_fmtQty(double.parse(_display))} $unit'
+                        ? 'Add to Bill  +${_fmtQty(_baseQty)} $unit'
                         : 'Enter Qty',
                     style: TextStyle(
                       fontSize: 18,

@@ -9,6 +9,12 @@ class SaleItem {
   final double unitPrice;
   final double totalPrice;
   final List<int> batchIds;
+  /// Product name — populated from the products table at checkout time.
+  final String? productName;
+  /// HSN code for GST compliance — from the products table.
+  final String? hsnCode;
+  /// GST rate in percent (e.g. 18.0 for 18% GST). 0.0 means no GST.
+  final double taxRate;
 
   SaleItem({
     required this.id,
@@ -19,6 +25,9 @@ class SaleItem {
     required this.unitPrice,
     required this.totalPrice,
     required this.batchIds,
+    this.productName,
+    this.hsnCode,
+    this.taxRate = 0.0,
   });
 
   Map<String, dynamic> toMap() {
@@ -31,6 +40,8 @@ class SaleItem {
       'unitPrice': unitPrice,
       'totalPrice': totalPrice,
       'batchIds': batchIds.join(','),
+      // productName, hsnCode, taxRate are not stored in the DB schema —
+      // they are denormalised at checkout time for the receipt only.
     };
   }
 
@@ -50,6 +61,9 @@ class SaleItem {
               .where((s) => s.isNotEmpty)
               .map(int.parse)
               .toList(),
+      productName: map['productName'] as String?,
+      hsnCode: map['hsnCode'] as String?,
+      taxRate: (map['taxRate'] as num?)?.toDouble() ?? 0.0,
     );
   }
 
@@ -62,6 +76,9 @@ class SaleItem {
     double? unitPrice,
     double? totalPrice,
     List<int>? batchIds,
+    String? productName,
+    String? hsnCode,
+    double? taxRate,
   }) {
     return SaleItem(
       id: id ?? this.id,
@@ -72,7 +89,9 @@ class SaleItem {
       unitPrice: unitPrice ?? this.unitPrice,
       totalPrice: totalPrice ?? this.totalPrice,
       batchIds: batchIds ?? this.batchIds,
+      productName: productName ?? this.productName,
+      hsnCode: hsnCode ?? this.hsnCode,
+      taxRate: taxRate ?? this.taxRate,
     );
   }
 }
-

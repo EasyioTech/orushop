@@ -37,8 +37,13 @@ class StockStep extends ConsumerWidget {
     final shopType = ref.watch(shopTypeProvider);
     final config = ShopTypeConfig.getConfig(shopType);
     final showToggles = !config.minimalFieldsMode;
-    final showSize = (state.selectedCategory?.productFields.hasSizeVariant ?? false) || shopType == ShopType.clothing;
-    final showColor = (state.selectedCategory?.productFields.hasColorVariant ?? false) || shopType == ShopType.clothing;
+    // Variant-matrix products define size/color as a grid in the Variants step,
+    // so the single-value pickers here are only for non-matrix categories that
+    // explicitly opt into a size/color attribute.
+    final fields = state.selectedCategory?.productFields;
+    final isVariantMatrix = fields?.template == ProductTemplate.variantMatrix;
+    final showSize = (fields?.hasSizeVariant ?? false) && !isVariantMatrix;
+    final showColor = (fields?.hasColorVariant ?? false) && !isVariantMatrix;
 
     final initialQtyController = notifier.controllers['initialQty']!;
     final serviceDurationController = notifier.controllers['serviceDuration']!;
@@ -52,6 +57,12 @@ class StockStep extends ConsumerWidget {
     final recipeController = notifier.controllers['recipe']!;
     final nameController = notifier.controllers['name']!;
     final priceController = notifier.controllers['price']!;
+    final packagingUnitController = notifier.controllers['packagingUnit']!;
+    final conversionFactorController = notifier.controllers['conversionFactor']!;
+
+    // Pack/wholesale unit applies only to physical stock items whose category
+    // opts into it (e.g. a pharmacy strip of tablets, a carton of bottles).
+    final showPackaging = (fields?.hasPackagingUnit ?? false) && !state.isService;
 
     return SingleChildScrollView(
       key: const ValueKey(3),
@@ -206,6 +217,92 @@ class StockStep extends ConsumerWidget {
                 ],
               ),
             ),
+            if (showPackaging) ...[
+              const SizedBox(height: 16),
+              _buildBigCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'PACK / WHOLESALE UNIT',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.5,
+                        color: AppTheme.slate500,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Define the bigger pack you buy/sell in — e.g. a Strip of tablets, a Box of bottles. Set how many ${state.selectedUnit} are inside one pack.',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppTheme.slate500,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: packagingUnitController,
+                      textCapitalization: TextCapitalization.words,
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                      decoration: AppTheme.premiumDecoration(
+                        label: 'Pack Name',
+                        hint: 'e.g. Strip, Box, Carton',
+                        prefixIcon: const Icon(CupertinoIcons.cube_box, color: AppTheme.primaryColor),
+                      ),
+                      onChanged: (value) => notifier.updateInventoryField('packagingUnit', value),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: conversionFactorController,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                      decoration: AppTheme.premiumDecoration(
+                        label: 'Units per Pack',
+                        hint: 'e.g. 10',
+                        prefixIcon: const Icon(CupertinoIcons.number, color: AppTheme.primaryColor),
+                        suffixIcon: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Text(
+                            state.selectedUnit,
+                            style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.slate400, fontSize: 14),
+                          ),
+                        ),
+                      ),
+                      onChanged: (value) => notifier.updateInventoryField('conversionFactor', value),
+                    ),
+                    const SizedBox(height: 12),
+                    Builder(
+                      builder: (_) {
+                        final factor = double.tryParse(conversionFactorController.text) ?? 0;
+                        final packName = packagingUnitController.text.trim().isEmpty
+                            ? 'pack'
+                            : packagingUnitController.text.trim();
+                        if (factor <= 0) {
+                          return const SizedBox.shrink();
+                        }
+                        return Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: AppTheme.accentColor.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            '1 $packName = ${factor.toStringAsFixed(factor.truncateToDouble() == factor ? 0 : 2)} ${state.selectedUnit}',
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w800,
+                              color: AppTheme.accentColor,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ],
             if (showColor) ...[
               const SizedBox(height: 16),
               _buildBigCard(

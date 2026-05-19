@@ -415,9 +415,20 @@ class ProductFormNotifier extends StateNotifier<ProductFormState> {
         throw 'Category is required';
       }
 
+      // Derive the storage template from the category config, then refine it:
+      // an explicit variant grid wins, and a service category forces serviceLabor.
+      final fields = state.selectedCategory!.productFields;
+      ProductTemplate template = fields.template;
+      if (state.isVariantTemplate && state.variantOverrides.isNotEmpty) {
+        template = ProductTemplate.variantMatrix;
+      } else if (state.isService) {
+        template = ProductTemplate.serviceLabor;
+      }
+
       final now = DateTime.now();
       final product = Product(
         id: 0,
+        template: template,
         name: state.name,
         sku: state.sku,
         price: state.sellingPrice,

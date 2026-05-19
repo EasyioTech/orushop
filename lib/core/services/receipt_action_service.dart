@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -226,29 +227,128 @@ class ReceiptActionService {
     }
   }
 
-  Future<void> shareToWhatsApp(
+  Future<void> shareReceiptPdf(
+    Sale sale,
+    List<SaleItem> items,
+    String storeName,
+    String storePhone,
+    String storeAddress,
+    String? upiId,
+  ) async {
+    try {
+      final pdfBytes = await generateReceiptPdfBytes(sale, items, storeName, storePhone, storeAddress, upiId);
+      final tempDir = await getTemporaryDirectory();
+      final file = File('${tempDir.path}/Receipt_${sale.id}.pdf');
+      await file.writeAsBytes(pdfBytes);
+      
+      await Share.shareXFiles(
+        [XFile(file.path)],
+        subject: 'Receipt #${sale.id.toString().padLeft(6, '0')} from $storeName',
+        text: 'Thank you for your business! Here is your digital receipt in PDF format.',
+      );
+    } catch (e) {
+      if (kDebugMode) print('Share PDF error: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> shareToWhatsAppWithSmsFallback({
+    required Sale sale,
+    required List<SaleItem> items,
+    required String storeName,
+    required String storePhone,
+    required String storeAddress,
+    required String? upiId,
+    required String? customerPhone,
+    required Uint8List? receiptImageBytes,   // PNG bytes captured from the widget
+    required VoidCallback onRedirectingToSms,
+  }) async {
+    try {
+      if (receiptImageBytes != null) {
+        // Save the captured receipt image to a temp file
+        final tempDir = await getTemporaryDirectory();
+        final imageFile = File('${tempDir.path}/Receipt_${sale.id}.png');
+        await imageFile.writeAsBytes(receiptImageBytes);
+
+        // === STEP 1: Try direct WhatsApp via native platform channel (NO share sheet) ===
+        // MainActivity.kt fires ACTION_SEND to com.whatsapp.w4b or com.whatsapp directly.
+        bool sentViaChannel = false;
+        if (Platform.isAndroid) {
+          try {
+            const channel = MethodChannel('com.orushops/whatsapp_share');
+            final bool? result = await channel.invokeMethod<bool>(
+              'shareImageToWhatsApp',
+              {'filePath': imageFile.path},
+            );
+            sentViaChannel = result == true;
+          } catch (e) {
+            if (kDebugMode) print('Platform channel error: $e');
+          }
+        }
+
+        if (!sentViaChannel) {
+          // === STEP 2: Fallback — share sheet with image (iOS or channel failed) ===
+          await Share.shareXFiles(
+            [XFile(imageFile.path, mimeType: 'image/png')],
+            subject: 'Receipt from $storeName',
+          );
+        }
+        return;
+      }
+
+      // === STEP 3: No image bytes — check WhatsApp via URL scheme ===
+      bool isWhatsAppInstalled = false;
+      try {
+        isWhatsAppInstalled = await canLaunchUrl(Uri.parse('whatsapp://send'));
+      } catch (_) {}
+
+      if (isWhatsAppInstalled) {
+        // Opens WhatsApp directly to the customer's chat with receipt text pre-filled
+        String phone = (customerPhone ?? '').replaceAll(RegExp(r'\D'), '');
+        if (phone.startsWith('0')) phone = phone.substring(1);
+        if (phone.length == 10) phone = '91$phone';
+
+        final receiptText = _receiptService.generateReceiptPlain(sale, items, storeName, '₹');
+        final whatsappUri = Uri(
+          scheme: 'whatsapp',
+          host: 'send',
+          queryParameters: <String, String>{'phone': phone, 'text': receiptText},
+        );
+        bool launched = false;
+        try {
+          launched = await launchUrl(whatsappUri, mode: LaunchMode.externalApplication);
+        } catch (_) {}
+        if (!launched) {
+          onRedirectingToSms();
+          await sendReceiptSms(sale, items, storeName, customerPhone);
+        }
+      } else {
+        // WhatsApp not installed — go directly to SMS
+        onRedirectingToSms();
+        await sendReceiptSms(sale, items, storeName, customerPhone);
+      }
+    } catch (e) {
+      if (kDebugMode) print('WhatsApp share fallback error: $e');
+      onRedirectingToSms();
+      await sendReceiptSms(sale, items, storeName, customerPhone);
+    }
+  }
+
+  Future<void> sendReceiptSms(
     Sale sale,
     List<SaleItem> items,
     String storeName,
     String? phoneNumber,
   ) async {
     try {
-      // Improved sanitization: remove all non-numeric characters
       String? cleanPhone = phoneNumber?.replaceAll(RegExp(r'\D'), '');
-      
-      if (cleanPhone != null && cleanPhone.isNotEmpty) {
-        // If it starts with 0, remove it (common in some regions, but not for international format)
-        if (cleanPhone.startsWith('0')) {
-          cleanPhone = cleanPhone.substring(1);
-        }
-        
-        // If it's 10 digits, it's a local Indian number, add 91
-        if (cleanPhone.length == 10) {
-          cleanPhone = '91$cleanPhone';
-        } 
-        // If it's already 12 digits and starts with 91, it's already correct
-        // If it's something else, we leave it as is (might be international)
+      if (cleanPhone != null && cleanPhone.startsWith('0')) {
+        cleanPhone = cleanPhone.substring(1);
       }
+      
+      // If it's a 10 digit Indian number, we add country code or leave it local for SMS composer
+      // Most OS SMS deep links work best with the local 10-digit number or with country code.
+      // We keep it clean and let the native SMS app resolve it.
 
       final receiptText = _receiptService.generateReceiptPlain(
         sale,
@@ -256,59 +356,52 @@ class ReceiptActionService {
         storeName,
         '₹',
       );
-
-      final encodedMessage = Uri.encodeComponent(receiptText);
       
-      // Try wa.me first (recommended)
-      final whatsappUrl =
-          cleanPhone != null && cleanPhone.isNotEmpty
-              ? 'https://wa.me/$cleanPhone?text=$encodedMessage'
-              : 'https://wa.me/?text=$encodedMessage';
+      // Use 'smsto:' scheme with LaunchMode.externalNonBrowserApplication
+      // This forces Android to open the NATIVE SMS app and bypasses WhatsApp Business
+      // which incorrectly claims the generic 'sms:' intent on some devices.
+      final Uri smsUri = Uri(
+        scheme: 'smsto',
+        path: cleanPhone ?? '',
+        queryParameters: <String, String>{
+          'body': receiptText,
+        },
+      );
 
+      bool launched = false;
       try {
-        final launched = await launchUrl(
-          Uri.parse(whatsappUrl), 
-          mode: LaunchMode.externalApplication
+        launched = await launchUrl(
+          smsUri,
+          mode: LaunchMode.externalNonBrowserApplication,
         );
-        if (!launched) throw 'Could not launch URL';
-      } catch (e) {
-        // Fallback for specific schemes or if wa.me fails
-        final fallbackUrl = cleanPhone != null && cleanPhone.isNotEmpty
-            ? 'whatsapp://send?phone=$cleanPhone&text=$encodedMessage'
-            : 'whatsapp://send?text=$encodedMessage';
-        
+      } catch (_) {}
+
+      if (!launched) {
+        // smsto: failed — try plain sms: as second attempt
+        final Uri fallbackSmsUri = Uri(
+          scheme: 'sms',
+          path: cleanPhone ?? '',
+          queryParameters: <String, String>{'body': receiptText},
+        );
         try {
-          await launchUrl(
-            Uri.parse(fallbackUrl), 
-            mode: LaunchMode.externalNonBrowserApplication
+          launched = await launchUrl(
+            fallbackSmsUri,
+            mode: LaunchMode.externalNonBrowserApplication,
           );
-        } catch (_) {
-          // If both fail, try generic sharing
-          await shareReceiptText(sale, items, storeName);
-        }
+        } catch (_) {}
+      }
+
+      if (!launched) {
+        // Final fallback: system share sheet so user can pick the SMS app manually
+        await Share.share(receiptText);
       }
     } catch (e) {
-      if (kDebugMode) print('WhatsApp share error: $e');
+      if (kDebugMode) print('SMS share error: $e');
       rethrow;
     }
   }
 
   String generateUpiString(String upiId, String storeName, double amount) {
     return 'upi://pay?pa=$upiId&pn=${Uri.encodeComponent(storeName)}&am=$amount&tn=Payment&tr=ORUSHOPS${DateTime.now().millisecondsSinceEpoch}';
-  }
-
-  // Deprecated: use saveReceiptAsPdf
-  Future<String> downloadReceipt(
-    Sale sale,
-    List<SaleItem> items,
-    String storeName,
-    String storePhone,
-    String storeAddress,
-  ) async {
-    final bytes = await generateReceiptPdfBytes(sale, items, storeName, storePhone, storeAddress, null);
-    final output = await getTemporaryDirectory();
-    final file = File('${output.path}/receipt_${sale.id}.pdf');
-    await file.writeAsBytes(bytes);
-    return file.path;
   }
 }

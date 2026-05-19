@@ -174,7 +174,7 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
     _NavItem(label: 'Profile', icon: CupertinoIcons.person_circle, activeIcon: CupertinoIcons.person_circle_fill),
   ];
 
-  List<Widget> _buildScreens() => const [
+  static const _screens = [
     HomeScreen(),
     ProductsScreen(),
     InventoryScreen(),
@@ -205,7 +205,6 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
   @override
   Widget build(BuildContext context) {
     final selectedIndex = ref.watch(navigationIndexProvider);
-    final screens = _buildScreens();
 
     return PopScope(
       canPop: false,
@@ -218,7 +217,7 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
         }
       },
       child: Scaffold(
-        body: _OfflineAwareBody(selectedIndex: selectedIndex, screens: screens),
+        body: _OfflineAwareBody(selectedIndex: selectedIndex, screens: _screens),
         bottomNavigationBar: _AppNavBar(
           selectedIndex: selectedIndex,
           items: _navItems,

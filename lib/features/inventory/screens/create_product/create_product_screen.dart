@@ -242,10 +242,34 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
     notifier.setCurrentStep(state.currentStep + 1);
   }
 
+  /// The Variants step only applies to variant-matrix categories
+  /// (clothing, footwear). Services and simple products skip it.
+  bool _hasVariantStep(ProductFormState state) {
+    final fields = state.selectedCategory?.productFields;
+    return (fields?.hasSizeVariant ?? false) || (fields?.hasColorVariant ?? false);
+  }
+
+  /// Ordered list of step widgets for the current category.
+  List<Widget> _stepWidgets(ProductFormState state) {
+    return [
+      const CategoryStep(),
+      const InfoStep(),
+      const PricingStep(),
+      const StockStep(),
+      if (_hasVariantStep(state)) const VariantsStep(),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(productFormNotifierProvider);
     final notifier = ref.read(productFormNotifierProvider.notifier);
+
+    final steps = _stepWidgets(state);
+    final stepCount = steps.length;
+    // Guard against a stale step index after the category (and thus the step
+    // list) changed — e.g. switching from a variant category to a simple one.
+    final currentStep = state.currentStep.clamp(0, stepCount - 1);
 
     ref.listen<ProductFormState>(
       productFormNotifierProvider,
@@ -302,14 +326,8 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
         body: Stack(
           children: [
             IndexedStack(
-              index: state.currentStep,
-              children: const [
-                CategoryStep(),
-                InfoStep(),
-                PricingStep(),
-                StockStep(),
-                VariantsStep(),
-              ],
+              index: currentStep,
+              children: steps,
             ),
             if (state.isLoading)
               Container(
@@ -322,12 +340,17 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
               ),
           ],
         ),
-        bottomNavigationBar: _buildBottomBar(state, notifier),
+        bottomNavigationBar: _buildBottomBar(state, notifier, currentStep, stepCount),
       ),
     );
   }
 
-  Widget _buildBottomBar(ProductFormState state, ProductFormNotifier notifier) {
+  Widget _buildBottomBar(
+    ProductFormState state,
+    ProductFormNotifier notifier,
+    int currentStep,
+    int stepCount,
+  ) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -337,14 +360,14 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          if (state.currentStep > 0)
+          if (currentStep > 0)
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.slate100,
                 foregroundColor: AppTheme.textPrimary,
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               ),
-              onPressed: () => notifier.setCurrentStep(state.currentStep - 1),
+              onPressed: () => notifier.setCurrentStep(currentStep - 1),
               child: const Text('Back'),
             )
           else
@@ -352,8 +375,8 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
           Expanded(
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(5, (i) {
-                final isActive = i == state.currentStep;
+              children: List.generate(stepCount, (i) {
+                final isActive = i == currentStep;
                 return AnimatedContainer(
                   duration: const Duration(milliseconds: 300),
                   curve: Curves.easeInOut,
@@ -368,7 +391,7 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
               }),
             ),
           ),
-          if (state.currentStep < 4)
+          if (currentStep < stepCount - 1)
             ElevatedButton(
               onPressed: () => _handleNext(state, notifier),
               style: ElevatedButton.styleFrom(

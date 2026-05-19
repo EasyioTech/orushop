@@ -140,7 +140,7 @@ class SaleRepository {
           // FETCH product meta (quantity, isService, template) for this item
           final List<Map<String, dynamic>> productResult = await txn.query(
             TableConstants.products,
-            columns: ['quantity', 'isService', 'template', 'name', 'costPrice'],
+            columns: ['quantity', 'isService', 'template', 'name', 'costPrice', 'hsnCode', 'taxRate'],
             where: 'id = ?',
             whereArgs: [item.productId],
           );
@@ -260,7 +260,10 @@ class SaleRepository {
             );
           }
 
-          // Create Sale Item record
+          // Create Sale Item record (include product meta for receipt display)
+          final hsnCode = productData['hsnCode'] as String?;
+          final taxRate = (productData['taxRate'] as num?)?.toDouble() ?? 0.0;
+
           final saleItem = SaleItem(
             id: 0,
             saleId: saleId,
@@ -270,6 +273,9 @@ class SaleRepository {
             unitPrice: item.unitPrice,
             totalPrice: item.quantity * item.unitPrice,
             batchIds: usedBatchIds,
+            productName: productName,
+            hsnCode: hsnCode,
+            taxRate: taxRate,
           );
 
           final saleItemId = await addItem(txn, saleItem);

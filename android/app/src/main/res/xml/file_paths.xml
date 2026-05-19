@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- Allow sharing files from the app's cache/temp directory -->
+    <cache-path name="cache" path="." />
+    <external-cache-path name="external_cache" path="." />
+    <files-path name="files" path="." />
+
+    <!-- External storage paths for WhatsApp and WhatsApp Business sharing -->
+    <external-path name="external_storage" path="." />
+    <external-files-path name="external_files" path="." />
+</paths>

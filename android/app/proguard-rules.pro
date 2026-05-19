@@ -12,3 +12,6 @@
 # Play Core (Flutter deferred components — keep to avoid R8 missing class errors)
 -keep class com.google.android.play.core.** { *; }
 -dontwarn com.google.android.play.core.**
+
+# OruShops Custom Application Classes & Main Activity
+-keep class com.orushops.orushops.** { *; }

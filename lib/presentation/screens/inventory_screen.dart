@@ -514,6 +514,20 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
   }
 
   void _showAddStockSheet(BuildContext context, dynamic product) {
+    // Variant-matrix products keep stock per size/color combo, which the
+    // simple add-stock sheet can't express — send the owner to the editor.
+    if (product is Product && product.template == ProductTemplate.variantMatrix) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('This product has variants — open it to update stock per size/color.'),
+        ),
+      );
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => EditProductScreen(product: product)),
+      );
+      return;
+    }
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,

@@ -17,6 +17,7 @@ import 'migrations/migration_v14.dart';
 import 'migrations/migration_v15.dart';
 import 'migrations/migration_v16.dart';
 import 'migrations/migration_v17.dart';
+import 'migrations/migration_v18.dart';
 
 
 import 'table_constants.dart';
@@ -52,7 +53,7 @@ class DatabaseHelper {
       debugPrint('DB: Opening database at $path...');
       return await openDatabase(
         path,
-        version: 17,
+        version: 18,
         onCreate: _onCreate,
         onUpgrade: _onUpgrade,
         onOpen: _onOpen,
@@ -81,6 +82,7 @@ class DatabaseHelper {
     await MigrationV15.up(db);
     await MigrationV16.up(db);
     await MigrationV17.up(db);
+    await MigrationV18.up(db);
     debugPrint('DB: Database creation complete.');
   }
 
@@ -109,6 +111,7 @@ class DatabaseHelper {
     if (oldVersion < 15) await MigrationV15.up(db);
     if (oldVersion < 16) await MigrationV16.up(db);
     if (oldVersion < 17) await MigrationV17.up(db);
+    if (oldVersion < 18) await MigrationV18.up(db);
   }
 
   Future<void> _onOpen(Database db) async {

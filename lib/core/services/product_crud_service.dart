@@ -60,11 +60,28 @@ class ProductCrudService {
     if (quantity <= 0) throw ArgumentError('Quantity must be greater than 0');
     if (costPrice <= 0) throw ArgumentError('Cost price must be greater than 0');
 
+    // Variant-matrix products hold their stock per size/color combo in
+    // product_variants. Adding bulk stock to the parent here would create a
+    // phantom batch and desync the parent quantity from the variant totals,
+    // so route the user to the variant editor instead.
+    if (template == ProductTemplate.variantMatrix) {
+      throw ArgumentError(
+        'This product has size/color variants. Edit the product and update '
+        'stock on each variant.',
+      );
+    }
+
     final dbHelper = DatabaseHelper();
     final db = await dbHelper.database;
 
     // Serialized template: insert into inventory_serialized instead of product_batches
     if (template == ProductTemplate.serialized) {
+      // Carry the product's real selling price / MRP onto the new serialized unit
+      // instead of inserting zeros (which would make the unit sell for free).
+      final product = await _repo.getById(productId);
+      if (product == null) {
+        throw ArgumentError('Product $productId not found');
+      }
       await db.transaction((txn) async {
         await txn.insert(
           TableConstants.inventorySerialized,
@@ -72,10 +89,10 @@ class ProductCrudService {
             'productId': productId,
             'serialNumber': serialNumber,
             'imei': imei,
-            'sellingPrice': 0,
-            'mrp': 0,
+            'sellingPrice': product.price,
+            'mrp': product.mrp ?? product.price,
             'costPrice': costPrice,
-            'status': 'in_stock',
+            'status': 'Available',
           },
         );
         await txn.rawUpdate(
