@@ -75,6 +75,7 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
             onPressed: () async {
               final navigator = Navigator.of(context);
               await notifier.restoreDraft();
+              await notifier.retrieveLostImage();
               navigator.pop();
             },
             child: const Text('Restore Draft'),
@@ -239,6 +240,14 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
       );
       return;
     }
+    
+    // Auto-expand advanced options on pricing step instead of proceeding immediately
+    // so that the user is reminded to fill them in if they need to.
+    if (state.currentStep == 2 && !state.showAdvancedPricing) {
+      notifier.setAdvancedPricing(true);
+      return; // Do not advance step yet
+    }
+
     notifier.setCurrentStep(state.currentStep + 1);
   }
 

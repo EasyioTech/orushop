@@ -22,11 +22,12 @@ class MainActivity : FlutterActivity() {
                 when (call.method) {
                     "shareImageToWhatsApp" -> {
                         val filePath = call.argument<String>("filePath")
+                        val phone = call.argument<String>("phone")
                         if (filePath == null) {
                             result.error("INVALID_ARGS", "filePath is required", null)
                             return@setMethodCallHandler
                         }
-                        val success = shareImageToWhatsApp(filePath)
+                        val success = shareImageToWhatsApp(filePath, phone)
                         result.success(success)
                     }
                     else -> result.notImplemented()
@@ -39,7 +40,7 @@ class MainActivity : FlutterActivity() {
      * Bypasses the system share sheet entirely — opens WhatsApp straight away.
      * Returns true if WhatsApp was opened, false if not installed.
      */
-    private fun shareImageToWhatsApp(filePath: String): Boolean {
+    private fun shareImageToWhatsApp(filePath: String, phone: String?): Boolean {
         val file = File(filePath)
         if (!file.exists()) return false
 
@@ -49,14 +50,39 @@ class MainActivity : FlutterActivity() {
             file
         )
 
+        // Resolve MIME type dynamically from the file extension
+        val fileExtension = file.extension.lowercase()
+        val mimeType = when (fileExtension) {
+            "pdf" -> "application/pdf"
+            "png" -> "image/png"
+            "jpg", "jpeg" -> "image/jpeg"
+            else -> "*/*"
+        }
+
         // Try WhatsApp Business first, then personal WhatsApp
         val packages = listOf("com.whatsapp.w4b", "com.whatsapp")
 
         for (packageName in packages) {
             if (isAppInstalled(packageName)) {
                 val intent = Intent(Intent.ACTION_SEND).apply {
-                    type = "image/png"
+                    type = mimeType
                     putExtra(Intent.EXTRA_STREAM, contentUri)
+                    if (!phone.isNullOrEmpty()) {
+                        // Clean phone number (strip non-digits)
+                        var cleanPhone = phone.replace(Regex("\\D"), "")
+                        if (cleanPhone.startsWith("0")) {
+                            cleanPhone = cleanPhone.substring(1)
+                        }
+                        if (cleanPhone.length == 10) {
+                            cleanPhone = "91$cleanPhone"
+                        }
+                        if (cleanPhone.isNotEmpty()) {
+                            // Put multiple standard/reverse-engineered extras for maximum direct routing compatibility
+                            putExtra("jid", "$cleanPhone@s.whatsapp.net")
+                            putExtra("phone_number", cleanPhone)
+                            putExtra("android.intent.extra.PHONE_NUMBER", cleanPhone)
+                        }
+                    }
                     setPackage(packageName)
                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)

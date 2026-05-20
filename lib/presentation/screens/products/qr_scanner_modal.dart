@@ -1,26 +1,21 @@
-import 'dart:async';
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:mobile_scanner/mobile_scanner.dart';
+part of '../products_screen.dart';
 
-import 'package:orushops/core/models/product.dart';
-import 'package:orushops/core/theme/app_theme.dart';
+// ─────────────────────────────────────────────────────────────────────────────
 
-class QRScannerModal extends StatefulWidget {
+class _QRScannerModal extends StatefulWidget {
   final List<Product> products;
   final Function(String) onScanned;
 
-  const QRScannerModal({
-    super.key,
+  const _QRScannerModal({
     required this.products,
     required this.onScanned,
   });
 
   @override
-  State<QRScannerModal> createState() => QRScannerModalState();
+  State<_QRScannerModal> createState() => _QRScannerModalState();
 }
 
-class QRScannerModalState extends State<QRScannerModal> {
+class _QRScannerModalState extends State<_QRScannerModal> {
   late MobileScannerController controller;
   String? errorMessage;
   Timer? _errorTimer;
@@ -144,12 +139,12 @@ class QRScannerModalState extends State<QRScannerModal> {
                         final sku = barcode.rawValue?.trim() ?? '';
                         if (sku.isNotEmpty && sku != _lastScanned) {
                           _lastScanned = sku;
-
+                          
                           final product = widget.products.cast<Product?>().firstWhere(
                             (p) => p?.sku.toLowerCase() == sku.toLowerCase(),
                             orElse: () => null,
                           );
-
+  
                           if (product != null) {
                             if (product.displayQuantity > 0) {
                               HapticFeedback.mediumImpact();
@@ -183,7 +178,7 @@ class QRScannerModalState extends State<QRScannerModal> {
                       );
                     },
                   ),
-
+                  
                   // Scanner Frame Overlay (Rectangle)
                   IgnorePointer(
                     child: Center(
@@ -196,29 +191,29 @@ class QRScannerModalState extends State<QRScannerModal> {
                         ),
                         child: Stack(
                           children: [
-                            ScannerCorner(isTop: true, isLeft: true),
-                            ScannerCorner(isTop: true, isLeft: false),
-                            ScannerCorner(isTop: false, isLeft: true),
-                            ScannerCorner(isTop: false, isLeft: false),
+                            _ScannerCorner(isTop: true, isLeft: true),
+                            _ScannerCorner(isTop: true, isLeft: false),
+                            _ScannerCorner(isTop: false, isLeft: true),
+                            _ScannerCorner(isTop: false, isLeft: false),
                           ],
                         ),
                       ),
                     ),
                   ),
-
+  
                   // Controls (Torch & Refocus)
                   Positioned(
                     top: 20,
                     right: 20,
                     child: Column(
                       children: [
-                        ScannerActionButton(
+                        _ScannerActionButton(
                           icon: Icons.flashlight_on_rounded,
                           onPressed: () => controller.toggleTorch(),
                           label: 'Torch',
                         ),
                         const SizedBox(height: 16),
-                        ScannerActionButton(
+                        _ScannerActionButton(
                           icon: Icons.filter_center_focus_rounded,
                           onPressed: () async {
                             await controller.stop();
@@ -229,7 +224,7 @@ class QRScannerModalState extends State<QRScannerModal> {
                       ],
                     ),
                   ),
-
+  
                   // Error Message Overlay
                   if (errorMessage != null)
                     Positioned(
@@ -278,11 +273,11 @@ class QRScannerModalState extends State<QRScannerModal> {
   }
 }
 
-class ScannerCorner extends StatelessWidget {
+class _ScannerCorner extends StatelessWidget {
   final bool isTop;
   final bool isLeft;
 
-  const ScannerCorner({super.key, required this.isTop, required this.isLeft});
+  const _ScannerCorner({required this.isTop, required this.isLeft});
 
   @override
   Widget build(BuildContext context) {
@@ -313,13 +308,12 @@ class ScannerCorner extends StatelessWidget {
   }
 }
 
-class ScannerActionButton extends StatelessWidget {
+class _ScannerActionButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onPressed;
   final String label;
 
-  const ScannerActionButton({
-    super.key,
+  const _ScannerActionButton({
     required this.icon,
     required this.onPressed,
     required this.label,

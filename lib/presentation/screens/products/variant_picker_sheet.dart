@@ -1,16 +1,13 @@
-import 'package:flutter/material.dart';
+part of '../products_screen.dart';
 
-import 'package:orushops/core/models/product.dart';
-import 'package:orushops/core/models/product_variant.dart';
-import 'package:orushops/core/repositories/variant_repository.dart';
-import 'package:orushops/core/theme/app_theme.dart';
+// ── Variant picker ─────────────────────────────────────────────────────────────
 
-class VariantSelection {
+class _VariantSelection {
   final int variantId;
   final String label;
   final double price;
   final double qty;
-  const VariantSelection({
+  const _VariantSelection({
     required this.variantId,
     required this.label,
     required this.price,
@@ -18,15 +15,15 @@ class VariantSelection {
   });
 }
 
-class VariantPickerSheet extends StatefulWidget {
+class _VariantPickerSheet extends StatefulWidget {
   final Product product;
-  const VariantPickerSheet({super.key, required this.product});
+  const _VariantPickerSheet({required this.product});
 
   @override
-  State<VariantPickerSheet> createState() => VariantPickerSheetState();
+  State<_VariantPickerSheet> createState() => _VariantPickerSheetState();
 }
 
-class VariantPickerSheetState extends State<VariantPickerSheet> {
+class _VariantPickerSheetState extends State<_VariantPickerSheet> {
   List<ProductVariant> _variants = [];
   ProductVariant? _selected;
   final _qtyController = TextEditingController(text: '1');
@@ -163,7 +160,7 @@ class VariantPickerSheetState extends State<VariantPickerSheet> {
                       ));
                       return;
                     }
-                    Navigator.pop(context, VariantSelection(
+                    Navigator.pop(context, _VariantSelection(
                       variantId: _selected!.id,
                       label: _selected!.label,
                       price: _selected!.price,

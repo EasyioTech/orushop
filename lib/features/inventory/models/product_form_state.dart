@@ -62,6 +62,7 @@ class ProductFormState {
   final List<CatalogItemSuggestion> catalogSuggestions;
   final bool isLoading;
   final String? errorMessage;
+  final bool showAdvancedPricing;
 
   const ProductFormState({
     this.currentStep = 0,
@@ -107,6 +108,7 @@ class ProductFormState {
     this.catalogSuggestions = const [],
     this.isLoading = false,
     this.errorMessage,
+    this.showAdvancedPricing = false,
   });
 
   ProductFormState copyWith({
@@ -153,6 +155,7 @@ class ProductFormState {
     List<CatalogItemSuggestion>? catalogSuggestions,
     bool? isLoading,
     String? errorMessage,
+    bool? showAdvancedPricing,
   }) {
     return ProductFormState(
       currentStep: currentStep ?? this.currentStep,
@@ -198,6 +201,7 @@ class ProductFormState {
       catalogSuggestions: catalogSuggestions ?? this.catalogSuggestions,
       isLoading: isLoading ?? this.isLoading,
       errorMessage: errorMessage ?? this.errorMessage,
+      showAdvancedPricing: showAdvancedPricing ?? this.showAdvancedPricing,
     );
   }
 }

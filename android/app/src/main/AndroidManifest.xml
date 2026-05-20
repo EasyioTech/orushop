@@ -51,7 +51,8 @@
         android:label="OruShops"
         android:name="${applicationName}"
         android:icon="@mipmap/launcher_icon"
-        android:largeHeap="true">
+        android:largeHeap="true"
+        android:requestLegacyExternalStorage="true">
 
         <activity
             android:name=".MainActivity"

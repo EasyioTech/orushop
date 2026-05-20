@@ -13,7 +13,15 @@ class PricingStep extends ConsumerStatefulWidget {
 }
 
 class _PricingStepState extends ConsumerState<PricingStep> {
-  bool _showAdvanced = false;
+  final FocusNode _costFocusNode = FocusNode();
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _costFocusNode.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -25,7 +33,28 @@ class _PricingStepState extends ConsumerState<PricingStep> {
     final mrpController = notifier.controllers['mrp']!;
     final taxController = notifier.controllers['tax']!;
 
+    ref.listen<bool>(
+      productFormNotifierProvider.select((state) => state.showAdvancedPricing),
+      (previous, next) {
+        if (next && previous != next) {
+          Future.delayed(const Duration(milliseconds: 150), () {
+            if (_scrollController.hasClients) {
+              _scrollController.animateTo(
+                _scrollController.position.maxScrollExtent,
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeOut,
+              );
+            }
+            if (mounted) {
+              _costFocusNode.requestFocus();
+            }
+          });
+        }
+      },
+    );
+
     return SingleChildScrollView(
+      controller: _scrollController,
       key: const ValueKey(2),
       padding: EdgeInsets.fromLTRB(24, 24, 24, 24 + MediaQuery.of(context).viewInsets.bottom),
       child: Column(
@@ -78,6 +107,7 @@ class _PricingStepState extends ConsumerState<PricingStep> {
                 TextField(
                   controller: priceController,
                   autofocus: true,
+                  textInputAction: TextInputAction.next,
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   style: const TextStyle(
                     fontSize: 18,
@@ -92,6 +122,18 @@ class _PricingStepState extends ConsumerState<PricingStep> {
                     activeColor: AppTheme.successColor,
                   ),
                   onChanged: (value) => notifier.updatePricingField('price', value),
+                  onSubmitted: (_) {
+                    if (!state.showAdvancedPricing) {
+                      notifier.setAdvancedPricing(true);
+                      Future.delayed(const Duration(milliseconds: 100), () {
+                        if (mounted) {
+                          _costFocusNode.requestFocus();
+                        }
+                      });
+                    } else {
+                      _costFocusNode.requestFocus();
+                    }
+                  },
                 ),
                 const Padding(
                   padding: EdgeInsets.only(top: 8, left: 4),
@@ -109,9 +151,7 @@ class _PricingStepState extends ConsumerState<PricingStep> {
           // Toggler for advanced options
           GestureDetector(
             onTap: () {
-              setState(() {
-                _showAdvanced = !_showAdvanced;
-              });
+              notifier.setAdvancedPricing(!state.showAdvancedPricing);
               HapticFeedback.lightImpact();
             },
             child: Container(
@@ -120,7 +160,7 @@ class _PricingStepState extends ConsumerState<PricingStep> {
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: _showAdvanced ? AppTheme.accentColor : AppTheme.slate200,
+                  color: state.showAdvancedPricing ? AppTheme.accentColor : AppTheme.slate200,
                   width: 1.5,
                 ),
                 boxShadow: [
@@ -134,14 +174,14 @@ class _PricingStepState extends ConsumerState<PricingStep> {
               child: Row(
                 children: [
                   Icon(
-                    _showAdvanced ? CupertinoIcons.chevron_up_circle_fill : CupertinoIcons.plus_circle_fill,
+                    state.showAdvancedPricing ? CupertinoIcons.chevron_up_circle_fill : CupertinoIcons.plus_circle_fill,
                     color: AppTheme.accentColor,
                     size: 22,
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      _showAdvanced 
+                      state.showAdvancedPricing 
                           ? 'Hide Extra Options' 
                           : 'Show Extra Options (Buying Cost, MRP, Tax)',
                       style: const TextStyle(
@@ -152,7 +192,7 @@ class _PricingStepState extends ConsumerState<PricingStep> {
                     ),
                   ),
                   Icon(
-                    _showAdvanced ? CupertinoIcons.chevron_up : CupertinoIcons.chevron_down,
+                    state.showAdvancedPricing ? CupertinoIcons.chevron_up : CupertinoIcons.chevron_down,
                     color: AppTheme.slate400,
                     size: 16,
                   ),
@@ -162,7 +202,7 @@ class _PricingStepState extends ConsumerState<PricingStep> {
           ),
 
           // Advanced Options Card (Expandable list)
-          if (_showAdvanced) ...[
+          if (state.showAdvancedPricing) ...[
             const SizedBox(height: 16),
             _buildBigCard(
               child: Column(
@@ -182,7 +222,9 @@ class _PricingStepState extends ConsumerState<PricingStep> {
                   // Cost Price (Buying Cost)
                   TextField(
                     controller: costController,
+                    focusNode: _costFocusNode,
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    textInputAction: TextInputAction.next,
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
@@ -210,6 +252,7 @@ class _PricingStepState extends ConsumerState<PricingStep> {
                     TextField(
                       controller: mrpController,
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      textInputAction: TextInputAction.next,
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
@@ -237,6 +280,7 @@ class _PricingStepState extends ConsumerState<PricingStep> {
                     TextField(
                       controller: wholesalePriceController,
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      textInputAction: TextInputAction.next,
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
@@ -265,6 +309,7 @@ class _PricingStepState extends ConsumerState<PricingStep> {
                     TextField(
                       controller: taxController,
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      textInputAction: TextInputAction.done,
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,

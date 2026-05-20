@@ -1,0 +1,125 @@
+part of '../shop_catalog_data.dart';
+
+final List<ShopCategory> _groceryCategories = [
+      ShopCategory(
+        name: 'Atta, Rice & Grains',
+        subcategories: ['Wheat Atta', 'Rice', 'Maida', 'Besan', 'Semolina / Suji',
+          'Multigrain Atta', 'Bajra / Jowar', 'Oats'],
+        productFields: ProductFieldConfig(
+          hasExpiryDate: true, hasMrp: true, hasHsnCode: true, hasTaxRate: true,
+          hasBrand: true, hasUnit: true,
+          defaultUnit: 'Kg', unitOptions: ['Kg', 'Gram', 'Pack', 'Bag'],
+          defaultTaxRate: 0.0,
+          isLoose: true, template: ProductTemplate.bulkUom,
+        ),
+      ),
+      ShopCategory(
+        name: 'Dal & Pulses',
+        subcategories: ['Toor Dal', 'Moong Dal', 'Chana Dal', 'Masoor Dal', 'Urad Dal',
+          'Rajma', 'Chole / Chickpeas', 'Lobia'],
+        productFields: ProductFieldConfig(
+          hasExpiryDate: true, hasMrp: true, hasHsnCode: true, hasTaxRate: true,
+          hasBrand: true, hasUnit: true,
+          defaultUnit: 'Kg', unitOptions: ['Kg', 'Gram', 'Pack'],
+          defaultTaxRate: 0.0,
+          isLoose: true, template: ProductTemplate.bulkUom,
+        ),
+      ),
+      ShopCategory(
+        name: 'Oil & Ghee',
+        subcategories: ['Mustard Oil', 'Refined Oil', 'Groundnut Oil', 'Coconut Oil',
+          'Sunflower Oil', 'Ghee', 'Vanaspati', 'Olive Oil'],
+        productFields: ProductFieldConfig(
+          hasExpiryDate: true, hasMrp: true, hasHsnCode: true, hasTaxRate: true,
+          hasBrand: true, hasUnit: true,
+          defaultUnit: 'Litre', unitOptions: ['Litre', 'ML', 'Kg', 'Tin'],
+          defaultTaxRate: 5.0,
+          isLoose: true, template: ProductTemplate.bulkUom,
+        ),
+      ),
+      ShopCategory(
+        name: 'Spices & Masala',
+        subcategories: ['Haldi', 'Red Chilli Powder', 'Coriander Powder', 'Jeera',
+          'Garam Masala', 'Kitchen King', 'Sambhar Masala', 'Salt'],
+        productFields: ProductFieldConfig(
+          hasExpiryDate: true, hasMrp: true, hasHsnCode: true, hasTaxRate: true,
+          hasBrand: true, hasUnit: true,
+          defaultUnit: 'Gram', unitOptions: ['Gram', 'Kg', 'Pack'],
+          defaultTaxRate: 5.0,
+          isLoose: true, template: ProductTemplate.bulkUom,
+        ),
+      ),
+      ShopCategory(
+        name: 'Dairy & Eggs',
+        subcategories: ['Milk', 'Paneer', 'Curd / Dahi', 'Butter', 'Cheese', 'Eggs',
+          'Cream', 'Condensed Milk'],
+        productFields: ProductFieldConfig(
+          hasExpiryDate: true, hasMrp: true, hasHsnCode: true, hasTaxRate: true,
+          hasBrand: true, hasUnit: true,
+          isLoose: true,
+          defaultUnit: 'Litre', unitOptions: ['Litre', 'ML', 'Kg', 'Gram', 'Dozen', 'Piece'],
+          defaultTaxRate: 0.0,
+          template: ProductTemplate.bulkUom,
+        ),
+      ),
+      ShopCategory(
+        name: 'Snacks & Namkeen',
+        subcategories: ['Chips', 'Namkeen', 'Biscuits', 'Papad', 'Murmura', 'Popcorn',
+          'Dry Fruits', 'Nuts'],
+        productFields: ProductFieldConfig(
+          hasExpiryDate: true, hasMrp: true, hasHsnCode: true, hasTaxRate: true,
+          hasBrand: true, hasUnit: true,
+          isLoose: true,
+          defaultUnit: 'Gram', unitOptions: ['Gram', 'Kg', 'Pack', 'Piece'],
+          defaultTaxRate: 18.0,
+          template: ProductTemplate.bulkUom,
+        ),
+      ),
+      ShopCategory(
+        name: 'Beverages',
+        subcategories: ['Tea', 'Coffee', 'Cold Drinks', 'Juices', 'Energy Drinks',
+          'Water Bottles', 'Health Drinks', 'Instant Mixes'],
+        productFields: ProductFieldConfig(
+          hasExpiryDate: true, hasMrp: true, hasHsnCode: true, hasTaxRate: true,
+          hasBrand: true, hasUnit: true,
+          isLoose: true,
+          defaultUnit: 'Piece', unitOptions: ['Piece', 'Litre', 'ML', 'Gram', 'Kg', 'Pack'],
+          defaultTaxRate: 18.0,
+          template: ProductTemplate.bulkUom,
+        ),
+      ),
+      ShopCategory(
+        name: 'Packaged & Instant Food',
+        subcategories: ['Instant Noodles', 'Ready Meals', 'Sauces & Ketchup', 'Pickle',
+          'Jam & Spreads', 'Pasta & Macaroni', 'Canned Food'],
+        productFields: ProductFieldConfig(
+          hasExpiryDate: true, hasMrp: true, hasHsnCode: true, hasTaxRate: true,
+          hasBrand: true, hasUnit: true,
+          defaultUnit: 'Pack', unitOptions: ['Pack', 'Gram', 'Piece', 'Bottle'],
+          defaultTaxRate: 18.0,
+          template: ProductTemplate.batchExpiry,
+        ),
+      ),
+      ShopCategory(
+        name: 'Home & Cleaning',
+        subcategories: ['Detergent', 'Dish Wash', 'Floor Cleaner', 'Toilet Cleaner',
+          'Phenyl', 'Air Freshener', 'Mosquito Repellent', 'Broom & Mops'],
+        productFields: ProductFieldConfig(
+          hasExpiryDate: false, hasMrp: true, hasHsnCode: true, hasTaxRate: true,
+          hasBrand: true, hasUnit: true,
+          defaultUnit: 'Piece', unitOptions: ['Piece', 'Litre', 'ML', 'Gram', 'Kg', 'Pack'],
+          defaultTaxRate: 18.0,
+        ),
+      ),
+      ShopCategory(
+        name: 'Personal Care',
+        subcategories: ['Soap', 'Shampoo', 'Toothpaste', 'Toothbrush', 'Razor',
+          'Sanitary Napkins', 'Deodorant', 'Face Wash'],
+        productFields: ProductFieldConfig(
+          hasExpiryDate: false, hasMrp: true, hasHsnCode: true, hasTaxRate: true,
+          hasBrand: true, hasUnit: true,
+          defaultUnit: 'Piece', unitOptions: ['Piece', 'Gram', 'ML', 'Pack'],
+          defaultTaxRate: 18.0,
+        ),
+      ),
+];
