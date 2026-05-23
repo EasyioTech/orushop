@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/utils/app_logger.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:orushops/providers/onboarding_provider.dart' show onboardingProvider, OnboardingException;
@@ -36,7 +37,7 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
       if (!mounted) return;
       final onboardingState = ref.read(onboardingProvider);
       if (onboardingState.isCompleted) {
-        debugPrint('Social auth complete: Existing shop details restored. Redirecting to home.');
+        appLogger.debug('Social auth complete: Existing shop details restored. Redirecting to home.');
       } else {
         _pageController.jumpToPage(4);
       }
@@ -157,7 +158,7 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
                   onNext: () {
                     final onboardingState = ref.read(onboardingProvider);
                     if (onboardingState.isCompleted) {
-                      debugPrint('OTP verify complete: Existing shop details restored. Redirecting to home.');
+                      appLogger.debug('OTP verify complete: Existing shop details restored. Redirecting to home.');
                     } else {
                       _pageController.jumpToPage(4);
                     }
@@ -226,4 +227,3 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
     );
   }
 }
-

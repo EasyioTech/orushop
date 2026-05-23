@@ -141,7 +141,12 @@ class _CustomerList extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
         itemCount: customers.length,
         separatorBuilder: (_, index) => const SizedBox(height: 12),
-        itemBuilder: (context, i) => _CustomerTile(customer: customers[i], fmt: fmt),
+        itemBuilder: (context, i) => RepaintBoundary(
+          child: _CustomerTile(customer: customers[i], fmt: fmt)
+              .animate(key: ValueKey(customers[i].id))
+              .fadeIn(duration: 200.ms)
+              .slideY(begin: 0.04, curve: Curves.easeOut),
+        ),
       ),
     );
   }

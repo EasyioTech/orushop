@@ -18,9 +18,9 @@ extension ProductFormPersistence on ProductFormNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('product_creation_draft');
-      debugPrint('Draft cleared.');
+      appLogger.debug('Draft cleared.');
     } catch (e) {
-      debugPrint('Error clearing draft: $e');
+      appLogger.debug('Error clearing draft: $e');
     }
   }
 
@@ -67,9 +67,9 @@ extension ProductFormPersistence on ProductFormNotifier {
 
       final jsonStr = json.encode(draftData);
       await prefs.setString('product_creation_draft', jsonStr);
-      debugPrint('Draft saved successfully.');
+      appLogger.debug('Draft saved successfully.');
     } catch (e) {
-      debugPrint('Error saving draft: $e');
+      appLogger.debug('Error saving draft: $e');
     }
   }
 
@@ -163,10 +163,10 @@ extension ProductFormPersistence on ProductFormNotifier {
         currentStep: data['currentStep'] ?? 0,
       );
 
-      debugPrint('Draft restored successfully.');
+      appLogger.debug('Draft restored successfully.');
       return true;
     } catch (e) {
-      debugPrint('Error restoring draft: $e');
+      appLogger.debug('Error restoring draft: $e');
       return false;
     }
   }
@@ -180,10 +180,10 @@ extension ProductFormPersistence on ProductFormNotifier {
         state = state.copyWith(productImage: File(response.file!.path));
         // Save draft with the new image
         await saveAsDraft();
-        debugPrint('Lost image retrieved successfully: ${response.file!.path}');
+        appLogger.debug('Lost image retrieved successfully: ${response.file!.path}');
       }
     } catch (e) {
-      debugPrint('Error retrieving lost image: $e');
+      appLogger.debug('Error retrieving lost image: $e');
     }
   }
 }

@@ -22,6 +22,9 @@ class _TransactionActionSheet extends StatefulWidget {
 }
 
 class _TransactionActionSheetState extends State<_TransactionActionSheet> {
+  static final _fmt = NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
+  static final _dateFmt = DateFormat('MMMM d, yyyy • h:mm a');
+
   final _actionService = KhataActionService();
   bool _isLoading = false;
 
@@ -48,7 +51,7 @@ class _TransactionActionSheetState extends State<_TransactionActionSheet> {
     final isCredit = type == 'credit';
     final isPayment = recordType == 'payment';
     final color = isCredit ? const Color(0xFF2D9E64) : const Color(0xFFD64545);
-    final amtStr = NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0).format(amount);
+    final amtStr = _fmt.format(amount);
 
     return Container(
       decoration: const BoxDecoration(
@@ -94,7 +97,7 @@ class _TransactionActionSheetState extends State<_TransactionActionSheet> {
                       style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: AppTheme.navy900, letterSpacing: -0.5),
                     ),
                     Text(
-                      DateFormat('MMMM d, yyyy • h:mm a').format(createdAt),
+                      _dateFmt.format(createdAt),
                       style: TextStyle(fontSize: 12, color: AppTheme.textSecondary.withValues(alpha: 0.5), fontWeight: FontWeight.w600),
                     ),
                   ],

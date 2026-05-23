@@ -28,6 +28,7 @@ class EditProductScreen extends ConsumerStatefulWidget {
 }
 
 class _EditProductScreenState extends ConsumerState<EditProductScreen> {
+  static final _expiryFmt = DateFormat('MMM dd, yyyy');
   late TextEditingController _nameController;
   late TextEditingController _priceController;
   late TextEditingController _wholesalePriceController;

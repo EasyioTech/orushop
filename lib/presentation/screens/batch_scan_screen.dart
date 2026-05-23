@@ -223,23 +223,39 @@ class _BatchScanScreenState extends ConsumerState<BatchScanScreen> {
           MobileScanner(
             controller: _scannerController,
             onDetect: _onDetect,
+            errorBuilder: (context, error, child) {
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.no_photography_rounded, size: 48, color: Colors.white54),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Camera access required or not available',
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
 
           // Custom Scanner Overlay
           Positioned.fill(
-            child: Container(
-              color: AppTheme.slate400,
-              child: Center(
-                child: Container(
-                  width: 280,
-                  height: 200,
-                  decoration: BoxDecoration(
-                    border: Border.all(
-                      color: _isProcessing ? AppTheme.primaryColor : Colors.white54,
-                      width: 2,
+            child: IgnorePointer(
+              child: Container(
+                color: Colors.black54,
+                child: Center(
+                  child: Container(
+                    width: 280,
+                    height: 200,
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                        color: _isProcessing ? AppTheme.primaryColor : Colors.white54,
+                        width: 2,
+                      ),
+                      borderRadius: BorderRadius.circular(24),
                     ),
-                    borderRadius: BorderRadius.circular(24),
-                  ),
                   child: Stack(
                     children: [
                       const _ScanningLine(),
@@ -259,6 +275,7 @@ class _BatchScanScreenState extends ConsumerState<BatchScanScreen> {
               ),
             ),
           ),
+        ),
 
           SafeArea(
             child: Column(

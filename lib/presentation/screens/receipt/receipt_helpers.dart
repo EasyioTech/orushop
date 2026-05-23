@@ -457,7 +457,7 @@ extension _ReceiptScreenHelpers on _ReceiptScreenState {
         ),
       );
     } else if (style == 'dark') {
-      final darkBg = customColorVal != null ? primary : const Color(0xFF1E293B);
+      final darkBg = customColorVal != null ? primary : const Color(0xFF064E3B);
       final txtColor = textPrimary ?? Colors.white;
       return Container(
         width: double.infinity,

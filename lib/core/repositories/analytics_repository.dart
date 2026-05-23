@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import '../utils/app_logger.dart';
 import 'package:intl/intl.dart';
 import '../database/database_helper.dart';
 import '../database/table_constants.dart';
@@ -20,7 +20,7 @@ class AnalyticsRepository {
     final total = (row['total'] as num?)?.toDouble() ?? 0.0;
     final count = (row['count'] as int?) ?? 0;
     
-    debugPrint('AnalyticsRepo: getDailySalesTotal for $dateStr -> Total: $total, Count: $count');
+    appLogger.debug('AnalyticsRepo: getDailySalesTotal for $dateStr -> Total: $total, Count: $count');
     
     return DailySalesTotal(
       total: total,
@@ -34,7 +34,8 @@ class AnalyticsRepository {
         DateTime.now().subtract(const Duration(days: 30)).toIso8601String();
 
     final result = await db.rawQuery(
-      'SELECT si.productId, p.name, SUM(si.quantity) as units '
+      'SELECT si.productId, p.name, SUM(si.quantity) as units, '
+      'SUM(si.totalPrice) as revenue '
       'FROM sale_items si '
       'JOIN sales s ON si.saleId = s.id '
       'JOIN products p ON si.productId = p.id '
@@ -48,7 +49,8 @@ class AnalyticsRepository {
         .map((row) => TopProduct(
               productId: row['productId'] as int,
               productName: row['name'] as String,
-              unitsSold: (row['units'] as int?) ?? 0,
+              unitsSold: (row['units'] as num?)?.toInt() ?? 0,
+              totalRevenue: (row['revenue'] as num?)?.toDouble() ?? 0.0,
             ))
         .toList();
   }
@@ -250,11 +252,13 @@ class TopProduct {
   final int productId;
   final String productName;
   final int unitsSold;
+  final double totalRevenue;
 
   TopProduct({
     required this.productId,
     required this.productName,
     required this.unitsSold,
+    required this.totalRevenue,
   });
 }
 
@@ -369,4 +373,3 @@ class PaymentMethodBreakdown {
     required this.totalAmount,
   });
 }
-

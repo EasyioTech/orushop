@@ -21,6 +21,9 @@ extension ProductFormCreate on ProductFormNotifier {
         template = ProductTemplate.variantMatrix;
       } else if (state.isService) {
         template = ProductTemplate.serviceLabor;
+      } else if (template == ProductTemplate.serialized &&
+          (state.serialNumber == null || state.serialNumber!.trim().isEmpty)) {
+        template = ProductTemplate.standardRetail;
       }
 
       final now = DateTime.now();

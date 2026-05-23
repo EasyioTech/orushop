@@ -9,7 +9,7 @@ import '../../core/database/database_helper.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/revenue_cat_service.dart';
 import '../../core/theme/app_theme.dart';
-import 'analytics_screen.dart';
+
 import 'settings_screen.dart';
 
 part 'profile/profile_dialogs.dart';
@@ -215,21 +215,7 @@ class _ProfileContent extends ConsumerWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: Row(
                       children: [
-                        Expanded(
-                          child: _ActionPill(
-                            icon: Icons.analytics_outlined,
-                            label: 'Analytics',
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => const AnalyticsScreen(),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 12),
+
                         Expanded(
                           child: _ActionPill(
                             icon: Icons.settings_outlined,

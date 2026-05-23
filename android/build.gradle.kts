@@ -26,6 +26,13 @@ subprojects {
         targetCompatibility = JavaVersion.VERSION_17.toString()
         options.compilerArgs.add("-Xlint:-options")
     }
+
+    // Disable lintVital on library subprojects — Windows file-lock issue with migrated-jars cache
+    afterEvaluate {
+        tasks.matching { it.name.startsWith("lintVital") }.configureEach {
+            enabled = false
+        }
+    }
 }
 
 tasks.register<Delete>("clean") {

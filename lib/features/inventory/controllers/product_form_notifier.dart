@@ -1,4 +1,5 @@
 import 'dart:io';
+import '../../../core/utils/app_logger.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -58,6 +59,7 @@ class ProductFormNotifier extends Notifier<ProductFormState> {
 
   // Tracks whether the notifier has been disposed so async callbacks can bail out early
   bool _disposed = false;
+  bool _listenersAdded = false;
 
   @override
   ProductFormState build() {
@@ -77,6 +79,8 @@ class ProductFormNotifier extends Notifier<ProductFormState> {
   }
 
   void _initializeListeners() {
+    if (_listenersAdded) return;
+    _listenersAdded = true;
     controllers['name']!.addListener(_onNameChanged);
     controllers['sku']!.addListener(_onSkuChanged);
   }
@@ -249,7 +253,7 @@ class ProductFormNotifier extends Notifier<ProductFormState> {
       }
     } catch (e) {
       if (_disposed) return; // Prevent updating state after widget dispose
-      debugPrint('Error looking up global product: $e');
+      appLogger.debug('Error looking up global product: $e');
     }
   }
 

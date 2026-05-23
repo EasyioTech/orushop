@@ -92,7 +92,7 @@ extension _EditProductAdvanced on _EditProductScreenState {
                     Icon(Icons.calendar_today_outlined, color: AppTheme.primaryColor, size: 20),
                     const SizedBox(width: 12),
                     Text(
-                      _expiryDate == null ? 'Select Expiry Date' : DateFormat('MMM dd, yyyy').format(_expiryDate!),
+                      _expiryDate == null ? 'Select Expiry Date' : _EditProductScreenState._expiryFmt.format(_expiryDate!),
                       style: TextStyle(color: _expiryDate == null ? AppTheme.slate500 : AppTheme.textPrimary, fontWeight: FontWeight.w600),
                     ),
                   ],

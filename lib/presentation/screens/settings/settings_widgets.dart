@@ -1,5 +1,92 @@
 part of '../settings_screen.dart';
 
+IconData _shopTypeIcon(ShopType type) {
+  switch (type) {
+    case ShopType.medical: return Icons.medical_services_rounded;
+    case ShopType.grocery: return Icons.local_grocery_store_rounded;
+    case ShopType.electronics: return Icons.electric_bolt_rounded;
+    case ShopType.clothing: return Icons.checkroom_rounded;
+    case ShopType.bakery: return Icons.cake_rounded;
+    case ShopType.stationery: return Icons.menu_book_rounded;
+    case ShopType.hardware: return Icons.build_rounded;
+    case ShopType.cosmetics: return Icons.face_retouching_natural_rounded;
+    case ShopType.mobile: return Icons.phone_android_rounded;
+    case ShopType.restaurant: return Icons.restaurant_rounded;
+    case ShopType.other: return Icons.storefront_rounded;
+  }
+}
+
+Color _shopTypeColor(ShopType type) {
+  switch (type) {
+    case ShopType.medical: return const Color(0xFF007AFF);
+    case ShopType.grocery: return const Color(0xFF34C759);
+    case ShopType.electronics: return const Color(0xFFFF9500);
+    case ShopType.clothing: return const Color(0xFFAF52DE);
+    case ShopType.bakery: return const Color(0xFFFF2D55);
+    case ShopType.stationery: return const Color(0xFF5856D6);
+    case ShopType.hardware: return const Color(0xFF8E8E93);
+    case ShopType.cosmetics: return const Color(0xFFFF3B30);
+    case ShopType.mobile: return const Color(0xFF5AC8FA);
+    case ShopType.restaurant: return const Color(0xFFFFCC00);
+    case ShopType.other: return const Color(0xFF8E8E93);
+  }
+}
+
+class _ShopTypeTile extends StatelessWidget {
+  final ShopType currentType;
+  final VoidCallback onTap;
+
+  const _ShopTypeTile({required this.currentType, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _shopTypeColor(currentType);
+    final icon = _shopTypeIcon(currentType);
+    final label = ShopTypeConfig.getConfig(currentType).displayName;
+    return InkWell(
+      onTap: () {
+        HapticFeedback.selectionClick();
+        onTap();
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: color, size: 20),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Store Type',
+                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: AppTheme.slate900),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    label,
+                    style: const TextStyle(fontSize: 12, color: AppTheme.slate500),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: AppTheme.slate300),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _SettingsSection extends StatelessWidget {
   final String title;
   final List<Widget> children;

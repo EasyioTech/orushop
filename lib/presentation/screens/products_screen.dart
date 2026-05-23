@@ -15,14 +15,12 @@ import 'package:orushops/core/utils/currency_formatter.dart';
 import 'package:orushops/providers/products_provider.dart';
 import 'package:orushops/providers/cart_provider.dart';
 import 'package:orushops/features/onboarding/models/shop_models.dart';
-import 'package:orushops/providers/auth_provider.dart';
 import 'package:orushops/providers/held_carts_provider.dart';
 import 'package:orushops/core/models/customer.dart';
 import 'package:orushops/providers/checkout_provider.dart';
 import 'package:orushops/providers/sale_provider.dart' show customerRepositoryProvider;
 import 'package:orushops/core/repositories/owner_provider.dart';
 
-import 'profile_screen.dart';
 import 'sales_history_screen.dart';
 import 'receipt_screen.dart';
 
@@ -181,9 +179,8 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
       backgroundColor: Colors.transparent,
       builder: (ctx) => _QRScannerModal(
         products: products,
-        onScanned: (sku) {
-          _searchController.text = sku;
-          ref.read(productSearchQueryProvider.notifier).state = sku.toLowerCase();
+        onProductScanned: (product) async {
+          await _addToCart(product, qty: 1);
         },
       ),
     );
@@ -337,18 +334,63 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
               surfaceTintColor: Colors.transparent,
               elevation: 0,
               automaticallyImplyLeading: false,
-              toolbarHeight: 68,
+              toolbarHeight: 76,
               titleSpacing: 0,
               title: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    GestureDetector(
-                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen())),
+                    // Search Bar
+                    Expanded(
                       child: Container(
-                        width: 38,
-                        height: 38,
+                        height: 44,
+                        padding: const EdgeInsets.fromLTRB(16, 0, 10, 0),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(22),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppTheme.primaryDark.withValues(alpha: 0.05),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.search, color: AppTheme.slate400, size: 22),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: TextField(
+                                controller: _searchController,
+                                focusNode: _searchFocusNode,
+                                autofocus: false,
+                                style: const TextStyle(fontSize: 15),
+                                decoration: InputDecoration(
+                                  hintText: 'Search products...',
+                                  hintStyle: TextStyle(color: AppTheme.slate400, fontSize: 15, fontWeight: FontWeight.w400),
+                                  border: InputBorder.none,
+                                  enabledBorder: InputBorder.none,
+                                  focusedBorder: InputBorder.none,
+                                  errorBorder: InputBorder.none,
+                                  filled: false,
+                                  contentPadding: EdgeInsets.zero,
+                                  isDense: true,
+                                ),
+                                onChanged: (value) => ref.read(productSearchQueryProvider.notifier).state = value,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    // Scan Button
+                    GestureDetector(
+                      onTap: _openQRScanner,
+                      child: Container(
+                        width: 44,
+                        height: 44,
                         decoration: BoxDecoration(
                           color: Colors.white,
                           shape: BoxShape.circle,
@@ -360,22 +402,11 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                             ),
                           ],
                         ),
-                        child: Consumer(
-                          builder: (context, ref, child) {
-                            final user = ref.watch(currentUserProvider);
-                            if (user?.photoURL != null && user!.photoURL!.isNotEmpty) {
-                              return ClipOval(child: Image.network(user.photoURL!, fit: BoxFit.cover));
-                            }
-                            return const Icon(Icons.person_outline_rounded, color: AppTheme.textPrimary, size: 24);
-                          },
-                        ),
+                        child: const Icon(Icons.qr_code_scanner, size: 20, color: AppTheme.primaryColor),
                       ),
                     ),
-                    Image.asset(
-                      'images/logo.png',
-                      height: 32,
-                      fit: BoxFit.contain,
-                    ),
+                    const SizedBox(width: 12),
+                    // History / Paused Button
                     Consumer(
                       builder: (context, ref, child) {
                         final heldCarts = ref.watch(heldCartsProvider);
@@ -390,10 +421,11 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                             }
                           },
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                            width: 44,
+                            height: 44,
                             decoration: BoxDecoration(
                               color: hasHeldCarts ? AppTheme.primaryColor : Colors.white,
-                              borderRadius: BorderRadius.circular(26),
+                              shape: BoxShape.circle,
                               boxShadow: [
                                 BoxShadow(
                                   color: (hasHeldCarts ? AppTheme.primaryColor : AppTheme.primaryDark).withValues(alpha: 0.05),
@@ -402,71 +434,34 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                                 ),
                               ],
                             ),
-                            child: Text(
-                              hasHeldCarts ? 'Paused (${heldCarts.length})' : 'History',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 13,
-                                color: hasHeldCarts ? Colors.white : AppTheme.textPrimary,
-                              ),
+                            child: Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                Icon(
+                                  Icons.history_rounded, 
+                                  size: 22, 
+                                  color: hasHeldCarts ? Colors.white : AppTheme.primaryColor
+                                ),
+                                if (hasHeldCarts)
+                                  Positioned(
+                                    top: 10,
+                                    right: 10,
+                                    child: Container(
+                                      width: 8,
+                                      height: 8,
+                                      decoration: const BoxDecoration(
+                                        color: AppTheme.errorColor,
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                  ),
+                              ],
                             ),
                           ),
                         );
                       },
                     ),
                   ],
-                ),
-              ),
-              bottom: PreferredSize(
-                preferredSize: const Size.fromHeight(104),
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
-                  child: Container(
-                    height: 64,
-                    padding: const EdgeInsets.fromLTRB(20, 0, 10, 0),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(32),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.search, color: AppTheme.slate400, size: 28),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: TextField(
-                            controller: _searchController,
-                            focusNode: _searchFocusNode,
-                            autofocus: false, // Explicitly disable autofocus
-                            style: const TextStyle(fontSize: 17),
-                            decoration: InputDecoration(
-                              hintText: 'Search products by name...',
-                              hintStyle: TextStyle(color: AppTheme.slate400, fontSize: 17, fontWeight: FontWeight.w400),
-                              border: InputBorder.none,
-                              enabledBorder: InputBorder.none,
-                              focusedBorder: InputBorder.none,
-                              errorBorder: InputBorder.none,
-                              filled: false,
-                              contentPadding: EdgeInsets.zero,
-                              isDense: true,
-                            ),
-                            onChanged: (value) => ref.read(productSearchQueryProvider.notifier).state = value,
-                          ),
-                        ),
-                        GestureDetector(
-                          onTap: _openQRScanner,
-                          child: Container(
-                            width: 44,
-                            height: 44,
-                            decoration: BoxDecoration(
-                              color: AppTheme.primaryColor.withValues(alpha: 0.1),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(Icons.qr_code_scanner, size: 22, color: AppTheme.primaryColor),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
                 ),
               ),
             ),
@@ -535,7 +530,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
         return Padding(
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
           child: SizedBox(
-            height: 48,
+            height: 36,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               itemCount: allCategories.length,
@@ -549,11 +544,11 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                     ref.read(productSubcategoryProvider.notifier).state = 'All';
                   },
                   child: Container(
-                    margin: const EdgeInsets.only(right: 12),
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    margin: const EdgeInsets.only(right: 10),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
                     decoration: BoxDecoration(
                       color: isSelected ? AppTheme.primaryColor : Colors.white,
-                      borderRadius: BorderRadius.circular(24),
+                      borderRadius: BorderRadius.circular(18),
                       border: Border.all(
                         color: isSelected ? AppTheme.primaryColor : AppTheme.slate200,
                         width: 1,
@@ -572,7 +567,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                       style: TextStyle(
                         color: isSelected ? Colors.white : AppTheme.textSecondary,
                         fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                        fontSize: 14,
+                        fontSize: 13,
                       ),
                     ),
                   ),
@@ -582,7 +577,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
           ),
         );
       },
-      loading: () => const SizedBox(height: 48),
+      loading: () => const SizedBox(height: 36),
       error: (error, stack) => const SizedBox.shrink(),
     );
   }
@@ -608,7 +603,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
         return Padding(
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
           child: SizedBox(
-            height: 36,
+            height: 28,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               itemCount: allSubcats.length,
@@ -622,10 +617,10 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                   },
                   child: Container(
                     margin: const EdgeInsets.only(right: 8),
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
                     decoration: BoxDecoration(
                       color: isSelected ? AppTheme.primaryColor.withValues(alpha: 0.1) : Colors.transparent,
-                      borderRadius: BorderRadius.circular(18),
+                      borderRadius: BorderRadius.circular(14),
                       border: Border.all(
                         color: isSelected ? AppTheme.primaryColor.withValues(alpha: 0.5) : AppTheme.slate300,
                         width: 1,
@@ -637,7 +632,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                       style: TextStyle(
                         color: isSelected ? AppTheme.primaryColor : AppTheme.textSecondary,
                         fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                        fontSize: 12,
+                        fontSize: 11,
                       ),
                     ),
                   ),
@@ -647,7 +642,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
           ),
         );
       },
-      loading: () => const SizedBox(height: 36),
+      loading: () => const SizedBox(height: 28),
       error: (error, stack) => const SizedBox.shrink(),
     );
   }

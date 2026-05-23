@@ -22,23 +22,25 @@ class CustomerDetailScreen extends ConsumerWidget {
 
   const CustomerDetailScreen({super.key, required this.customerId});
 
+  static final _fmt = NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(khataDetailProvider(customerId));
-    final fmt = NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
+    final fmt = _fmt;
 
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
-      body: state.isLoading && state.customer == null
-          ? const Center(child: CircularProgressIndicator(color: AppTheme.accentColor, strokeWidth: 3))
-          : state.customer == null
-              ? const Center(child: Text('Customer not found'))
-              : _DetailBody(
-                  customerId: customerId,
-                  customer: state.customer!,
-                  ledger: state.ledger,
-                  fmt: fmt,
-                ),
+      body: switch (state) {
+        KhataDetailLoading() => const Center(child: CircularProgressIndicator(color: AppTheme.accentColor, strokeWidth: 3)),
+        KhataDetailError() => const Center(child: Text('Customer not found')),
+        KhataDetailData(:final customer, :final ledger) => _DetailBody(
+            customerId: customerId,
+            customer: customer,
+            ledger: ledger,
+            fmt: fmt,
+          ),
+      },
     );
   }
 }
@@ -98,14 +100,11 @@ class _DetailBody extends ConsumerWidget {
             ? AppTheme.successColor
             : AppTheme.errorColor;
 
-    // Fetch store details dynamically
-    final ownerDetailsAsync = ref.watch(ownerDetailsStreamProvider);
-    final ownerDetails = ownerDetailsAsync.valueOrNull;
-    final storeName = ownerDetails?['storeName'] as String? ?? 'OruShops Store';
-    final storePhone = ownerDetails?['phoneNumber'] as String? ?? '';
-    final storeAddress = ownerDetails?['address'] as String? ?? '';
-    final upiId = ownerDetails?['upiId'] as String?;
-    final receiptBannerTitle = ownerDetails?['receiptBannerTitle'] as String?;
+    final storeName = ref.watch(ownerDetailsStreamProvider.select((v) => v.valueOrNull?['storeName'] as String?)) ?? 'OruShops Store';
+    final storePhone = ref.watch(ownerDetailsStreamProvider.select((v) => v.valueOrNull?['phoneNumber'] as String?)) ?? '';
+    final storeAddress = ref.watch(ownerDetailsStreamProvider.select((v) => v.valueOrNull?['address'] as String?)) ?? '';
+    final upiId = ref.watch(ownerDetailsStreamProvider.select((v) => v.valueOrNull?['upiId'] as String?));
+    final receiptBannerTitle = ref.watch(ownerDetailsStreamProvider.select((v) => v.valueOrNull?['receiptBannerTitle'] as String?));
 
     return CustomScrollView(
       slivers: [
@@ -353,7 +352,6 @@ class _DetailBody extends ConsumerWidget {
           storePhone: storePhone,
           storeAddress: storeAddress,
           upiId: upiId,
-          ownerDetails: ownerDetails,
         ),
 
         const SliverToBoxAdapter(child: SizedBox(height: 120)),
@@ -363,12 +361,13 @@ class _DetailBody extends ConsumerWidget {
 }
 
 class _SalesHistorySliver extends ConsumerWidget {
+  static final _dateFmt = DateFormat('d MMM yyyy, h:mm a');
+
   final String phone;
   final String storeName;
   final String storePhone;
   final String storeAddress;
   final String? upiId;
-  final Map<String, dynamic>? ownerDetails;
 
   const _SalesHistorySliver({
     required this.phone,
@@ -376,13 +375,12 @@ class _SalesHistorySliver extends ConsumerWidget {
     required this.storePhone,
     required this.storeAddress,
     required this.upiId,
-    required this.ownerDetails,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final salesAsync = ref.watch(customerSalesByPhoneProvider(phone));
-    final fmt = NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
+    final fmt = CustomerDetailScreen._fmt;
 
     return salesAsync.when(
       loading: () => const SliverToBoxAdapter(
@@ -419,7 +417,7 @@ class _SalesHistorySliver extends ConsumerWidget {
           delegate: SliverChildBuilderDelegate(
             (context, i) {
               final sale = sales[i];
-              final dateFmt = DateFormat('d MMM yyyy, h:mm a');
+              final dateFmt = _SalesHistorySliver._dateFmt;
               return Padding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                 child: Material(

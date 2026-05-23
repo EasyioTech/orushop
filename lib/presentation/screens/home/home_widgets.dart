@@ -4,7 +4,8 @@ part of '../home_screen.dart';
 
 class _ProfileAvatar extends StatelessWidget {
   final String name;
-  const _ProfileAvatar({required this.name});
+  final String? photoUrl;
+  const _ProfileAvatar({required this.name, this.photoUrl});
 
   @override
   Widget build(BuildContext context) {
@@ -13,11 +14,11 @@ class _ProfileAvatar extends StatelessWidget {
       height: 46,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        gradient: const LinearGradient(
+        gradient: photoUrl == null ? const LinearGradient(
           colors: [AppTheme.primaryColor, AppTheme.primaryLight],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-        ),
+        ) : null,
         boxShadow: [
           BoxShadow(
             color: AppTheme.primaryColor.withValues(alpha: 0.2),
@@ -25,13 +26,21 @@ class _ProfileAvatar extends StatelessWidget {
             offset: const Offset(0, 4),
           ),
         ],
+        image: photoUrl != null
+            ? DecorationImage(
+                image: NetworkImage(photoUrl!),
+                fit: BoxFit.cover,
+              )
+            : null,
       ),
-      child: Center(
-        child: Text(
-          name.isNotEmpty ? name[0].toUpperCase() : 'P',
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 18),
-        ),
-      ),
+      child: photoUrl == null
+          ? Center(
+              child: Text(
+                name.isNotEmpty ? name[0].toUpperCase() : 'P',
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 18),
+              ),
+            )
+          : null,
     );
   }
 }
@@ -41,11 +50,14 @@ class _ProfileAvatar extends StatelessWidget {
 // ── SALES HERO CARD ──────────────────────────────────────────────────────────
 
 class _SalesHeroCard extends ConsumerWidget {
+  static final _fmt = NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
+
   final double revenue;
   final int count;
   final double growth;
   final String greeting;
   final String name;
+  final String? photoUrl;
   final String date;
 
   const _SalesHeroCard({
@@ -54,12 +66,13 @@ class _SalesHeroCard extends ConsumerWidget {
     required this.growth,
     required this.greeting,
     required this.name,
+    this.photoUrl,
     required this.date,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final fmt = NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
+    final fmt = _fmt;
     final topPadding = MediaQuery.of(context).padding.top;
     
     // Read dynamic sales target
@@ -69,211 +82,197 @@ class _SalesHeroCard extends ConsumerWidget {
 
     return Container(
       width: double.infinity,
-      margin: EdgeInsets.fromLTRB(20, topPadding + 16, 20, 24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFFE2E8F0),
-            blurRadius: 16,
-            offset: const Offset(0, 8),
-          ),
-          BoxShadow(
-            color: const Color(0xFFE2E8F0),
-            spreadRadius: 1,
-            blurRadius: 0,
-            offset: const Offset(0, 1),
-          ),
-        ],
+      padding: EdgeInsets.fromLTRB(20, topPadding + 16, 20, 24),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFF059669), Color(0xFF064E3B)], // Premium Emerald Green
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(32),
+          bottomRight: Radius.circular(32),
+        ),
       ),
-      clipBehavior: Clip.antiAlias,
-      child: Stack(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // ── Integrated Top Header ─────────────────────────────────────
-                Row(
+          // ── Integrated Top Header ─────────────────────────────────────
+          Row(
+            children: [
+              _ProfileAvatar(name: name, photoUrl: photoUrl),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _ProfileAvatar(name: name),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '$greeting, $name',
-                            style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w900,
-                              color: AppTheme.textPrimary,
-                              letterSpacing: -0.8,
-                              height: 1.1,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            date,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              color: AppTheme.textSecondary,
-                              letterSpacing: 0.2,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(CupertinoIcons.chart_bar_circle_fill, color: AppTheme.accentColor, size: 26),
-                      onPressed: () {
-                        HapticFeedback.selectionClick();
-                        Navigator.of(context).push(
-                          MaterialPageRoute(builder: (_) => const AnalyticsScreen()),
-                        );
-                      },
-                      tooltip: 'View Reports',
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-
-                // ── Main Today's Revenue Info ────────────────────────────────
-                const Row(
-                  children: [
-                    Icon(CupertinoIcons.sparkles, color: AppTheme.accentColor, size: 13),
-                    SizedBox(width: 6),
                     Text(
-                      'TODAY\'S REVENUE',
-                      style: TextStyle(
-                        color: AppTheme.textSecondary,
-                        fontSize: 10,
+                      '$greeting, $name',
+                      style: const TextStyle(
+                        fontSize: 20,
                         fontWeight: FontWeight.w900,
-                        letterSpacing: 1.2,
+                        color: Colors.white,
+                        letterSpacing: -0.8,
+                        height: 1.1,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      date,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white.withValues(alpha: 0.7),
+                        letterSpacing: 0.2,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  fmt.format(revenue),
-                  style: const TextStyle(
-                    color: AppTheme.textPrimary,
-                    fontSize: 44,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: -2.0,
-                    height: 1.1,
-                  ),
-                ),
-                const SizedBox(height: 16),
+              ),
 
-                // ── Interactive Daily Target Progress Bar ───────────────────
-                GestureDetector(
-                  onTap: () => _showEditGoalDialog(context, ref, target),
-                  behavior: HitTestBehavior.opaque,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: const Color(0xFFE2E8F0)),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppTheme.primaryDark.withValues(alpha: 0.02),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
+            ],
+          ),
+          const SizedBox(height: 24),
+
+          // ── Main Today's Revenue Info ────────────────────────────────
+          Row(
+            children: [
+              Icon(CupertinoIcons.sparkles, color: Colors.white.withValues(alpha: 0.8), size: 13),
+              const SizedBox(width: 6),
+              Text(
+                'TODAY\'S REVENUE',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.8),
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.2,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Text(
+                fmt.format(revenue),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 44,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -2.0,
+                  height: 1.1,
+                ),
+              ),
+              const Spacer(),
+              GestureDetector(
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => SalesHistoryScreen()),
+                  );
+                },
+                behavior: HitTestBehavior.opaque,
+                child: const _OverlappingAvatars(),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+
+          // ── Interactive Daily Target Progress Bar ───────────────────
+          GestureDetector(
+            onTap: () => _showEditGoalDialog(context, ref, target),
+            behavior: HitTestBehavior.opaque,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(CupertinoIcons.flag_fill, color: Colors.white.withValues(alpha: 0.9), size: 14),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Row(
                           children: [
-                            const Icon(CupertinoIcons.flag_fill, color: AppTheme.accentColor, size: 14),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Row(
-                                children: [
-                                  Flexible(
-                                    child: Text(
-                                      'Daily Target: ${fmt.format(target)}',
-                                      style: const TextStyle(
-                                        color: AppTheme.textPrimary,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w800,
-                                        letterSpacing: -0.2,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 6),
-                                  const Icon(CupertinoIcons.pencil_circle_fill, color: AppTheme.textSecondary, size: 14),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 8),
                             Flexible(
                               child: Text(
-                                '${(rawPercent * 100).toStringAsFixed(0)}% achieved',
+                                'Daily Target: ${fmt.format(target)}',
                                 style: const TextStyle(
-                                  color: AppTheme.textPrimary,
+                                  color: Colors.white,
                                   fontSize: 12,
-                                  fontWeight: FontWeight.w900,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: -0.2,
                                 ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
+                            const SizedBox(width: 6),
+                            Icon(CupertinoIcons.pencil_circle_fill, color: Colors.white.withValues(alpha: 0.5), size: 14),
                           ],
                         ),
-                        const SizedBox(height: 8),
-                        // Sleek glowing progress track
-                        Container(
-                          height: 8,
-                          width: double.infinity,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF1F5F9),
-                            borderRadius: BorderRadius.circular(4),
+                      ),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          '${(rawPercent * 100).toStringAsFixed(0)}% achieved',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w900,
                           ),
-                          child: FractionallySizedBox(
-                            alignment: Alignment.centerLeft,
-                            widthFactor: percent,
-                            child: Container(
-                              decoration: BoxDecoration(
-                                gradient: const LinearGradient(
-                                  colors: [Color(0xFF007AFF), Color(0xFF3B82F6)],
-                                  begin: Alignment.centerLeft,
-                                  end: Alignment.centerRight,
-                                ),
-                                borderRadius: BorderRadius.circular(4),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: const Color(0xFF007AFF).withValues(alpha: 0.2),
-                                    blurRadius: 4,
-                                    offset: const Offset(0, 1),
-                                  )
-                                ],
-                              ),
-                            ),
-                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                      ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  // Sleek glowing progress track
+                  Container(
+                    height: 6,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: FractionallySizedBox(
+                      alignment: Alignment.centerLeft,
+                      widthFactor: percent,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFFFBBF24), Color(0xFFF59E0B)], // Vibrant Amber/Gold
+                            begin: Alignment.centerLeft,
+                            end: Alignment.centerRight,
+                          ),
+                          borderRadius: BorderRadius.circular(4),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFFF59E0B).withValues(alpha: 0.4),
+                              blurRadius: 6,
+                              offset: const Offset(0, 0),
+                            )
+                          ],
+                        ),
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 20),
-
-                // ── Frost Glass Stats Capsule ────────────────────────────────
-                _HeroStatsRow(count: count, growth: growth),
-              ],
+                ],
+              ),
             ),
           ),
+          const SizedBox(height: 16),
+
+          // ── Frost Glass Stats Capsule ────────────────────────────────
+          _HeroStatsRow(count: count, growth: growth),
         ],
       ),
     );
@@ -369,16 +368,9 @@ class _HeroStatsRow extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Colors.white.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.primaryDark.withValues(alpha: 0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
       ),
       child: Row(
         children: [
@@ -391,13 +383,13 @@ class _HeroStatsRow extends StatelessWidget {
             width: 1,
             height: 35,
             margin: const EdgeInsets.symmetric(horizontal: 24),
-            color: const Color(0xFFE2E8F0),
+            color: Colors.white.withValues(alpha: 0.2),
           ),
           _HeroStatItem(
             icon: isUp ? CupertinoIcons.arrow_up_right : CupertinoIcons.arrow_down_right,
             label: 'Growth Rate',
             value: '${isUp ? '+' : ''}${growth.toStringAsFixed(1)}%',
-            valueColor: isUp ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+            valueColor: isUp ? const Color(0xFF6EE7B7) : const Color(0xFFFCA5A5),
           ),
         ],
       ),
@@ -421,11 +413,11 @@ class _HeroStatItem extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(icon, color: AppTheme.accentColor, size: 14),
+              Icon(icon, color: Colors.white.withValues(alpha: 0.8), size: 14),
               const SizedBox(width: 8),
               Text(
                 label,
-                style: const TextStyle(color: AppTheme.textSecondary, fontSize: 10, fontWeight: FontWeight.w700),
+                style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 10, fontWeight: FontWeight.w700),
               ),
             ],
           ),
@@ -433,7 +425,7 @@ class _HeroStatItem extends StatelessWidget {
           Text(
             value,
             style: TextStyle(
-              color: valueColor ?? AppTheme.textPrimary,
+              color: valueColor ?? Colors.white,
               fontSize: 18,
               fontWeight: FontWeight.w900,
               letterSpacing: -0.5,
@@ -549,3 +541,66 @@ class _ActionPill extends StatelessWidget {
   }
 }
 
+// ── OVERLAPPING AVATARS ──────────────────────────────────────────────────────
+
+class _OverlappingAvatars extends StatelessWidget {
+  const _OverlappingAvatars();
+
+  @override
+  Widget build(BuildContext context) {
+    // Monochromatic/analogous colors based on Emerald green
+    final colors = [
+      const Color(0xFF047857), // Deep emerald
+      const Color(0xFF059669), // Emerald
+      const Color(0xFF10B981), // Light emerald
+      const Color(0xFF34D399), // Sea green
+      const Color(0xFF0D9488), // Teal
+    ];
+    final initials = ['S', 'M', 'R', 'K', 'A'];
+
+    // 5 avatars total
+    final count = colors.length;
+    const avatarSize = 34.0;
+    const overlap = 14.0;
+    
+    // The width is the size of one avatar, plus the visible part of the remaining avatars
+    final totalWidth = avatarSize + ((count - 1) * (avatarSize - overlap));
+
+    return SizedBox(
+      width: totalWidth,
+      height: avatarSize,
+      child: Stack(
+        children: List.generate(count, (index) {
+          // We want the left-most avatar to be on top.
+          // Stack paints first child at the bottom.
+          // So the child at index 0 is painted at the bottom (right-most visually).
+          // And index `count - 1` is painted at the top (left-most visually).
+          final i = (count - 1) - index; 
+          
+          return Positioned(
+            left: i * (avatarSize - overlap),
+            child: Container(
+              width: avatarSize,
+              height: avatarSize,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: colors[i],
+                border: Border.all(color: const Color(0xFF064E3B), width: 2.5),
+              ),
+              child: Center(
+                child: Text(
+                  initials[i],
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+}

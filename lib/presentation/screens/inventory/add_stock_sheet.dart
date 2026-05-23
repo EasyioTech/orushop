@@ -10,6 +10,7 @@ class _AddStockBottomSheet extends ConsumerStatefulWidget {
 }
 
 class _AddStockBottomSheetState extends ConsumerState<_AddStockBottomSheet> {
+  static final _expiryFmt = DateFormat('MMMM d, yyyy');
   final _qtyController = TextEditingController();
   final _costController = TextEditingController();
   final _batchController = TextEditingController();
@@ -264,7 +265,7 @@ class _AddStockBottomSheetState extends ConsumerState<_AddStockBottomSheet> {
                     ),
                     const SizedBox(width: 16),
                     Text(
-                      DateFormat('MMMM d, yyyy').format(_expiry),
+                      _expiryFmt.format(_expiry),
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,

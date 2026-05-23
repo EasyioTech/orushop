@@ -1,7 +1,7 @@
 import 'dart:async';
+import '../utils/app_logger.dart';
 import 'dart:convert';
 import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../repositories/product_repository.dart';
@@ -114,7 +114,7 @@ class SyncService {
         return SyncResult.failure(SyncErrorType.serverError, 'SSL error: ${e.message}');
       } catch (e) {
         if (attempt == _maxRetries) {
-          debugPrint('[SyncService] $path failed: $e');
+          appLogger.debug('[SyncService] $path failed: $e');
           return SyncResult.failure(SyncErrorType.unknown, e.toString());
         }
       }
@@ -133,7 +133,7 @@ class SyncService {
         'timestamp': DateTime.now().toIso8601String(),
       });
     } catch (e) {
-      debugPrint('[SyncService] syncProducts data error: $e');
+      appLogger.debug('[SyncService] syncProducts data error: $e');
       return SyncResult.failure(SyncErrorType.dataError, e.toString());
     }
   }
@@ -149,7 +149,7 @@ class SyncService {
         'timestamp': DateTime.now().toIso8601String(),
       });
     } catch (e) {
-      debugPrint('[SyncService] syncSales data error: $e');
+      appLogger.debug('[SyncService] syncSales data error: $e');
       return SyncResult.failure(SyncErrorType.dataError, e.toString());
     }
   }
@@ -165,7 +165,7 @@ class SyncService {
         'timestamp': DateTime.now().toIso8601String(),
       });
     } catch (e) {
-      debugPrint('[SyncService] syncRefunds data error: $e');
+      appLogger.debug('[SyncService] syncRefunds data error: $e');
       return SyncResult.failure(SyncErrorType.dataError, e.toString());
     }
   }
@@ -183,7 +183,7 @@ class SyncService {
         'timestamp': DateTime.now().toIso8601String(),
       });
     } catch (e) {
-      debugPrint('[SyncService] syncKhata data error: $e');
+      appLogger.debug('[SyncService] syncKhata data error: $e');
       return SyncResult.failure(SyncErrorType.dataError, e.toString());
     }
   }
@@ -227,7 +227,7 @@ class SyncService {
         },
       };
     } catch (e) {
-      debugPrint('[SyncService] getBackupData error: $e');
+      appLogger.debug('[SyncService] getBackupData error: $e');
       return null;
     }
   }
@@ -242,7 +242,7 @@ class SyncService {
           backup.containsKey('sales') &&
           backup.containsKey('refunds');
     } catch (e) {
-      debugPrint('[SyncService] restoreBackup error: $e');
+      appLogger.debug('[SyncService] restoreBackup error: $e');
       return false;
     }
   }

@@ -11,6 +11,7 @@ part 'stock_step/stock_step_helpers.dart';
 class StockStep extends ConsumerWidget {
   const StockStep({super.key});
 
+  static final _expiryFmt = DateFormat('dd MMM yyyy');
   static const Map<String, Color> _presetColors = {
     'Black': Color(0xFF1C1C1E),
     'White': Color(0xFFFFFFFF),
@@ -495,7 +496,7 @@ class StockStep extends ConsumerWidget {
                   ),
                   title: const Text('Expiry Date', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                   subtitle: Text(
-                    state.expiryDate == null ? 'Not set (Optional)' : DateFormat('dd MMM yyyy').format(state.expiryDate!),
+                    state.expiryDate == null ? 'Not set (Optional)' : _expiryFmt.format(state.expiryDate!),
                     style: TextStyle(
                       color: state.expiryDate == null ? AppTheme.slate400 : AppTheme.errorColor,
                       fontWeight: state.expiryDate == null ? FontWeight.normal : FontWeight.w600,

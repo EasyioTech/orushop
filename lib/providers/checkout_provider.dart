@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import '../core/utils/app_logger.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/models/cart_item.dart';
@@ -57,7 +57,7 @@ class CheckoutNotifier extends Notifier<CheckoutState> {
     String? receivedPaymentMode, // New: Cash or Other for partial payment
   }) async {
     try {
-      debugPrint('Checkout: Starting saveSale');
+      appLogger.debug('Checkout: Starting saveSale');
       state = state.copyWith(isLoading: true, error: null);
 
       // Get or create customer if phone is provided
@@ -84,12 +84,12 @@ class CheckoutNotifier extends Notifier<CheckoutState> {
         createdAt: DateTime.now(),
       );
 
-      debugPrint('Checkout: Processing sale in repository');
+      appLogger.debug('Checkout: Processing sale in repository');
       final result = await _saleRepository.processCompleteSale(
         sale: sale,
         items: items,
       );
-      debugPrint('Checkout: Repository processing complete');
+      appLogger.debug('Checkout: Repository processing complete');
 
       // Update customer purchase stats after successful sale
       if (customerId != null) {
@@ -155,9 +155,11 @@ class CheckoutNotifier extends Notifier<CheckoutState> {
 
       // Surgical in-place stock decrement — no full reload, no empty-screen flash
       ref.read(paginatedProductsProvider.notifier).decrementStock(soldItems);
+      // Invalidate so InventoryScreen reflects updated stock levels
+      ref.invalidate(productsProvider);
 
       // Increment revision to trigger global refresh of all analytics-dependent providers
-      debugPrint('Checkout: Syncing analytics revision...');
+      appLogger.debug('Checkout: Syncing analytics revision...');
       ref.read(analyticsRevisionProvider.notifier).state++;
 
       final checkoutResult = {
@@ -172,15 +174,15 @@ class CheckoutNotifier extends Notifier<CheckoutState> {
       
       return checkoutResult;
     } on InsufficientStockException catch (e) {
-      debugPrint('Insufficient stock: ${e.message}');
+      appLogger.debug('Insufficient stock: ${e.message}');
       state = state.copyWith(isLoading: false, error: e.message);
       return null;
     } on TransactionException catch (e) {
-      debugPrint('Transaction failed: ${e.message}');
+      appLogger.debug('Transaction failed: ${e.message}');
       state = state.copyWith(isLoading: false, error: 'Payment recorded, but inventory update failed. Please check stock manually.');
       return null;
     } catch (e) {
-      debugPrint('Checkout error caught in notifier: $e');
+      appLogger.debug('Checkout error caught in notifier: $e');
       state = state.copyWith(isLoading: false, error: 'An unexpected error occurred: ${e.toString()}');
       return null;
     }

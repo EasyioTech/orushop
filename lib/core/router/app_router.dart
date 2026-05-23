@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -299,12 +300,14 @@ class _AppShell extends ConsumerStatefulWidget {
 
 class _AppShellState extends ConsumerState<_AppShell> with WidgetsBindingObserver {
   static const _navItems = [
-    _NavItem(label: 'Home',    icon: CupertinoIcons.house,          activeIcon: CupertinoIcons.house_fill),
-    _NavItem(label: 'POS',     icon: CupertinoIcons.cart,           activeIcon: CupertinoIcons.cart_fill),
-    _NavItem(label: 'Stock',   icon: CupertinoIcons.cube_box,       activeIcon: CupertinoIcons.cube_box_fill),
-    _NavItem(label: 'Khata',   icon: CupertinoIcons.book,           activeIcon: CupertinoIcons.book_fill),
-    _NavItem(label: 'Profile', icon: CupertinoIcons.person_circle,  activeIcon: CupertinoIcons.person_circle_fill),
+    _NavItem(label: 'Home',    icon: CupertinoIcons.house,          activeIcon: CupertinoIcons.house_fill,          activeColor: AppTheme.primaryColor),
+    _NavItem(label: 'POS',     icon: CupertinoIcons.cart,           activeIcon: CupertinoIcons.cart_fill,           activeColor: Color(0xFF10B981)),
+    _NavItem(label: 'Stock',   icon: CupertinoIcons.cube_box,       activeIcon: CupertinoIcons.cube_box_fill,       activeColor: Color(0xFF6D28D9)),
+    _NavItem(label: 'Khata',   icon: CupertinoIcons.book,           activeIcon: CupertinoIcons.book_fill,           activeColor: Color(0xFFB45309)),
+    _NavItem(label: 'Profile', icon: CupertinoIcons.person_circle,  activeIcon: CupertinoIcons.person_circle_fill,  activeColor: Color(0xFF3B82F6)),
   ];
+
+  bool _isNavBarVisible = true;
 
   @override
   void initState() {
@@ -345,12 +348,32 @@ class _AppShellState extends ConsumerState<_AppShell> with WidgetsBindingObserve
       ref.read(paginatedProductsProvider.notifier).silentRefresh();
     } else if (index == 2) {
       ref.read(paginatedProductsProvider.notifier).silentRefresh();
-      ref.invalidate(productsProvider);
       ref.read(analyticsRevisionProvider.notifier).state++;
     } else if (index == 0) {
       ref.read(analyticsRevisionProvider.notifier).state++;
     } else if (index == 3) {
       ref.read(khataListProvider.notifier).load();
+    }
+  }
+
+  void _handleSwipe(DragEndDetails details, int currentIndex) {
+    if (details.primaryVelocity == null) return;
+    
+    // threshold for swipe speed to avoid accidental touches
+    const double threshold = 300.0;
+    int nextIndex = currentIndex;
+
+    // primaryVelocity < 0 means swiping left (moving to the right tab)
+    if (details.primaryVelocity! < -threshold) {
+      nextIndex = currentIndex + 1;
+    } 
+    // primaryVelocity > 0 means swiping right (moving to the left tab)
+    else if (details.primaryVelocity! > threshold) {
+      nextIndex = currentIndex - 1;
+    }
+
+    if (nextIndex != currentIndex && nextIndex >= 0 && nextIndex < _AppShellState._navItems.length) {
+      _onTap(context, ref, nextIndex);
     }
   }
 
@@ -372,16 +395,38 @@ class _AppShellState extends ConsumerState<_AppShell> with WidgetsBindingObserve
         }
       },
       child: Scaffold(
-        body: OfflineBanner(
-          isOffline: isOffline,
-          child: widget.navigationShell,
+        extendBody: true,
+        body: NotificationListener<UserScrollNotification>(
+          onNotification: (notification) {
+            if (notification.direction == ScrollDirection.forward) {
+              if (!_isNavBarVisible) setState(() => _isNavBarVisible = true);
+            } else if (notification.direction == ScrollDirection.reverse) {
+              if (_isNavBarVisible) setState(() => _isNavBarVisible = false);
+            }
+            return false;
+          },
+          child: GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onHorizontalDragEnd: (details) => _handleSwipe(details, currentIndex),
+            child: OfflineBanner(
+              isOffline: isOffline,
+              child: widget.navigationShell,
+            ),
+          ),
         ),
         bottomNavigationBar: isMakingSale
             ? null
-            : _AppNavBar(
-                selectedIndex: currentIndex,
-                items: _AppShellState._navItems,
-                onTap: (i) => _onTap(context, ref, i),
+            : AnimatedSlide(
+                duration: const Duration(milliseconds: 400),
+                curve: Curves.easeOutCubic,
+                offset: _isNavBarVisible ? Offset.zero : const Offset(0, 1.5),
+                child: RepaintBoundary(
+                  child: _AppNavBar(
+                    selectedIndex: currentIndex,
+                    items: _AppShellState._navItems,
+                    onTap: (i) => _onTap(context, ref, i),
+                  ),
+                ),
               ),
       ),
     );
@@ -413,7 +458,13 @@ class _NavItem {
   final String label;
   final IconData icon;
   final IconData activeIcon;
-  const _NavItem({required this.label, required this.icon, required this.activeIcon});
+  final Color activeColor;
+  const _NavItem({
+    required this.label, 
+    required this.icon, 
+    required this.activeIcon,
+    required this.activeColor,
+  });
 }
 
 class _AppNavBar extends StatelessWidget {
@@ -431,38 +482,43 @@ class _AppNavBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final bottomPadding = MediaQuery.of(context).padding.bottom;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(
-          top: BorderSide(
-            color: AppTheme.borderColor.withValues(alpha: 0.8),
-            width: 1,
-          ),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.primaryDark.withValues(alpha: 0.02),
-            blurRadius: 10,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
+    return SafeArea(
+      bottom: false,
       child: Padding(
-        padding: EdgeInsets.only(bottom: bottomPadding),
-        child: SizedBox(
-          height: 65,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: List.generate(items.length, (i) {
-              return Expanded(
-                child: _NavBarItem(
-                  item: items[i],
-                  active: i == selectedIndex,
-                  onTap: () => onTap(i),
-                ),
-              );
-            }),
+        padding: EdgeInsets.fromLTRB(16, 0, 16, bottomPadding + 16),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(32),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.08),
+                blurRadius: 24,
+                spreadRadius: 0,
+                offset: const Offset(0, 8),
+              ),
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 8,
+                spreadRadius: -2,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: SizedBox(
+            height: 64,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: List.generate(items.length, (i) {
+                return Expanded(
+                  child: _NavBarItem(
+                    item: items[i],
+                    active: i == selectedIndex,
+                    onTap: () => onTap(i),
+                  ),
+                );
+              }),
+            ),
           ),
         ),
       ),
@@ -482,41 +538,54 @@ class _NavBarItem extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const SizedBox(height: 8),
-          Icon(
-            active ? item.activeIcon : item.icon,
-            size: 24,
+      child: Center(
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 350),
+          curve: Curves.easeOutBack,
+          padding: EdgeInsets.symmetric(
+            horizontal: active ? 16 : 8,
+            vertical: 10,
+          ),
+          decoration: BoxDecoration(
             color: active
-                ? AppTheme.primaryColor
-                : AppTheme.textSecondary.withValues(alpha: 0.5),
+                ? item.activeColor.withValues(alpha: 0.12)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(20),
           ),
-          const SizedBox(height: 4),
-          Text(
-            item.label,
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: active ? FontWeight.w900 : FontWeight.w600,
-              color: active
-                  ? AppTheme.primaryColor
-                  : AppTheme.textSecondary.withValues(alpha: 0.5),
-              letterSpacing: 0.2,
-            ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 300),
+                transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: child),
+                child: Icon(
+                  active ? item.activeIcon : item.icon,
+                  key: ValueKey(active),
+                  size: active ? 26 : 24,
+                  color: active
+                      ? item.activeColor
+                      : AppTheme.textSecondary.withValues(alpha: 0.4),
+                ),
+              ),
+              if (active) ...[
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Text(
+                    item.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      color: item.activeColor,
+                      letterSpacing: 0.2,
+                    ),
+                  ),
+                ),
+              ]
+            ],
           ),
-          const SizedBox(height: 6),
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 250),
-            width: active ? 16 : 0,
-            height: 3,
-            decoration: BoxDecoration(
-              color: AppTheme.primaryColor,
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          const SizedBox(height: 4),
-        ],
+        ),
       ),
     );
   }

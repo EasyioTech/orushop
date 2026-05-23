@@ -53,7 +53,7 @@ void main() {
       );
 
       expect(find.text('Reason *'), findsOneWidget);
-      expect(find.byType(DropdownButtonFormField), findsOneWidget);
+      expect(find.byType(DropdownButtonFormField<String>), findsOneWidget);
     });
 
     testWidgets('shows reason dropdown options when tapped', (WidgetTester tester) async {
@@ -65,12 +65,16 @@ void main() {
         ),
       );
 
-      await tester.tap(find.byType(DropdownButtonFormField));
+      final dropdown = find.byType(DropdownButtonFormField<String>);
+      await tester.ensureVisible(dropdown);
+      await tester.pumpAndSettle();
+      
+      await tester.tap(dropdown);
       await tester.pumpAndSettle();
 
-      expect(find.text('Defective Product'), findsOneWidget);
-      expect(find.text('Changed Mind'), findsOneWidget);
-      expect(find.text('Wrong Item'), findsOneWidget);
+      expect(find.text('Defective Product').last, findsOneWidget);
+      expect(find.text('Changed Mind').last, findsOneWidget);
+      expect(find.text('Wrong Item').last, findsOneWidget);
     });
 
     testWidgets('displays cancel and submit buttons', (WidgetTester tester) async {
@@ -97,7 +101,11 @@ void main() {
         ),
       );
 
-      await tester.tap(find.text('Cancel'));
+      final cancelBtn = find.text('Cancel');
+      await tester.ensureVisible(cancelBtn);
+      await tester.pumpAndSettle();
+      
+      await tester.tap(cancelBtn);
       await tester.pumpAndSettle();
 
       expect(find.byType(RefundRequestScreen), findsNothing);

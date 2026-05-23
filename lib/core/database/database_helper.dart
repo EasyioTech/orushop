@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
+import '../utils/app_logger.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
-import 'package:orushops/core/utils/app_logger.dart';
 import 'migrations/migration_v1.dart';
 import 'migrations/migration_v3.dart';
 import 'migrations/migration_v4.dart';
@@ -48,10 +48,10 @@ class DatabaseHelper {
 
   Future<Database> _initDatabase() async {
     try {
-      debugPrint('DB: Getting databases path...');
+      appLogger.debug('DB: Getting databases path...');
       final dbPath = await getDatabasesPath();
       final path = join(dbPath, 'OruShops.db');
-      debugPrint('DB: Opening database at $path...');
+      appLogger.debug('DB: Opening database at $path...');
       return await openDatabase(
           path,
           version: 20,
@@ -60,14 +60,14 @@ class DatabaseHelper {
           onOpen: _onOpen,
       );
     } catch (e) {
-      debugPrint('DB: Init error: $e');
+      appLogger.debug('DB: Init error: $e');
       AppLogger.e(_tag, '_initDatabase error', e);
       throw Exception('Failed to initialize database: $e');
     }
   }
 
   Future<void> _onCreate(Database db, int version) async {
-    debugPrint('DB: Creating database v$version...');
+    appLogger.debug('DB: Creating database v$version...');
     await MigrationV1.up(db);
     await MigrationV3.up(db);
     await MigrationV4.up(db);
@@ -86,7 +86,7 @@ class DatabaseHelper {
     await MigrationV18.up(db);
     await MigrationV19.up(db);
     await MigrationV20.up(db);
-    debugPrint('DB: Database creation complete.');
+    appLogger.debug('DB: Database creation complete.');
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -124,6 +124,8 @@ class DatabaseHelper {
     try {
       await db.rawQuery('PRAGMA journal_mode = WAL');
       await db.rawQuery('PRAGMA synchronous = NORMAL');
+      await db.rawQuery('PRAGMA cache_size = -10000');
+      await db.rawQuery('PRAGMA temp_store = MEMORY');
       await db.rawQuery('PRAGMA foreign_keys = ON');
 
       final List<Map<String, dynamic>> columns =

@@ -28,3 +28,14 @@ plugins {
 
 include(":app")
 
+// integration_test is a dev_dependency (excluded by flutter-plugin-loader) but
+// GeneratedPluginRegistrant.java still references IntegrationTestPlugin at compile time.
+// Include it as a project so javac can resolve the class (flutter/flutter#56591).
+val integrationTestPath = run {
+    val props = java.util.Properties()
+    file("local.properties").inputStream().use { props.load(it) }
+    "${props.getProperty("flutter.sdk")}/packages/integration_test/android"
+}
+include(":integration_test")
+project(":integration_test").projectDir = file(integrationTestPath)
+

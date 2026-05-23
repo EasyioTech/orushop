@@ -24,6 +24,8 @@ class _StatementRemindersSheet extends StatefulWidget {
 }
 
 class _StatementRemindersSheetState extends State<_StatementRemindersSheet> {
+  static final _fmt = NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
+
   final _actionService = KhataActionService();
   bool _isLoading = false;
 
@@ -43,7 +45,7 @@ class _StatementRemindersSheetState extends State<_StatementRemindersSheet> {
   Widget build(BuildContext context) {
     final balance = widget.customer.balance;
     final isReceivable = balance > 0;
-    final balanceStr = NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0).format(balance.abs());
+    final balanceStr = _fmt.format(balance.abs());
 
     return Container(
       decoration: const BoxDecoration(

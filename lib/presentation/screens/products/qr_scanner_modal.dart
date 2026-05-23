@@ -4,11 +4,11 @@ part of '../products_screen.dart';
 
 class _QRScannerModal extends StatefulWidget {
   final List<Product> products;
-  final Function(String) onScanned;
+  final Function(Product) onProductScanned;
 
   const _QRScannerModal({
     required this.products,
-    required this.onScanned,
+    required this.onProductScanned,
   });
 
   @override
@@ -18,7 +18,9 @@ class _QRScannerModal extends StatefulWidget {
 class _QRScannerModalState extends State<_QRScannerModal> {
   late MobileScannerController controller;
   String? errorMessage;
+  String? successMessage;
   Timer? _errorTimer;
+  Timer? _successTimer;
   String? _lastScanned;
   final FocusNode _focusNode = FocusNode();
 
@@ -31,6 +33,7 @@ class _QRScannerModalState extends State<_QRScannerModal> {
   @override
   void dispose() {
     _errorTimer?.cancel();
+    _successTimer?.cancel();
     _focusNode.dispose();
     controller.dispose();
     super.dispose();
@@ -39,12 +42,31 @@ class _QRScannerModalState extends State<_QRScannerModal> {
   void _showError(String message) {
     setState(() {
       errorMessage = message;
+      successMessage = null;
     });
     _errorTimer?.cancel();
+    _successTimer?.cancel();
     _errorTimer = Timer(const Duration(seconds: 3), () {
       if (mounted) {
         setState(() {
           errorMessage = null;
+          _lastScanned = null;
+        });
+      }
+    });
+  }
+
+  void _showSuccess(String message) {
+    setState(() {
+      successMessage = message;
+      errorMessage = null;
+    });
+    _successTimer?.cancel();
+    _errorTimer?.cancel();
+    _successTimer = Timer(const Duration(seconds: 2), () {
+      if (mounted) {
+        setState(() {
+          successMessage = null;
           _lastScanned = null;
         });
       }
@@ -148,8 +170,8 @@ class _QRScannerModalState extends State<_QRScannerModal> {
                           if (product != null) {
                             if (product.displayQuantity > 0) {
                               HapticFeedback.mediumImpact();
-                              Navigator.pop(context);
-                              widget.onScanned(sku);
+                              _showSuccess('Added ${product.name}');
+                              widget.onProductScanned(product);
                             } else {
                               HapticFeedback.heavyImpact();
                               _showError('"${product.name}" is out of stock');
@@ -225,8 +247,8 @@ class _QRScannerModalState extends State<_QRScannerModal> {
                     ),
                   ),
   
-                  // Error Message Overlay
-                  if (errorMessage != null)
+                  // Message Overlay
+                  if (successMessage != null || errorMessage != null)
                     Positioned(
                       bottom: 40,
                       left: 40,
@@ -234,11 +256,11 @@ class _QRScannerModalState extends State<_QRScannerModal> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                         decoration: BoxDecoration(
-                          color: AppTheme.errorColor,
+                          color: successMessage != null ? AppTheme.successColor : AppTheme.errorColor,
                           borderRadius: BorderRadius.circular(16),
                           boxShadow: [
                             BoxShadow(
-                              color: AppTheme.errorColor.withValues(alpha: 0.3),
+                              color: (successMessage != null ? AppTheme.successColor : AppTheme.errorColor).withValues(alpha: 0.3),
                               blurRadius: 15,
                               offset: const Offset(0, 5),
                             ),
@@ -246,11 +268,15 @@ class _QRScannerModalState extends State<_QRScannerModal> {
                         ),
                         child: Row(
                           children: [
-                            const Icon(Icons.error_outline_rounded, color: Colors.white, size: 20),
+                            Icon(
+                              successMessage != null ? Icons.check_circle_outline_rounded : Icons.error_outline_rounded,
+                              color: Colors.white,
+                              size: 20,
+                            ),
                             const SizedBox(width: 12),
                             Expanded(
                               child: Text(
-                                errorMessage!,
+                                successMessage ?? errorMessage!,
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontWeight: FontWeight.bold,

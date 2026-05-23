@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/shimmer_list.dart';
 
 import '../../core/models/sale.dart';
 import '../../core/utils/currency_formatter.dart';
@@ -21,6 +23,8 @@ class SalesHistoryScreen extends ConsumerStatefulWidget {
 }
 
 class _SalesHistoryScreenState extends ConsumerState<SalesHistoryScreen> {
+  static final _shortDateFmt = DateFormat('MMM d');
+  static final _longDateFmt = DateFormat('EEEE, MMMM d, yyyy');
   int _offset = 0;
   final int _limit = 50;
   DateTime? _startDate;
@@ -142,7 +146,7 @@ class _SalesHistoryScreenState extends ConsumerState<SalesHistoryScreen> {
                           child: Text(
                             _startDate == null
                                 ? 'Filter by Date Range'
-                                : '${DateFormat('MMM d').format(_startDate!)} - ${DateFormat('MMM d').format(_endDate!.subtract(const Duration(days: 1)))}',
+                                : '${_shortDateFmt.format(_startDate!)} - ${_shortDateFmt.format(_endDate!.subtract(const Duration(days: 1)))}',
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 14,
@@ -201,7 +205,7 @@ class _SalesHistoryScreenState extends ConsumerState<SalesHistoryScreen> {
                     children: _buildGroupedSalesList(sales),
                   );
                 },
-                loading: () => const Center(child: CircularProgressIndicator()),
+                loading: () => const ShimmerList(),
                 error: (err, _) => ListView(
                   physics: const AlwaysScrollableScrollPhysics(),
                   children: [
@@ -305,7 +309,7 @@ class _SalesHistoryScreenState extends ConsumerState<SalesHistoryScreen> {
     } else if (saleDate == yesterday) {
       return 'Yesterday';
     } else {
-      return DateFormat('EEEE, MMMM d, yyyy').format(date);
+      return _longDateFmt.format(date);
     }
   }
 
@@ -351,11 +355,16 @@ class _SalesHistoryScreenState extends ConsumerState<SalesHistoryScreen> {
         ),
       );
 
-      for (final sale in items) {
+      for (final (idx, sale) in items.indexed) {
         list.add(
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-            child: _SalesHistoryListCard(sale: sale),
+            child: RepaintBoundary(
+              child: _SalesHistoryListCard(sale: sale)
+                  .animate(key: ValueKey(sale.saleId))
+                  .fadeIn(duration: 200.ms, delay: (idx * 30).ms)
+                  .slideY(begin: 0.04, curve: Curves.easeOut),
+            ),
           ),
         );
       }

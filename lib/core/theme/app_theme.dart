@@ -1,9 +1,10 @@
+import 'package:flex_color_scheme/flex_color_scheme.dart';
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  static const Color primaryColor = Color(0xFF1E293B); // Premium Navy
-  static const Color primaryDark = Color(0xFF0F172A);
-  static const Color primaryLight = Color(0xFF334155);
+  static const Color primaryColor = Color(0xFF064E3B); // Premium Emerald 900
+  static const Color primaryDark = Color(0xFF022C22); // Emerald 950
+  static const Color primaryLight = Color(0xFF059669); // Emerald 600
   static const Color accentColor = Color(0xFF007AFF); // iOS-style Blue accent
   static const Color accentDark = Color(0xFF2563EB);
   static const Color errorColor = Color(0xFFEF4444);
@@ -12,15 +13,15 @@ class AppTheme {
   static const Color backgroundColor = Color(0xFFF8FAFC); 
   static const Color surfaceColor = Color(0xFFFFFFFF);
   static const Color surfaceGlass = Color(0xBFFFFFFF); // 75% opacity for glass effect
-  static const Color textPrimary = Color(0xFF1E293B); 
+  static const Color textPrimary = Color(0xFF022C22); 
   static const Color textSecondary = Color(0xFF64748B);
   static const Color borderColor = Color(0xFFE2E8F0);
   static const Color dividerColor = Color(0xFFF1F5F9);
 
   // Modern Palette Extensions (Slate & Navy)
-  static const Color navy900 = Color(0xFF0F172A);
-  static const Color navy800 = Color(0xFF1E293B);
-  static const Color navy700 = Color(0xFF334155);
+  static const Color navy900 = Color(0xFF022C22); // Emerald 950
+  static const Color navy800 = Color(0xFF064E3B); // Emerald 900
+  static const Color navy700 = Color(0xFF059669); // Emerald 600
   static const Color slate50 = Color(0xFFF8FAFC);
   static const Color slate100 = Color(0xFFF1F5F9);
   static const Color slate200 = Color(0xFFE2E8F0);
@@ -28,20 +29,33 @@ class AppTheme {
   static const Color slate400 = Color(0xFF94A3B8);
   static const Color slate500 = Color(0xFF64748B);
   static const Color slate600 = Color(0xFF475569);
-  static const Color slate900 = Color(0xFF0F172A);
+  static const Color slate900 = Color(0xFF022C22);
 
   static ThemeData get lightTheme {
-    return ThemeData(
+    return FlexThemeData.light(
+      colors: FlexSchemeColor(
+        primary: primaryColor,
+        primaryContainer: primaryLight,
+        secondary: accentColor,
+        secondaryContainer: const Color(0xFFD1E8FF),
+        tertiary: successColor,
+        tertiaryContainer: const Color(0xFFBBF7D0),
+        appBarColor: primaryColor,
+        error: errorColor,
+      ),
+      surfaceMode: FlexSurfaceMode.highScaffoldLowSurface,
+      blendLevel: 4,
+      scaffoldBackground: backgroundColor,
       useMaterial3: true,
-      brightness: Brightness.light,
+      fontFamily: null,
+    ).copyWith(
       primaryColor: primaryColor,
-      scaffoldBackgroundColor: backgroundColor,
-      appBarTheme: AppBarTheme(
+      appBarTheme: const AppBarTheme(
         backgroundColor: primaryColor,
         foregroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
-        titleTextStyle: const TextStyle(
+        titleTextStyle: TextStyle(
           fontSize: 18,
           fontWeight: FontWeight.w600,
           color: Colors.white,

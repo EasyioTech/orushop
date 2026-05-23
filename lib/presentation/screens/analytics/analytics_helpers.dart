@@ -160,21 +160,21 @@ extension _AnalyticsHelpers on _AnalyticsScreenState {
           _buildMetricPill(
             icon: Icons.receipt_long_rounded,
             label: 'Total Transactions',
-            value: '${analytics.count}',
+            value: '${analytics.transactionCount}',
             color: AppTheme.primaryColor,
           ),
           const SizedBox(height: 12),
           _buildMetricPill(
             icon: Icons.payments_rounded,
             label: 'Total Revenue',
-            value: CurrencyFormatter.format(analytics.total),
+            value: CurrencyFormatter.format(analytics.totalSales),
             color: AppTheme.successColor,
           ),
           const SizedBox(height: 12),
           _buildMetricPill(
             icon: Icons.trending_up_rounded,
             label: 'Average Sale',
-            value: CurrencyFormatter.format(analytics.average),
+            value: CurrencyFormatter.format(analytics.averageTransaction),
             color: Colors.blueAccent,
           ),
         ],
@@ -235,20 +235,22 @@ extension _AnalyticsHelpers on _AnalyticsScreenState {
       child: Row(
         children: [
           Expanded(
-            child: PieChart(
-              PieChartData(
-                sectionsSpace: 4,
-                centerSpaceRadius: 40,
-                sections: methods.asMap().entries.map((entry) {
-                  final i = entry.key;
-                  final method = entry.value;
-                  return PieChartSectionData(
-                    color: colors[i % colors.length],
-                    value: method.totalAmount,
-                    title: '',
-                    radius: 25,
-                  );
-                }).toList(),
+            child: RepaintBoundary(
+              child: PieChart(
+                PieChartData(
+                  sectionsSpace: 4,
+                  centerSpaceRadius: 40,
+                  sections: methods.asMap().entries.map((entry) {
+                    final i = entry.key;
+                    final method = entry.value;
+                    return PieChartSectionData(
+                      color: colors[i % colors.length],
+                      value: method.totalAmount,
+                      title: '',
+                      radius: 25,
+                    );
+                  }).toList(),
+                ),
               ),
             ),
           ),
@@ -303,8 +305,9 @@ extension _AnalyticsHelpers on _AnalyticsScreenState {
           ),
         ],
       ),
-      child: LineChart(
-        LineChartData(
+      child: RepaintBoundary(
+        child: LineChart(
+          LineChartData(
           gridData: const FlGridData(show: false),
           titlesData: FlTitlesData(
             bottomTitles: AxisTitles(
@@ -315,7 +318,7 @@ extension _AnalyticsHelpers on _AnalyticsScreenState {
                   return Padding(
                     padding: const EdgeInsets.only(top: 8),
                     child: Text(
-                      DateFormat('MM/dd').format(trend[value.toInt()].date),
+                      _AnalyticsScreenState._dateFmt.format(trend[value.toInt()].date),
                       style: TextStyle(color: AppTheme.textSecondary, fontSize: 10, fontWeight: FontWeight.bold),
                     ),
                   );
@@ -347,6 +350,7 @@ extension _AnalyticsHelpers on _AnalyticsScreenState {
               ),
             ),
           ],
+          ),
         ),
       ),
     );

@@ -95,6 +95,8 @@ class _ModernActionButton extends StatelessWidget {
 }
 
 class _ModernLedgerTile extends StatelessWidget {
+  static final _fmt = NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
+
   final Map<String, dynamic> record;
   final KhataCustomer customer;
   final String storeName;
@@ -139,7 +141,6 @@ class _ModernLedgerTile extends StatelessWidget {
     final isPayment = recordType == 'payment';
     
     final color = isCredit ? const Color(0xFF2D9E64) : const Color(0xFFD64545);
-    final fmt = NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
 
     return InkWell(
       onTap: () => _showTransactionActions(context),
@@ -194,7 +195,7 @@ class _ModernLedgerTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  fmt.format(amount),
+                  _fmt.format(amount),
                   style: TextStyle(color: color, fontWeight: FontWeight.w900, fontSize: 17, letterSpacing: -0.5),
                 ),
                 const SizedBox(height: 2),

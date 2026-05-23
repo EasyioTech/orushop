@@ -373,28 +373,6 @@ class _InventoryItemPillState extends ConsumerState<_InventoryItemPill> {
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             child: Row(
               children: [
-                // Product Icon/Image
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: AppTheme.slate50,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: AppTheme.slate100, width: 1),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(14),
-                    child: widget.product.imageUrl != null && widget.product.imageUrl!.isNotEmpty
-                        ? Image.network(
-                            widget.product.imageUrl!,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) => _buildPlaceholderIcon(),
-                          )
-                        : _buildPlaceholderIcon(),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                
                 // Info
                 Expanded(
                   child: Column(
@@ -416,72 +394,85 @@ class _InventoryItemPillState extends ConsumerState<_InventoryItemPill> {
                       Row(
                         children: [
                           if (isService)
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: Colors.teal.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    Icons.schedule_rounded,
-                                    size: 10,
-                                    color: Colors.teal.shade700,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    '${widget.product.serviceDuration ?? 30} min',
-                                    style: TextStyle(
+                            Flexible(
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.teal.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.schedule_rounded,
+                                      size: 10,
                                       color: Colors.teal.shade700,
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w900,
                                     ),
-                                  ),
-                                ],
+                                    const SizedBox(width: 4),
+                                    Flexible(
+                                      child: Text(
+                                        '${widget.product.serviceDuration ?? 30} min',
+                                        style: TextStyle(
+                                          color: Colors.teal.shade700,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w900,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             )
                           else
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: isOutOfStock 
-                                  ? AppTheme.errorColor.withValues(alpha: 0.1)
-                                  : (isLowStock ? AppTheme.warningColor.withValues(alpha: 0.1) : AppTheme.successColor.withValues(alpha: 0.1)),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    isOutOfStock ? Icons.error_outline_rounded : Icons.inventory_2_outlined,
-                                    size: 10,
-                                    color: isOutOfStock 
-                                      ? AppTheme.errorColor 
-                                      : (isLowStock ? AppTheme.warningColor : AppTheme.successColor),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    '${widget.product.quantity.toInt()} left',
-                                    style: TextStyle(
+                            Flexible(
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: isOutOfStock 
+                                    ? AppTheme.errorColor.withValues(alpha: 0.1)
+                                    : (isLowStock ? AppTheme.warningColor.withValues(alpha: 0.1) : AppTheme.successColor.withValues(alpha: 0.1)),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      isOutOfStock ? Icons.error_outline_rounded : Icons.inventory_2_outlined,
+                                      size: 10,
                                       color: isOutOfStock 
                                         ? AppTheme.errorColor 
                                         : (isLowStock ? AppTheme.warningColor : AppTheme.successColor),
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w900,
                                     ),
-                                  ),
-                                ],
+                                    const SizedBox(width: 4),
+                                    Flexible(
+                                      child: Text(
+                                        '${widget.product.quantity.toInt()} left',
+                                        style: TextStyle(
+                                          color: isOutOfStock 
+                                            ? AppTheme.errorColor 
+                                            : (isLowStock ? AppTheme.warningColor : AppTheme.successColor),
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w900,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           const SizedBox(width: 6),
-                          Text(
-                            '₹${widget.product.price}',
-                            style: const TextStyle(
-                              color: AppTheme.slate500,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
+                          Flexible(
+                            child: Text(
+                              '₹${widget.product.price}',
+                              style: const TextStyle(
+                                color: AppTheme.slate500,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
@@ -496,20 +487,7 @@ class _InventoryItemPillState extends ConsumerState<_InventoryItemPill> {
       ),
     );
   }
-
-  Widget _buildPlaceholderIcon() {
-    return Center(
-      child: Icon(
-        widget.product.isService ? Icons.schedule_rounded : Icons.inventory_2_rounded,
-        size: 20,
-        color: widget.product.isService 
-            ? Colors.teal.shade400
-            : AppTheme.textSecondary.withValues(alpha: 0.3),
-      ),
-    );
-  }
 }
-
 
 class _QuickAddButton extends StatelessWidget {
   final String label;

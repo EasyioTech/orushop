@@ -4,7 +4,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:orushops/features/inventory/controllers/product_form_notifier.dart';
-import 'package:orushops/features/inventory/models/product_form_state.dart';
 import 'package:orushops/core/theme/app_theme.dart';
 
 /// Step 1 — Primary Info
@@ -56,7 +55,14 @@ class _InfoStepState extends ConsumerState<InfoStep> {
   @override
   Widget build(BuildContext context) {
     final notifier = ref.read(productFormNotifierProvider.notifier);
-    final state = ref.watch(productFormNotifierProvider);
+    // B2: select() on individual fields — rebuilds only when watched fields change
+    final isService       = ref.watch(productFormNotifierProvider.select((s) => s.isService));
+    final isLoose         = ref.watch(productFormNotifierProvider.select((s) => s.isLoose));
+    final selectedUnit    = ref.watch(productFormNotifierProvider.select((s) => s.selectedUnit));
+    final selectedCategory    = ref.watch(productFormNotifierProvider.select((s) => s.selectedCategory));
+    final selectedSubcategory = ref.watch(productFormNotifierProvider.select((s) => s.selectedSubcategory));
+    final catalogSuggestions  = ref.watch(productFormNotifierProvider.select((s) => s.catalogSuggestions));
+    final productImage        = ref.watch(productFormNotifierProvider.select((s) => s.productImage));
 
     final nameController = notifier.controllers['name']!;
     final initialQtyController = notifier.controllers['initialQty']!;
@@ -68,7 +74,10 @@ class _InfoStepState extends ConsumerState<InfoStep> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildCategoryBanner(state),
+          _buildCategoryBanner(
+            selectedCategory: selectedCategory,
+            selectedSubcategory: selectedSubcategory,
+          ),
 
           _buildCard(
             child: Column(
@@ -103,7 +112,7 @@ class _InfoStepState extends ConsumerState<InfoStep> {
                   ),
                   textCapitalization: TextCapitalization.words,
                   onSubmitted: (_) {
-                    if (!state.isService) {
+                    if (!isService) {
                       _stockFocusNode.requestFocus();
                     } else {
                       _priceFocusNode.requestFocus();
@@ -112,7 +121,7 @@ class _InfoStepState extends ConsumerState<InfoStep> {
                 ),
 
                 // Current Stock
-                if (!state.isService) ...[
+                if (!isService) ...[
                   const SizedBox(height: 16),
                   Row(
                     children: [
@@ -120,7 +129,7 @@ class _InfoStepState extends ConsumerState<InfoStep> {
                         child: TextField(
                           controller: initialQtyController,
                           focusNode: _stockFocusNode,
-                          keyboardType: TextInputType.numberWithOptions(decimal: state.isLoose),
+                          keyboardType: TextInputType.numberWithOptions(decimal: isLoose),
                           textInputAction: TextInputAction.next,
                           style: const TextStyle(
                             fontSize: 16,
@@ -140,7 +149,7 @@ class _InfoStepState extends ConsumerState<InfoStep> {
                                   borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: Text(
-                                  state.selectedUnit,
+                                  selectedUnit,
                                   style: const TextStyle(
                                     fontWeight: FontWeight.bold,
                                     color: AppTheme.primaryColor,
@@ -154,7 +163,7 @@ class _InfoStepState extends ConsumerState<InfoStep> {
                           onSubmitted: (_) => _priceFocusNode.requestFocus(),
                         ),
                       ),
-                      if (!state.isLoose) ...[
+                      if (!isLoose) ...[
                         const SizedBox(width: 12),
                         _roundBtn(
                           icon: CupertinoIcons.minus,
@@ -210,7 +219,7 @@ class _InfoStepState extends ConsumerState<InfoStep> {
           ),
 
           // Catalog suggestions
-          if (state.catalogSuggestions.isNotEmpty) ...[
+          if (catalogSuggestions.isNotEmpty) ...[
             const SizedBox(height: 8),
             Container(
               decoration: BoxDecoration(
@@ -228,10 +237,10 @@ class _InfoStepState extends ConsumerState<InfoStep> {
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 padding: EdgeInsets.zero,
-                itemCount: state.catalogSuggestions.length,
+                itemCount: catalogSuggestions.length,
                 separatorBuilder: (_, _) => Divider(height: 1, color: AppTheme.slate100),
                 itemBuilder: (context, index) {
-                  final item = state.catalogSuggestions[index];
+                  final item = catalogSuggestions[index];
                   return ListTile(
                     leading: const Icon(CupertinoIcons.sparkles, color: AppTheme.primaryColor, size: 20),
                     title: Text(item.name, style: const TextStyle(fontWeight: FontWeight.w600)),
@@ -282,13 +291,14 @@ class _InfoStepState extends ConsumerState<InfoStep> {
               ),
             ],
           ),
-          if (state.productImage != null) ...[
+          // B3: productImage is select()-watched — widget only rebuilds when image changes
+          if (productImage != null) ...[
             const SizedBox(height: 16),
             Stack(
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(24),
-                  child: Image.file(state.productImage!, height: 200, width: double.infinity, fit: BoxFit.cover),
+                  child: Image.file(productImage, height: 200, width: double.infinity, fit: BoxFit.cover),
                 ),
                 Positioned(
                   right: 8,
@@ -314,15 +324,23 @@ class _InfoStepState extends ConsumerState<InfoStep> {
             ),
           ),
           const SizedBox(height: 12),
-          _buildSummaryCard(state, nameController, priceController),
+          _buildSummaryCard(
+            productImage: productImage,
+            selectedCategory: selectedCategory,
+            nameController: nameController,
+            priceController: priceController,
+          ),
           const SizedBox(height: 8),
         ],
       ),
     );
   }
 
-  Widget _buildCategoryBanner(ProductFormState state) {
-    final category = state.selectedCategory;
+  Widget _buildCategoryBanner({
+    required dynamic selectedCategory,
+    required String? selectedSubcategory,
+  }) {
+    final category = selectedCategory;
     if (category == null) return const SizedBox.shrink();
 
     final icon = _getCategoryIcon(category.name);
@@ -371,7 +389,7 @@ class _InfoStepState extends ConsumerState<InfoStep> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  state.selectedSubcategory ?? 'Product details and stock information',
+                  selectedSubcategory ?? 'Product details and stock information',
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
@@ -386,7 +404,12 @@ class _InfoStepState extends ConsumerState<InfoStep> {
     );
   }
 
-  Widget _buildSummaryCard(ProductFormState state, TextEditingController nameCtrl, TextEditingController priceCtrl) {
+  Widget _buildSummaryCard({
+    required dynamic productImage,
+    required dynamic selectedCategory,
+    required TextEditingController nameController,
+    required TextEditingController priceController,
+  }) {
     return _buildCard(
       child: Row(
         children: [
@@ -397,8 +420,8 @@ class _InfoStepState extends ConsumerState<InfoStep> {
               color: AppTheme.slate100,
               borderRadius: BorderRadius.circular(16),
             ),
-            child: state.productImage != null
-                ? ClipRRect(borderRadius: BorderRadius.circular(16), child: Image.file(state.productImage!, fit: BoxFit.cover))
+            child: productImage != null
+                ? ClipRRect(borderRadius: BorderRadius.circular(16), child: Image.file(productImage, fit: BoxFit.cover))
                 : const Icon(CupertinoIcons.cube_box, color: AppTheme.slate400),
           ),
           const SizedBox(width: 16),
@@ -407,17 +430,17 @@ class _InfoStepState extends ConsumerState<InfoStep> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  nameCtrl.text.isEmpty ? 'New Item' : nameCtrl.text,
+                  nameController.text.isEmpty ? 'New Item' : nameController.text,
                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, letterSpacing: -0.5),
                 ),
                 Text(
-                  priceCtrl.text.isEmpty ? '₹0.00' : 'Selling at ₹${priceCtrl.text}',
+                  priceController.text.isEmpty ? '₹0.00' : 'Selling at ₹${priceController.text}',
                   style: const TextStyle(color: AppTheme.successColor, fontWeight: FontWeight.w800, fontSize: 16),
                 ),
-                if (state.selectedCategory != null) ...[
+                if (selectedCategory != null) ...[
                   const SizedBox(height: 4),
                   Text(
-                    state.selectedCategory!.name,
+                    selectedCategory.name,
                     style: const TextStyle(fontSize: 12, color: AppTheme.slate500, fontWeight: FontWeight.w600),
                   ),
                 ],

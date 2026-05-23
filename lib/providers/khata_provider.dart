@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/database/database_helper.dart';
 import '../core/database/table_constants.dart';
+import '../core/models/app_error.dart';
 import '../core/models/khata_customer.dart';
 import '../core/models/khata_entry.dart';
 import '../core/models/sale.dart';
@@ -126,31 +127,32 @@ final khataListProvider = NotifierProvider<KhataListNotifier, KhataListState>(
 
 // ── Customer detail (ledger) state ────────────────────────────────────────────
 
-class KhataDetailState {
-  final KhataCustomer? customer;
+sealed class KhataDetailState {
+  const KhataDetailState();
+}
+
+final class KhataDetailLoading extends KhataDetailState {
+  const KhataDetailLoading();
+}
+
+final class KhataDetailData extends KhataDetailState {
+  final KhataCustomer customer;
   final List<Map<String, dynamic>> ledger;
-  final bool isLoading;
-  final String? error;
+  const KhataDetailData({required this.customer, required this.ledger});
 
-  const KhataDetailState({
-    this.customer,
-    this.ledger = const [],
-    this.isLoading = false,
-    this.error,
-  });
-
-  KhataDetailState copyWith({
+  KhataDetailData copyWith({
     KhataCustomer? customer,
     List<Map<String, dynamic>>? ledger,
-    bool? isLoading,
-    String? error,
   }) =>
-      KhataDetailState(
+      KhataDetailData(
         customer: customer ?? this.customer,
         ledger: ledger ?? this.ledger,
-        isLoading: isLoading ?? this.isLoading,
-        error: error,
       );
+}
+
+final class KhataDetailError extends KhataDetailState {
+  final AppError error;
+  const KhataDetailError(this.error);
 }
 
 class KhataDetailNotifier extends FamilyNotifier<KhataDetailState, int> {
@@ -159,17 +161,21 @@ class KhataDetailNotifier extends FamilyNotifier<KhataDetailState, int> {
   @override
   KhataDetailState build(int arg) {
     Future.microtask(load);
-    return const KhataDetailState();
+    return const KhataDetailLoading();
   }
 
   Future<void> load() async {
-    state = state.copyWith(isLoading: true, error: null);
+    state = const KhataDetailLoading();
     try {
       final customer = await _repo.getCustomerById(arg);
       final ledger = await _repo.getLedgerForCustomer(arg);
-      state = state.copyWith(customer: customer, ledger: ledger, isLoading: false);
+      if (customer == null) {
+        state = KhataDetailError(const NotFoundError('Customer not found'));
+        return;
+      }
+      state = KhataDetailData(customer: customer, ledger: ledger);
     } catch (e) {
-      state = state.copyWith(isLoading: false, error: e.toString());
+      state = KhataDetailError(DbError(e.toString(), cause: e));
     }
   }
 
@@ -188,7 +194,7 @@ class KhataDetailNotifier extends FamilyNotifier<KhataDetailState, int> {
       await load();
       return true;
     } catch (e) {
-      state = state.copyWith(error: e.toString());
+      state = KhataDetailError(DbError(e.toString(), cause: e));
       return false;
     }
   }
@@ -208,7 +214,7 @@ class KhataDetailNotifier extends FamilyNotifier<KhataDetailState, int> {
       await load();
       return true;
     } catch (e) {
-      state = state.copyWith(error: e.toString());
+      state = KhataDetailError(DbError(e.toString(), cause: e));
       return false;
     }
   }

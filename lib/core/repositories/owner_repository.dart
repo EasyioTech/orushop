@@ -75,15 +75,23 @@ class OwnerRepository {
           'receiptBannerSubtitle': subtitle,
           'receiptBannerUrl': url,
           'receiptBannerStyle': style,
-          if (icon != null) 'receiptBannerIcon': icon,
-          if (color != null) 'receiptBannerColor': color,
-          if (textColor != null) 'receiptBannerTextColor': textColor,
+          'receiptBannerIcon': ?icon,
+          'receiptBannerColor': ?color,
+          'receiptBannerTextColor': ?textColor,
         },
         SetOptions(merge: true),
       );
     } catch (e) {
       rethrow;
     }
+  }
+
+  Future<void> updateShopType(String shopTypeName) async {
+    if (_userId.isEmpty) throw Exception('User not authenticated');
+    await _firestore.collection('owners').doc(_userId).set(
+      {'shopType': shopTypeName},
+      SetOptions(merge: true),
+    );
   }
 
   Future<void> saveShopDetails(Map<String, dynamic> data) async {

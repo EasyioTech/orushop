@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     // START: FlutterFire Configuration
@@ -7,6 +9,15 @@ plugins {
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
+
+// Read key.properties as source of truth; env vars can override for CI.
+val keyProps = Properties().also { props ->
+    val f = rootProject.file("key.properties")
+    if (f.exists()) f.inputStream().use { props.load(it) }
+}
+// key.properties wins on local machine; env vars are CI fallback (no key.properties in CI).
+fun keyProp(envKey: String, propKey: String, default: String) =
+    keyProps.getProperty(propKey) ?: System.getenv(envKey) ?: default
 
 android {
     namespace = "com.orushops.orushops"
@@ -30,10 +41,10 @@ android {
             storePassword = "Easyioroot@123"
         }
         create("release") {
-            keyAlias = System.getenv("KEY_ALIAS") ?: "orushops"
-            keyPassword = System.getenv("KEY_PASSWORD") ?: "OruShops@123"
-            storeFile = file(System.getenv("STORE_FILE") ?: "$rootDir/app/orushops-release.jks")
-            storePassword = System.getenv("STORE_PASSWORD") ?: "OruShops@123"
+            keyAlias = keyProp("KEY_ALIAS", "keyAlias", "orushops")
+            keyPassword = keyProp("KEY_PASSWORD", "keyPassword", "OruShops@123")
+            storeFile = rootProject.file(keyProp("STORE_FILE", "storeFile", "app/orushops-release-jks.jks"))
+            storePassword = keyProp("STORE_PASSWORD", "storePassword", "OruShops@123")
         }
     }
 
@@ -60,6 +71,12 @@ android {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    // integration_test is dev_dependency — compileOnly keeps it off the release APK
+    // while satisfying GeneratedPluginRegistrant.java compile-time reference (flutter#56591)
+    compileOnly(project(":integration_test"))
 }
 
 tasks.withType<JavaCompile> {

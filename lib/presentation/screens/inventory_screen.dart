@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:permission_handler/permission_handler.dart';
+import '../../core/widgets/shimmer_list.dart';
 
 import 'package:orushops/core/services/product_crud_service.dart';
 import 'package:orushops/core/theme/app_theme.dart';
@@ -29,6 +32,7 @@ class InventoryScreen extends ConsumerStatefulWidget {
 }
 
 class _InventoryScreenState extends ConsumerState<InventoryScreen> with SingleTickerProviderStateMixin {
+  static final _compactFmt = NumberFormat.compact();
   late final TabController _tabController;
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
@@ -95,30 +99,33 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> with SingleTi
       child: Scaffold(
       backgroundColor: AppTheme.backgroundColor,
       // Removed standard AppBar to use Custom Branded Header
-      floatingActionButton: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: (_tabController.index == 0 ? AppTheme.primaryColor : Colors.teal.shade600).withValues(alpha: 0.3),
-              blurRadius: 15,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: FloatingActionButton.extended(
-          heroTag: 'inventory_add_fab',
-          onPressed: _tabController.index == 0 ? _navigateToCreateProduct : _navigateToCreateService,
-          label: Text(
-            _tabController.index == 0 ? 'Add Product' : 'Add Service',
-            style: const TextStyle(fontWeight: FontWeight.bold, letterSpacing: 0.5),
-          ),
-          icon: Icon(_tabController.index == 0 ? Icons.add_business_rounded : Icons.home_repair_service_rounded, size: 24),
-          backgroundColor: _tabController.index == 0 ? AppTheme.primaryColor : Colors.teal.shade600,
-          foregroundColor: Colors.white,
-          elevation: 0,
-          shape: RoundedRectangleBorder(
+      floatingActionButton: Padding(
+        padding: EdgeInsets.only(bottom: 90.0 + MediaQuery.of(context).padding.bottom),
+        child: Container(
+          decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: (_tabController.index == 0 ? AppTheme.primaryColor : Colors.teal.shade600).withValues(alpha: 0.3),
+                blurRadius: 15,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: FloatingActionButton.extended(
+            heroTag: 'inventory_add_fab',
+            onPressed: _tabController.index == 0 ? _navigateToCreateProduct : _navigateToCreateService,
+            label: Text(
+              _tabController.index == 0 ? 'Add Product' : 'Add Service',
+              style: const TextStyle(fontWeight: FontWeight.bold, letterSpacing: 0.5),
+            ),
+            icon: Icon(_tabController.index == 0 ? Icons.add_business_rounded : Icons.home_repair_service_rounded, size: 24),
+            backgroundColor: _tabController.index == 0 ? AppTheme.primaryColor : Colors.teal.shade600,
+            foregroundColor: Colors.white,
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
           ),
         ),
       ),
@@ -187,14 +194,24 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> with SingleTi
                             size: 20,
                           ),
                           tooltip: 'Batch Scan',
-                          onPressed: () {
+                          onPressed: () async {
                             HapticFeedback.mediumImpact();
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const BatchScanScreen(),
-                              ),
-                            );
+                            final status = await Permission.camera.request();
+                            if (status.isGranted && context.mounted) {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const BatchScanScreen(),
+                                ),
+                              );
+                            } else if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: const Text('Camera permission required to scan'),
+                                  backgroundColor: AppTheme.errorColor,
+                                ),
+                              );
+                            }
                           },
                           constraints: const BoxConstraints(
                             minWidth: 40,
@@ -491,10 +508,15 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> with SingleTi
                               mainAxisSpacing: 12,
                             ),
                             delegate: SliverChildBuilderDelegate(
-                              (context, index) => _InventoryItemPill(
-                                product: filtered[index],
-                                onAddStock: () =>
-                                    _showAddStockSheet(context, filtered[index]),
+                              (context, index) => RepaintBoundary(
+                                child: _InventoryItemPill(
+                                  product: filtered[index],
+                                  onAddStock: () =>
+                                      _showAddStockSheet(context, filtered[index]),
+                                )
+                                    .animate(key: ValueKey(filtered[index].id))
+                                    .fadeIn(duration: 200.ms, delay: (index * 25).ms)
+                                    .slideY(begin: 0.04, curve: Curves.easeOut),
                               ),
                               childCount: filtered.length,
                             ),
@@ -505,7 +527,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> with SingleTi
             ),
           );
         },
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const ShimmerList(),
         error: (err, _) => Center(child: Text('Error: $err')),
       ),
       ),
@@ -521,7 +543,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> with SingleTi
           Expanded(
             child: _StatBox(
               label: 'Inventory Value',
-              value: '₹${NumberFormat.compact().format(totalValue)}',
+              value: '₹${_compactFmt.format(totalValue)}',
               icon: Icons.account_balance_wallet_rounded,
             ),
           ),

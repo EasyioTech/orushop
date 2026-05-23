@@ -1,0 +1,123 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  analyze-and-test:
+    name: Analyze & Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.32.x'
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze --no-pub --fatal-infos
+
+      - name: Architecture rules (E2 + E3)
+        run: |
+          FAIL=0
+
+          # E3: No direct DatabaseHelper() construction in feature code
+          if grep -rn 'DatabaseHelper()' lib/features/ --include='*.dart' 2>/dev/null | grep -v '//'; then
+            echo '::error::E3 violation — direct DatabaseHelper() in lib/features/. Use ref.watch(databaseHelperProvider) instead.'
+            FAIL=1
+          fi
+
+          # E2: No provider definitions outside lib/providers/ or lib/features/*/providers/
+          if grep -rn 'Provider\.' lib/presentation/ --include='*.dart' 2>/dev/null | grep -E '= (Provider|StateProvider|FutureProvider|StreamProvider|NotifierProvider|AsyncNotifierProvider)\.' | grep -v '//'; then
+            echo '::error::E2 violation — provider definition found in lib/presentation/. Move to lib/providers/ or lib/features/<feature>/providers/.'
+            FAIL=1
+          fi
+
+          # E6: No .read() calls inside build() methods
+          if grep -rn '\.read(' lib/ --include='*.dart' 2>/dev/null | grep -v 'onPressed\|onTap\|onChanged\|onSubmit\|callback\|//'; then
+            echo '::warning::Possible E6 violation — .read() call detected. Verify it is not inside build().'
+          fi
+
+          exit $FAIL
+
+      - name: Run tests
+        run: flutter test --coverage
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        with:
+          file: coverage/lcov.info
+        continue-on-error: true
+
+  performance-tests:
+    name: Performance regression (E5)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.32.x'
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Run integration performance tests
+        run: flutter test integration_test/performance_test.dart --reporter=expanded
+
+  build-apk:
+    name: Build APK (budget gate)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.32.x'
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Decode keystore (optional — skip if not configured)
+        if: ${{ env.KEYSTORE_BASE64 != '' }}
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: echo "$KEYSTORE_BASE64" | base64 -d > android/app/keystore.jks
+
+      - name: Build profile APK (3-min budget)
+        timeout-minutes: 3
+        run: |
+          START=$(date +%s)
+          flutter build apk --profile --no-pub
+          END=$(date +%s)
+          ELAPSED=$((END - START))
+          echo "Build time: ${ELAPSED}s"
+          if [ $ELAPSED -gt 180 ]; then
+            echo "::error::Build exceeded 3-minute budget (${ELAPSED}s)"
+            exit 1
+          fi
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-profile
+          path: build/app/outputs/flutter-apk/app-profile.apk
+          retention-days: 7

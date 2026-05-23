@@ -22,6 +22,7 @@ class DetailsStep extends ConsumerStatefulWidget {
 }
 
 class _DetailsStepState extends ConsumerState<DetailsStep> {
+  static final _expiryFmt = DateFormat('dd MMM yyyy');
   late final FocusNode _costFocusNode;
   late final FocusNode _skuFocusNode;
   late final FocusNode _batchFocusNode;
@@ -393,7 +394,7 @@ class _DetailsStepState extends ConsumerState<DetailsStep> {
       ),
       title: const Text('Expiry Date', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
       subtitle: Text(
-        state.expiryDate == null ? 'Not set (Required)' : DateFormat('dd MMM yyyy').format(state.expiryDate!),
+        state.expiryDate == null ? 'Not set (Required)' : _expiryFmt.format(state.expiryDate!),
         style: TextStyle(
           color: state.expiryDate == null ? AppTheme.slate400 : AppTheme.errorColor,
           fontWeight: state.expiryDate == null ? FontWeight.normal : FontWeight.w600,

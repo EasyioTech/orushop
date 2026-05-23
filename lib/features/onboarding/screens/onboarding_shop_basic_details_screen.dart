@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orushops/core/theme/app_theme.dart';
 import 'package:orushops/providers/onboarding_provider.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../widgets/onboarding_page.dart';
 
 class OnboardingShopBasicDetailsScreen extends ConsumerStatefulWidget {
@@ -36,17 +37,21 @@ class _OnboardingShopBasicDetailsScreenState extends ConsumerState<OnboardingSho
     super.initState();
     final state = ref.read(onboardingProvider);
     final details = state.shopDetails;
+    final user = FirebaseAuth.instance.currentUser;
 
-    // Pre-fill phone: prefer already-saved details, then the verified OTP phone
-    // (pendingPhone is in E.164 format like +919876543210 — strip the +91 prefix for display)
+    // Pre-fill phone: prefer already-saved details, then the verified OTP phone, then Firebase Auth phone
     String prefilledPhone = details?.phoneNumber ?? '';
     if (prefilledPhone.isEmpty && state.pendingPhone != null) {
       final p = state.pendingPhone!;
       prefilledPhone = p.startsWith('+91') ? p.substring(3) : p;
     }
+    if (prefilledPhone.isEmpty && user?.phoneNumber != null) {
+      final p = user!.phoneNumber!;
+      prefilledPhone = p.startsWith('+91') ? p.substring(3) : p;
+    }
 
     _shopNameCtrl = TextEditingController(text: details?.shopName);
-    _ownerNameCtrl = TextEditingController(text: details?.ownerName);
+    _ownerNameCtrl = TextEditingController(text: details?.ownerName ?? user?.displayName);
     _phoneCtrl = TextEditingController(text: prefilledPhone);
     _addressCtrl = TextEditingController(text: details?.shopAddress);
     _referralCodeCtrl = TextEditingController(text: details?.referralCode);
@@ -225,7 +230,7 @@ class _OnboardingShopBasicDetailsScreenState extends ConsumerState<OnboardingSho
                     style: const TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
-                      color: Color(0xFF1E293B),
+                      color: Color(0xFF064E3B),
                       letterSpacing: 1.0,
                     ),
                     textCapitalization: TextCapitalization.characters,

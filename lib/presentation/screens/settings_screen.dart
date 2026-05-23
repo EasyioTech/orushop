@@ -14,6 +14,8 @@ import '../../core/services/global_catalog_service.dart';
 import '../../core/services/compliance_service.dart';
 import '../../core/services/auth_service.dart';
 import 'settings/receipt_banner_settings_screen.dart';
+import '../../features/onboarding/models/shop_models.dart';
+import '../../providers/shop_provider.dart';
 
 part 'settings/settings_widgets.dart';
 part 'settings/settings_action_buttons.dart';
@@ -130,6 +132,10 @@ class SettingsScreen extends ConsumerWidget {
                         (value) => OwnerRepository().updateStoreAddress(value),
                       ),
                     ),
+                    _ShopTypeTile(
+                      currentType: ref.watch(shopTypeProvider),
+                      onTap: () => _showStoreTypeSheet(context, ref),
+                    ),
                     _ActionButton(
                       icon: Icons.receipt_long_rounded,
                       label: 'Receipt Banner Customization',
@@ -161,13 +167,7 @@ class SettingsScreen extends ConsumerWidget {
                       subtitle: 'View terms and conditions',
                       onTap: () => ref.read(complianceServiceProvider).launchTermsOfService(),
                     ),
-                    _SwitchSettingTile(
-                      icon: Icons.analytics_rounded,
-                      label: 'Analytics & Crash Reports',
-                      subtitle: 'Help us improve by sharing anonymous data',
-                      value: ref.watch(complianceServiceProvider).hasAnalyticsConsent,
-                      onChanged: (val) => ref.read(complianceServiceProvider).acceptAnalytics(val),
-                    ),
+
                     _ActionButton(
                       icon: Icons.delete_outline_rounded,
                       label: 'Request Data Deletion',
@@ -338,6 +338,121 @@ class SettingsScreen extends ConsumerWidget {
             child: const Text('Save'),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showStoreTypeSheet(BuildContext context, WidgetRef ref) {
+    final current = ref.read(shopTypeProvider);
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => Container(
+        decoration: const BoxDecoration(
+          color: AppTheme.backgroundColor,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        ),
+        padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppTheme.borderColor.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              'Store Type',
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: -0.8),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Select your business category',
+              style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
+            ),
+            const SizedBox(height: 20),
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 3,
+                mainAxisSpacing: 12,
+                crossAxisSpacing: 12,
+                childAspectRatio: 1.0,
+              ),
+              itemCount: ShopType.values.length,
+              itemBuilder: (ctx, i) {
+                final type = ShopType.values[i];
+                final color = _shopTypeColor(type);
+                final icon = _shopTypeIcon(type);
+                final label = ShopTypeConfig.getConfig(type).displayName;
+                final isSelected = type == current;
+                return GestureDetector(
+                  onTap: () async {
+                    HapticFeedback.mediumImpact();
+                    Navigator.pop(ctx);
+                    try {
+                      await OwnerRepository().updateShopType(type.name);
+                      ref.invalidate(ownerDetailsStreamProvider);
+                      ref.invalidate(shopCategoriesProvider);
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                          content: Text('Store type updated to ${ShopTypeConfig.getConfig(type).displayName}'),
+                          backgroundColor: AppTheme.successColor,
+                          duration: const Duration(seconds: 2),
+                        ));
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                          content: Text('Error: $e'),
+                          backgroundColor: AppTheme.errorColor,
+                        ));
+                      }
+                    }
+                  },
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    decoration: BoxDecoration(
+                      color: isSelected ? color.withValues(alpha: 0.12) : Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: isSelected ? color : AppTheme.slate200,
+                        width: isSelected ? 2 : 1.5,
+                      ),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(icon, color: color, size: 28),
+                        const SizedBox(height: 8),
+                        Text(
+                          label,
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                            color: isSelected ? color : AppTheme.slate500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
       ),
     );
   }

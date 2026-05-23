@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart';
+import '../core/utils/app_logger.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -99,7 +99,7 @@ class OnboardingNotifier extends Notifier<OnboardingState> {
       if (ownerDetails != null &&
           ownerDetails.containsKey('storeName') &&
           (ownerDetails['storeName'] as String).isNotEmpty) {
-        debugPrint('Onboarding: Existing shop details found on Firestore. Restoring...');
+        appLogger.debug('Onboarding: Existing shop details found on Firestore. Restoring...');
         final shopDetails = ShopDetails.fromMap(ownerDetails);
 
         await _prefs.setBool('onboarding_completed', true);
@@ -108,14 +108,14 @@ class OnboardingNotifier extends Notifier<OnboardingState> {
         try {
           await _categoryRepository.seedFromShopType(shopDetails.shopType);
         } catch (e) {
-          debugPrint('Failed to seed categories on auto-complete: $e');
+          appLogger.debug('Failed to seed categories on auto-complete: $e');
         }
 
         // Sync catalog
         try {
           await _catalogService.syncCatalog(shopDetails.shopType);
         } catch (e) {
-          debugPrint('Failed to sync catalog on auto-complete: $e');
+          appLogger.debug('Failed to sync catalog on auto-complete: $e');
         }
 
         state = state.copyWith(
@@ -125,7 +125,7 @@ class OnboardingNotifier extends Notifier<OnboardingState> {
         return true;
       }
     } catch (e) {
-      debugPrint('Failed to check existing shop: $e');
+      appLogger.debug('Failed to check existing shop: $e');
     }
     return false;
   }
@@ -292,7 +292,7 @@ class OnboardingNotifier extends Notifier<OnboardingState> {
         await _revenueCatService.logIn(uid);
       }
     } catch (e) {
-      debugPrint('RevenueCat login failed: $e');
+      appLogger.debug('RevenueCat login failed: $e');
       // We don't rethrow here to allow user to continue even if payment service fails
     }
   }
@@ -319,7 +319,7 @@ class OnboardingNotifier extends Notifier<OnboardingState> {
       try {
         await _ownerRepository.saveShopDetails(state.shopDetails!.toMap());
       } catch (e) {
-        debugPrint('Failed to save shop details to Firestore: $e');
+        appLogger.debug('Failed to save shop details to Firestore: $e');
         throw OnboardingException(
           'Could not save your shop details. Check your internet connection and try again.',
         );
@@ -329,7 +329,7 @@ class OnboardingNotifier extends Notifier<OnboardingState> {
       try {
         await _categoryRepository.seedFromShopType(state.shopDetails!.shopType);
       } catch (e) {
-        debugPrint('Failed to seed categories: $e');
+        appLogger.debug('Failed to seed categories: $e');
         throw OnboardingException(
           'Could not set up your product categories. Please try again.',
         );
@@ -339,7 +339,7 @@ class OnboardingNotifier extends Notifier<OnboardingState> {
       try {
         await _catalogService.syncCatalog(state.shopDetails!.shopType);
       } catch (e) {
-        debugPrint('Failed to sync catalog from Cloudflare: $e');
+        appLogger.debug('Failed to sync catalog from Cloudflare: $e');
         // We don't throw here to allow user to proceed if catalog sync fails,
         // but it will be retried later or work with whatever is local.
       }
@@ -377,4 +377,3 @@ final categoryRepositoryProvider = Provider<CategoryRepository>((ref) => Categor
 final onboardingProvider = NotifierProvider<OnboardingNotifier, OnboardingState>(
   OnboardingNotifier.new,
 );
-

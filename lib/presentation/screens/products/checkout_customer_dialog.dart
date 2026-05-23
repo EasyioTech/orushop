@@ -32,7 +32,9 @@ extension _CheckoutCustomerDialog on _CheckoutSheetState {
             right: 24,
             top: 12,
           ),
-          child: Column(
+          child: SingleChildScrollView(
+            physics: const ClampingScrollPhysics(),
+            child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -318,6 +320,7 @@ extension _CheckoutCustomerDialog on _CheckoutSheetState {
                 ),
               ],
             ],
+          ),
           ),
         ),
       ),

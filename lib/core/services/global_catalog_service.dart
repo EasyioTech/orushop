@@ -1,7 +1,7 @@
 import 'dart:convert';
+import '../utils/app_logger.dart';
 import 'package:http/http.dart' as http;
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import './catalog_data.dart';
 import '../database/database_helper.dart';
@@ -186,7 +186,7 @@ class GlobalCatalogService {
   /// Search for a product by barcode/SKU
   /// Returns null if not found in any catalog
   Future<GlobalProduct?> searchBySKU(String sku, String? shopType) async {
-    debugPrint('🔍 Searching catalog for SKU: $sku (ShopType: $shopType)');
+    appLogger.debug('🔍 Searching catalog for SKU: $sku (ShopType: $shopType)');
 
     // 1. Check local lookup table (Already synced catalog)
     try {
@@ -207,23 +207,23 @@ class GlobalCatalogService {
           limit: 1,
         );
         if (products.isNotEmpty) {
-          debugPrint('✅ Found in local database: $sku');
+          appLogger.debug('✅ Found in local database: $sku');
           return GlobalProduct.fromLocalMap(products.first);
         }
       }
     } catch (e) {
-      debugPrint('⚠️ Local DB lookup error: $e');
+      appLogger.debug('⚠️ Local DB lookup error: $e');
     }
 
     // 2. Check hardcoded high-density local catalog (Legacy/Bundled)
     if (kGlobalProductCatalog.containsKey(sku)) {
-      debugPrint('✅ Found in bundled catalog: $sku');
+      appLogger.debug('✅ Found in bundled catalog: $sku');
       return kGlobalProductCatalog[sku];
     }
 
     // 3. Check legacy sample barcodes
     if (_legacyCatalog.containsKey(sku)) {
-      debugPrint('✅ Found in legacy catalog: $sku');
+      appLogger.debug('✅ Found in legacy catalog: $sku');
       return _legacyCatalog[sku];
     }
     
@@ -235,7 +235,7 @@ class GlobalCatalogService {
   /// Fetches product details from the centralized cloud database
   Future<GlobalProduct?> fetchFromCloud(String sku, String? shopType) async {
     try {
-      debugPrint('☁️ Fetching from Cloudflare D1: catalog/$sku?type=$shopType');
+      appLogger.debug('☁️ Fetching from Cloudflare D1: catalog/$sku?type=$shopType');
       
       final String apiType = (shopType ?? '').toLowerCase();
       final typeParam = apiType.isNotEmpty ? '&type=$apiType' : '';
@@ -256,15 +256,15 @@ class GlobalCatalogService {
         }
         
         if (data.isNotEmpty) {
-          debugPrint('✅ Found in Cloudflare D1: $sku');
+          appLogger.debug('✅ Found in Cloudflare D1: $sku');
           return GlobalProduct.fromMap(data.first);
         }
       }
 
-      debugPrint('❌ Not found in cloud: $sku');
+      appLogger.debug('❌ Not found in cloud: $sku');
       return null;
     } catch (e) {
-      debugPrint('⚠️ Cloudflare Lookup Error: $e');
+      appLogger.debug('⚠️ Cloudflare Lookup Error: $e');
       return null;
     }
   }
@@ -274,7 +274,7 @@ class GlobalCatalogService {
   Future<List<Map<String, dynamic>>> downloadCatalogForShopType(String shopType) async {
     try {
       final apiType = shopType.toLowerCase();
-      debugPrint('☁️ Downloading catalog for shopType: $apiType from Cloudflare D1');
+      appLogger.debug('☁️ Downloading catalog for shopType: $apiType from Cloudflare D1');
       final uri = Uri.parse('https://catalog-api.gamingcristy19.workers.dev/catalog?type=$apiType&limit=5000&offset=0');
       final response = await http.get(uri);
 
@@ -292,14 +292,14 @@ class GlobalCatalogService {
         }
         return [];
       } else if (response.statusCode == 400) {
-        debugPrint('⚠️ Catalog not available for $apiType (400): ${response.body}');
+        appLogger.debug('⚠️ Catalog not available for $apiType (400): ${response.body}');
         return [];
       } else {
-        debugPrint('⚠️ Cloudflare API Error: ${response.statusCode} - ${response.body}');
+        appLogger.debug('⚠️ Cloudflare API Error: ${response.statusCode} - ${response.body}');
         return [];
       }
     } catch (e) {
-      debugPrint('⚠️ Cloudflare Fetch Error: $e');
+      appLogger.debug('⚠️ Cloudflare Fetch Error: $e');
       return [];
     }
   }

@@ -80,36 +80,41 @@ class CustomerRepository {
 
   Future<List<Customer>> searchByQuery(String query) async {
     final db = await _dbHelper.database;
-    final result = await db.query(
-      TableConstants.customers,
-      where: 'name LIKE ? OR phone LIKE ?',
-      whereArgs: ['%$query%', '%$query%'],
-      orderBy: 'lastPurchaseDate DESC',
+    final like = '%$query%';
+
+    // UNION lets SQLite use idx_customers_phone for the phone arm independently.
+    final result = await db.rawQuery(
+      'SELECT * FROM ${TableConstants.customers} WHERE name LIKE ?'
+      ' UNION '
+      'SELECT * FROM ${TableConstants.customers} WHERE phone LIKE ?'
+      ' ORDER BY lastPurchaseDate DESC',
+      [like, like],
     );
     final salesCustomers = result.map((map) => Customer.fromMap(map)).toList();
     final existingPhones = salesCustomers.map((c) => c.phone).toSet();
 
-    // Also search khata_customers and merge those not already in sales customers
     try {
-      final khataResult = await db.query(
-        TableConstants.khataCustomers,
-        columns: ['id', 'name', 'phone'],
-        where: 'name LIKE ? OR phone LIKE ?',
-        whereArgs: ['%$query%', '%$query%'],
+      // UNION deduplicates rows matched by both predicates.
+      final khataResult = await db.rawQuery(
+        'SELECT id, name, phone FROM ${TableConstants.khataCustomers} WHERE name LIKE ?'
+        ' UNION '
+        'SELECT id, name, phone FROM ${TableConstants.khataCustomers} WHERE phone LIKE ?',
+        [like, like],
       );
       final now = DateTime.now();
       for (final row in khataResult) {
         final phone = (row['phone'] as String?) ?? '';
         final cleanPhone = phone.replaceAll(RegExp(r'\D'), '');
+        final canonical = cleanPhone.isNotEmpty ? cleanPhone : phone;
         if (!existingPhones.contains(cleanPhone) && !existingPhones.contains(phone)) {
           salesCustomers.add(Customer(
             id: 0,
-            phone: cleanPhone.isNotEmpty ? cleanPhone : phone,
+            phone: canonical,
             name: (row['name'] as String?) ?? '',
             createdAt: now,
             updatedAt: now,
           ));
-          existingPhones.add(cleanPhone.isNotEmpty ? cleanPhone : phone);
+          existingPhones.add(canonical);
         }
       }
     } catch (_) {}

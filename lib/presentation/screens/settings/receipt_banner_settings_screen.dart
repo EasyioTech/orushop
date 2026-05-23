@@ -162,7 +162,7 @@ class _ReceiptBannerSettingsScreenState extends ConsumerState<ReceiptBannerSetti
         ),
       );
     } else if (_selectedStyle == 'dark') {
-      final darkBg = _selectedColor != null ? primary : const Color(0xFF1E293B);
+      final darkBg = _selectedColor != null ? primary : const Color(0xFF064E3B);
       final txtColor = textPrimary ?? Colors.white;
       return Container(
         width: double.infinity,
@@ -382,16 +382,16 @@ class _ReceiptBannerSettingsScreenState extends ConsumerState<ReceiptBannerSetti
                       const SizedBox(width: 40, child: Text('R', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red))),
                       Expanded(
                         child: Slider(
-                          value: Color(tempColor).red.toDouble(),
+                          value: ((Color(tempColor).r) * 255.0).round().clamp(0, 255).toDouble(),
                           min: 0, max: 255,
                           activeColor: Colors.red,
                           onChanged: (v) => setDialogState(() {
                             final c = Color(tempColor);
-                            tempColor = Color.fromARGB(255, v.toInt(), c.green, c.blue).value;
+                            tempColor = Color.fromARGB(255, v.toInt(), (c.g * 255.0).round().clamp(0, 255), (c.b * 255.0).round().clamp(0, 255)).toARGB32();
                           }),
                         ),
                       ),
-                      SizedBox(width: 30, child: Text(Color(tempColor).red.toString())),
+                      SizedBox(width: 30, child: Text(((Color(tempColor).r) * 255.0).round().clamp(0, 255).toString())),
                     ],
                   ),
                   Row(
@@ -399,16 +399,16 @@ class _ReceiptBannerSettingsScreenState extends ConsumerState<ReceiptBannerSetti
                       const SizedBox(width: 40, child: Text('G', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green))),
                       Expanded(
                         child: Slider(
-                          value: Color(tempColor).green.toDouble(),
+                          value: ((Color(tempColor).g) * 255.0).round().clamp(0, 255).toDouble(),
                           min: 0, max: 255,
                           activeColor: Colors.green,
                           onChanged: (v) => setDialogState(() {
                             final c = Color(tempColor);
-                            tempColor = Color.fromARGB(255, c.red, v.toInt(), c.blue).value;
+                            tempColor = Color.fromARGB(255, (c.r * 255.0).round().clamp(0, 255), v.toInt(), (c.b * 255.0).round().clamp(0, 255)).toARGB32();
                           }),
                         ),
                       ),
-                      SizedBox(width: 30, child: Text(Color(tempColor).green.toString())),
+                      SizedBox(width: 30, child: Text(((Color(tempColor).g) * 255.0).round().clamp(0, 255).toString())),
                     ],
                   ),
                   Row(
@@ -416,16 +416,16 @@ class _ReceiptBannerSettingsScreenState extends ConsumerState<ReceiptBannerSetti
                       const SizedBox(width: 40, child: Text('B', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue))),
                       Expanded(
                         child: Slider(
-                          value: Color(tempColor).blue.toDouble(),
+                          value: ((Color(tempColor).b) * 255.0).round().clamp(0, 255).toDouble(),
                           min: 0, max: 255,
                           activeColor: Colors.blue,
                           onChanged: (v) => setDialogState(() {
                             final c = Color(tempColor);
-                            tempColor = Color.fromARGB(255, c.red, c.green, v.toInt()).value;
+                            tempColor = Color.fromARGB(255, (c.r * 255.0).round().clamp(0, 255), (c.g * 255.0).round().clamp(0, 255), v.toInt()).toARGB32();
                           }),
                         ),
                       ),
-                      SizedBox(width: 30, child: Text(Color(tempColor).blue.toString())),
+                      SizedBox(width: 30, child: Text(((Color(tempColor).b) * 255.0).round().clamp(0, 255).toString())),
                     ],
                   ),
                 ],
@@ -453,7 +453,7 @@ class _ReceiptBannerSettingsScreenState extends ConsumerState<ReceiptBannerSetti
 
   Widget _buildColorSelector(String label, int? selectedValue, void Function(int?) onChanged) {
     final defaultColors = [
-      AppTheme.primaryColor.value,
+      AppTheme.primaryColor.toARGB32(),
       0xFF000000, // Black
       0xFFE53935, // Red
       0xFF43A047, // Green

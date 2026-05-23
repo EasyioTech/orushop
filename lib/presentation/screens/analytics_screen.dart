@@ -21,6 +21,7 @@ class AnalyticsScreen extends ConsumerStatefulWidget {
 }
 
 class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
+  static final _dateFmt = DateFormat('MM/dd');
   DateTime? _startDate;
   DateTime? _endDate;
 

@@ -1,0 +1,13 @@
+targets:
+  $default:
+    builders:
+      riverpod_generator:
+        # Only generate for files that opt in with @riverpod annotation.
+        # build_runner will only process files that import riverpod_annotation.
+        generate_for:
+          include:
+            - lib/**/*.dart
+          exclude:
+            # Exclude existing stable providers — codegen for new providers only.
+            - lib/providers/**
+            - lib/core/services/write_queue.dart

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import '../../core/utils/app_logger.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
@@ -6,9 +7,13 @@ import 'package:sqflite/sqflite.dart';
 import '../database/database_helper.dart';
 import '../database/table_constants.dart';
 import '../../features/onboarding/models/shop_models.dart';
+import '../../providers/settings_provider.dart';
+import 'write_queue.dart';
 
-final shopCatalogServiceProvider = Provider((ref) => ShopCatalogService(ref.watch(databaseHelperProvider)));
-final databaseHelperProvider = Provider((ref) => DatabaseHelper());
+final shopCatalogServiceProvider = Provider((ref) => ShopCatalogService(
+      ref.watch(databaseHelperProvider),
+      ref.watch(writeQueueProvider),
+    ));
 
 class CatalogItem {
   final String name;
@@ -48,9 +53,10 @@ class CatalogItem {
 
 class ShopCatalogService {
   final DatabaseHelper _dbHelper;
-  static const String _baseUrl = 'https://catalog-api.gamingcristy19.workers.dev'; 
+  final WriteQueue _queue;
+  static const String _baseUrl = 'https://catalog-api.gamingcristy19.workers.dev';
 
-  ShopCatalogService(this._dbHelper);
+  ShopCatalogService(this._dbHelper, this._queue);
 
   /// Maps ShopType to the string expected by the catalog API.
   String _getApiStoreType(ShopType shopType) {
@@ -73,7 +79,7 @@ class ShopCatalogService {
   Future<void> syncCatalog(ShopType shopType) async {
     try {
       final apiType = _getApiStoreType(shopType);
-      debugPrint('📥 Syncing full catalog for $apiType from Cloudflare...');
+      appLogger.debug('📥 Syncing full catalog for $apiType from Cloudflare...');
 
       final response = await http.get(Uri.parse('$_baseUrl/catalog?type=$apiType&limit=500'));
 
@@ -93,22 +99,22 @@ class ShopCatalogService {
         }
 
         if (data.isNotEmpty) {
-          debugPrint('✅ Received ${data.length} items. Seeding database...');
-          await _dbHelper.seedDatabase(data, shopType.name);
-          debugPrint('✅ Successfully synced and seeded ${data.length} products for ${shopType.name}');
+          appLogger.debug('✅ Received ${data.length} items. Seeding database...');
+          await _queue.enqueue(() => _dbHelper.seedDatabase(data, shopType.name));
+          appLogger.debug('✅ Successfully synced and seeded ${data.length} products for ${shopType.name}');
         } else {
-          debugPrint('⚠️ No catalog data returned for ${shopType.name}');
+          appLogger.debug('⚠️ No catalog data returned for ${shopType.name}');
         }
       } else if (response.statusCode == 400) {
-        debugPrint('⚠️ Catalog not available for $apiType (400): ${response.body}');
+        appLogger.debug('⚠️ Catalog not available for $apiType (400): ${response.body}');
         // Silently return, no need to throw for unsupported store types
       } else {
-        debugPrint('❌ Catalog Sync Failed: ${response.statusCode}');
-        debugPrint('❌ Response Body: ${response.body}');
+        appLogger.debug('❌ Catalog Sync Failed: ${response.statusCode}');
+        appLogger.debug('❌ Response Body: ${response.body}');
         throw Exception('Failed to download catalog: ${response.statusCode}');
       }
     } catch (e) {
-      debugPrint('⚠️ Catalog Sync Error Details: $e');
+      appLogger.debug('⚠️ Catalog Sync Error Details: $e');
       // Seed mock data in debug mode only for testing
       if (kDebugMode) {
         await _seedMockData(shopType);
@@ -143,8 +149,8 @@ class ShopCatalogService {
         'shopType': shopType.name,
       });
     }
-    await batch.commit(noResult: true);
-    debugPrint('🧪 Seeded mock data for ${shopType.name}');
+    await _queue.enqueue(() => batch.commit(noResult: true));
+    appLogger.debug('🧪 Seeded mock data for ${shopType.name}');
   }
 
   /// Searches the local catalog for products matching the query for a specific shop type.

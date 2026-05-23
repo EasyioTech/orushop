@@ -1,4 +1,5 @@
 import '../database/database_helper.dart';
+import '../utils/app_logger.dart';
 import '../database/table_constants.dart';
 import '../exceptions/backend_exception.dart';
 import '../models/sale.dart';
@@ -6,7 +7,6 @@ import '../models/sale_item.dart';
 import '../models/cart_item.dart';
 import '../models/product_batch.dart';
 import 'package:sqflite/sqflite.dart';
-import 'package:flutter/foundation.dart';
 
 class SaleRepository {
   final DatabaseHelper _dbHelper = DatabaseHelper();
@@ -126,7 +126,7 @@ class SaleRepository {
 
     try {
       return await db.transaction((txn) async {
-        debugPrint('SaleRepository: Starting transaction for ${items.length} items');
+        appLogger.debug('SaleRepository: Starting transaction for ${items.length} items');
 
         // 1. Create Sale record
         final saleMap = sale.toMap()..remove('id');
@@ -157,7 +157,7 @@ class SaleRepository {
 
           // --- STOCK DEDUCTION LOGIC ---
           if (isService) {
-            debugPrint('SaleRepository: Skipping stock deduction for service: $productName');
+            appLogger.debug('SaleRepository: Skipping stock deduction for service: $productName');
           } else if (template == 'variantMatrix') {
             if (item.variantId == null) {
               throw TransactionException('Variant ID missing for variant product: $productName');
@@ -282,17 +282,16 @@ class SaleRepository {
           processedItems.add(saleItem.copyWith(id: saleItemId));
         }
 
-        debugPrint('SaleRepository: Transaction successful. Sale ID: $saleId');
+        appLogger.debug('SaleRepository: Transaction successful. Sale ID: $saleId');
         return {
           'sale': saleWithId,
           'items': processedItems,
         };
       });
     } catch (e) {
-      debugPrint('SaleRepository: Transaction failed: $e');
+      appLogger.debug('SaleRepository: Transaction failed: $e');
       if (e is BackendException) rethrow;
       throw TransactionException('Failed to process sale: $e');
     }
   }
 }
-

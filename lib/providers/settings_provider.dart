@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:printing/printing.dart';
 import 'shared_prefs_provider.dart';
 
 import '../core/models/app_settings.dart';
@@ -107,6 +108,15 @@ final revenueCatTestModeProvider = FutureProvider<bool>((ref) async {
 final updateRevenueCatTestModeProvider = FutureProvider.family<void, bool>((ref, enabled) async {
   final settings = await ref.watch(settingsServiceProvider.future);
   await settings.setRevenueCatTestMode(enabled);
+});
+
+// ── PDF Font Pre-warming ─────────────────────────────────────────────────────
+// Pre-loads Noto Sans fonts into PdfBaseCache.defaultCache at startup so that
+// the first PDF generation call does not block the UI with a network fetch.
+final pdfFontsProvider = FutureProvider<void>((ref) async {
+  await PdfGoogleFonts.notoSansRegular();
+  await PdfGoogleFonts.notoSansBold();
+  await PdfGoogleFonts.notoSansDevanagariRegular();
 });
 
 // ── Daily Sales Target Persistence ──────────────────────────────────────────

@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import '../utils/app_logger.dart';
 import 'package:sqflite/sqflite.dart';
 import '../database/database_helper.dart';
 import '../database/table_constants.dart';
@@ -99,7 +99,7 @@ class CategoryRepository {
       }
     });
 
-    debugPrint('[CategoryRepository] Seeded ${categories.length} categories for $shopTypeName');
+    appLogger.debug('[CategoryRepository] Seeded ${categories.length} categories for $shopTypeName');
   }
 
   Future<bool> hasCategories(String shopType) async {

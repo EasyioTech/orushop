@@ -1,8 +1,10 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/widgets/shimmer_list.dart';
 import 'package:orushops/core/theme/app_theme.dart';
 import 'package:orushops/core/models/staff_member.dart';
 import 'package:orushops/providers/staff_provider.dart';
@@ -42,14 +44,17 @@ class StaffListScreen extends ConsumerWidget {
               itemCount: staffList.length,
               itemBuilder: (context, index) {
                 final staff = staffList[index];
-                return _buildStaffCard(context, ref, staff);
+                return RepaintBoundary(
+                  child: _buildStaffCard(context, ref, staff)
+                      .animate(key: ValueKey(staff.id))
+                      .fadeIn(duration: 200.ms, delay: (index * 30).ms)
+                      .slideY(begin: 0.04, curve: Curves.easeOut),
+                );
               },
             ),
           );
         },
-        loading: () => const Center(
-          child: CircularProgressIndicator(color: AppTheme.primaryColor),
-        ),
+        loading: () => const ShimmerList(),
         error: (err, stack) => Center(
           child: Padding(
             padding: const EdgeInsets.all(24.0),

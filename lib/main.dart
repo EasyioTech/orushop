@@ -8,6 +8,7 @@ import 'firebase_options.dart';
 
 import 'core/database/database_helper.dart';
 import 'core/router/app_router.dart';
+import 'core/utils/app_logger.dart';
 import 'core/widgets/error_boundary.dart';
 import 'core/services/revenue_cat_service.dart';
 import 'providers/shared_prefs_provider.dart';
@@ -15,13 +16,13 @@ import 'providers/auth_provider.dart';
 import 'providers/settings_provider.dart';
 
 void main() async {
-  debugPrint('App starting...');
+  appLogger.info('App starting...');
   WidgetsFlutterBinding.ensureInitialized();
 
-  debugPrint('Initializing SharedPreferences...');
+  appLogger.info('Initializing SharedPreferences...');
   final prefs = await SharedPreferences.getInstance();
 
-  debugPrint('Initializing Firebase...');
+  appLogger.info('Initializing Firebase...');
   try {
     if (Firebase.apps.isEmpty) {
       await Firebase.initializeApp(
@@ -30,17 +31,17 @@ void main() async {
     }
   } catch (e) {
     if (!e.toString().contains('duplicate-app')) {
-      debugPrint('Firebase init error: $e');
+      appLogger.info('Firebase init error: $e');
     }
   }
 
-  debugPrint('Initializing Database...');
+  appLogger.info('Initializing Database...');
   await DatabaseHelper().database;
 
-  debugPrint('Initializing SharedPrefs Provider...');
+  appLogger.info('Initializing SharedPrefs Provider...');
   initializeSharedPrefs(prefs);
 
-  debugPrint('Initializing Crashlytics...');
+  appLogger.info('Initializing Crashlytics...');
   await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(false);
 
   FlutterError.onError = (errorDetails) {
@@ -50,7 +51,7 @@ void main() async {
     }
   };
 
-  debugPrint('Running App...');
+  appLogger.info('Running App...');
   runApp(
     ProviderScope(
       overrides: [
@@ -72,6 +73,8 @@ class _MyAppState extends ConsumerState<MyApp> {
   @override
   void initState() {
     super.initState();
+    // Pre-warm PDF font cache so first Khata statement PDF is fast
+    ref.read(pdfFontsProvider);
     // Initialize RevenueCat when the user signs in
     ref.listenManual(authStateProvider, (previous, next) async {
       final user = next.value;

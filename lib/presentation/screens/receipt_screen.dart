@@ -53,7 +53,6 @@ class _ReceiptScreenState extends ConsumerState<ReceiptScreen> {
     if (phone != null && phone.isNotEmpty) {
       // Auto-send receipt to customer via WhatsApp after receipt renders
       WidgetsBinding.instance.addPostFrameCallback((_) async {
-        await Future.delayed(const Duration(milliseconds: 800));
         if (!mounted) return;
         setState(() => _autoSending = true);
         try {
@@ -109,7 +108,7 @@ class _ReceiptScreenState extends ConsumerState<ReceiptScreen> {
           await Future.delayed(const Duration(milliseconds: 100));
           continue;
         }
-        final ui.Image image = await boundary.toImage(pixelRatio: 2.5);
+        final ui.Image image = await boundary.toImage(pixelRatio: 2.0);
         final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
         image.dispose();
         if (byteData != null) {

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import '../../../core/widgets/shimmer_list.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/models/khata_customer.dart';
@@ -22,6 +24,8 @@ class KhataScreen extends ConsumerStatefulWidget {
 
 class _KhataScreenState extends ConsumerState<KhataScreen>
     with SingleTickerProviderStateMixin {
+  static final _fmt = NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
+
   late final TabController _tabController;
   final _searchController = TextEditingController();
   bool _showSearch = false;
@@ -51,14 +55,20 @@ class _KhataScreenState extends ConsumerState<KhataScreen>
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(khataListProvider);
-    final fmt = NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
+    final fmt = _fmt;
     final isOffline = ref.watch(isOfflineProvider);
 
     return Scaffold(
       backgroundColor: Colors.white,
       body: OfflineBanner(
         isOffline: isOffline,
-        child: NestedScrollView(
+        child: RefreshIndicator(
+          onRefresh: () async {
+            HapticFeedback.mediumImpact();
+            await ref.read(khataListProvider.notifier).load();
+          },
+          color: AppTheme.primaryColor,
+          child: NestedScrollView(
         headerSliverBuilder: (context, innerBoxIsScrolled) => [
           SliverAppBar(
             expandedHeight: 180,
@@ -156,7 +166,7 @@ class _KhataScreenState extends ConsumerState<KhataScreen>
         body: Container(
           color: AppTheme.backgroundColor.withValues(alpha: 0.5),
           child: state.isLoading && state.customers.isEmpty
-              ? const Center(child: CircularProgressIndicator(color: AppTheme.accentColor, strokeWidth: 3))
+              ? const ShimmerList()
               : state.error != null
                   ? _ErrorView(
                       error: state.error!,
@@ -182,9 +192,12 @@ class _KhataScreenState extends ConsumerState<KhataScreen>
                       ],
                     ),
         ),
+        ),
       ),
     ),
-    floatingActionButton: FloatingActionButton.extended(
+    floatingActionButton: Padding(
+      padding: EdgeInsets.only(bottom: 90.0 + MediaQuery.of(context).padding.bottom),
+      child: FloatingActionButton.extended(
         heroTag: 'khata_add_customer_fab',
         onPressed: () {
           HapticFeedback.mediumImpact();
@@ -201,6 +214,7 @@ class _KhataScreenState extends ConsumerState<KhataScreen>
           style: TextStyle(fontWeight: FontWeight.w700, letterSpacing: 0.2),
         ),
       ),
+    ),
     );
   }
 
