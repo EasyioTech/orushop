@@ -77,8 +77,9 @@ class ReceiptService {
     Sale sale,
     List<SaleItem> items,
     String storeName,
-    String currencySymbol,
-  ) {
+    String currencySymbol, {
+    String? receiptBannerTitle,
+  }) {
     final buffer = StringBuffer();
     buffer.writeln('*RECEIPT FROM ${storeName.toUpperCase()}*');
     buffer.writeln('------------------------------------------');
@@ -111,7 +112,11 @@ class ReceiptService {
     buffer.writeln('Payment: ${sale.paymentMethod}');
     buffer.writeln('------------------------------------------');
     buffer.writeln('Thank you for shopping with us!');
-    buffer.writeln('Powered by OruShops');
+    
+    final bannerText = (receiptBannerTitle != null && receiptBannerTitle.trim().isNotEmpty) 
+        ? receiptBannerTitle 
+        : 'Powered by OruShops';
+    buffer.writeln(bannerText);
 
     return buffer.toString();
   }

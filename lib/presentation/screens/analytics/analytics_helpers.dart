@@ -114,7 +114,7 @@ extension _AnalyticsHelpers on _AnalyticsScreenState {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '${product.count} Sold',
+                      '${product.unitsSold} Sold',
                       style: const TextStyle(color: AppTheme.slate500, fontSize: 12, fontWeight: FontWeight.w600),
                     ),
                   ],

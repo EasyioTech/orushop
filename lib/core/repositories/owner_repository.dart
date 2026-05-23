@@ -57,6 +57,35 @@ class OwnerRepository {
     }
   }
 
+  Future<void> updateReceiptBanner(
+    String title, 
+    String subtitle, 
+    String url, 
+    String style,
+    String? icon,
+    int? color,
+    int? textColor,
+  ) async {
+    if (_userId.isEmpty) throw Exception('User not authenticated');
+
+    try {
+      await _firestore.collection('owners').doc(_userId).set(
+        {
+          'receiptBannerTitle': title,
+          'receiptBannerSubtitle': subtitle,
+          'receiptBannerUrl': url,
+          'receiptBannerStyle': style,
+          if (icon != null) 'receiptBannerIcon': icon,
+          if (color != null) 'receiptBannerColor': color,
+          if (textColor != null) 'receiptBannerTextColor': textColor,
+        },
+        SetOptions(merge: true),
+      );
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   Future<void> saveShopDetails(Map<String, dynamic> data) async {
     if (_userId.isEmpty) throw Exception('User not authenticated');
 

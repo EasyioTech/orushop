@@ -86,7 +86,35 @@ class CustomerRepository {
       whereArgs: ['%$query%', '%$query%'],
       orderBy: 'lastPurchaseDate DESC',
     );
-    return result.map((map) => Customer.fromMap(map)).toList();
+    final salesCustomers = result.map((map) => Customer.fromMap(map)).toList();
+    final existingPhones = salesCustomers.map((c) => c.phone).toSet();
+
+    // Also search khata_customers and merge those not already in sales customers
+    try {
+      final khataResult = await db.query(
+        TableConstants.khataCustomers,
+        columns: ['id', 'name', 'phone'],
+        where: 'name LIKE ? OR phone LIKE ?',
+        whereArgs: ['%$query%', '%$query%'],
+      );
+      final now = DateTime.now();
+      for (final row in khataResult) {
+        final phone = (row['phone'] as String?) ?? '';
+        final cleanPhone = phone.replaceAll(RegExp(r'\D'), '');
+        if (!existingPhones.contains(cleanPhone) && !existingPhones.contains(phone)) {
+          salesCustomers.add(Customer(
+            id: 0,
+            phone: cleanPhone.isNotEmpty ? cleanPhone : phone,
+            name: (row['name'] as String?) ?? '',
+            createdAt: now,
+            updatedAt: now,
+          ));
+          existingPhones.add(cleanPhone.isNotEmpty ? cleanPhone : phone);
+        }
+      }
+    } catch (_) {}
+
+    return salesCustomers;
   }
 
   Future<List<Customer>> getRecentCustomers({int limit = 10}) async {

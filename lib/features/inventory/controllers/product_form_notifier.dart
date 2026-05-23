@@ -1,10 +1,9 @@
 import 'dart:io';
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:io';
-import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:orushops/core/models/product.dart';
 import 'package:orushops/core/models/product_variant.dart';
@@ -66,6 +65,7 @@ class ProductFormNotifier extends Notifier<ProductFormState> {
     _initializeListeners();
     ref.onDispose(() {
       _disposed = true;
+      cancelSearches();
       for (final c in controllers.values) {
         c.dispose();
       }

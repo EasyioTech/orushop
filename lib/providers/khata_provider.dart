@@ -1,7 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/database/database_helper.dart';
+import '../core/database/table_constants.dart';
 import '../core/models/khata_customer.dart';
 import '../core/models/khata_entry.dart';
+import '../core/models/sale.dart';
 import '../core/repositories/khata_repository.dart';
 
 // ── Repository provider ───────────────────────────────────────────────────────
@@ -215,3 +217,18 @@ class KhataDetailNotifier extends FamilyNotifier<KhataDetailState, int> {
 final khataDetailProvider = NotifierProvider.family<KhataDetailNotifier, KhataDetailState, int>(
   KhataDetailNotifier.new,
 );
+
+// ── Sales history for a customer (by phone) ───────────────────────────────────
+
+final customerSalesByPhoneProvider = FutureProvider.family<List<Sale>, String>((ref, phone) async {
+  if (phone.isEmpty) return [];
+  final db = await DatabaseHelper().database;
+  final cleanPhone = phone.replaceAll(RegExp(r'\D'), '');
+  final result = await db.query(
+    TableConstants.sales,
+    where: 'customerPhone = ? OR customerPhone = ?',
+    whereArgs: [cleanPhone, phone],
+    orderBy: 'createdAt DESC',
+  );
+  return result.map((row) => Sale.fromMap(row)).toList();
+});

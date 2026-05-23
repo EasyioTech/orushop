@@ -160,9 +160,12 @@ class _InfoStepState extends ConsumerState<InfoStep> {
                           icon: CupertinoIcons.minus,
                           onPressed: () {
                             final val = double.tryParse(initialQtyController.text) ?? 0;
-                            if (val > 0) {
+                            if (val > 1) {
                               initialQtyController.text = (val - 1).toStringAsFixed(0);
                               notifier.updateInventoryField('initialQty', initialQtyController.text);
+                            } else if (val == 1) {
+                              initialQtyController.text = '';
+                              notifier.updateInventoryField('initialQty', '');
                             }
                           },
                         ),

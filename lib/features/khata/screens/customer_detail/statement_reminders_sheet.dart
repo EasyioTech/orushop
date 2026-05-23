@@ -7,6 +7,7 @@ class _StatementRemindersSheet extends StatefulWidget {
   final String storePhone;
   final String storeAddress;
   final String? upiId;
+  final String? receiptBannerTitle;
 
   const _StatementRemindersSheet({
     required this.customer,
@@ -15,6 +16,7 @@ class _StatementRemindersSheet extends StatefulWidget {
     required this.storePhone,
     required this.storeAddress,
     this.upiId,
+    this.receiptBannerTitle,
   });
 
   @override
@@ -198,6 +200,7 @@ class _StatementRemindersSheetState extends State<_StatementRemindersSheet> {
                     storeAddress: widget.storeAddress,
                     upiId: widget.upiId,
                     currentBalance: balance,
+                    receiptBannerTitle: widget.receiptBannerTitle,
                   );
                 } catch (e) {
                   _toast('Failed to share PDF statement: $e');

@@ -99,6 +99,19 @@ class PaginationNotifier extends Notifier<List<Product>> {
     await loadMore();
   }
 
+  Future<void> silentRefresh() async {
+    if (_isLoading) return;
+    _isLoading = true;
+    try {
+      final newProducts = await _repository.getPaginated(pageSize, 0);
+      state = newProducts;
+      _currentPage = 1;
+      _hasMore = newProducts.length == pageSize;
+    } finally {
+      _isLoading = false;
+    }
+  }
+
   void decrementStock(Map<int, double> soldItems) {
     state = [
       for (final product in state)

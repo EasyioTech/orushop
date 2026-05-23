@@ -21,7 +21,6 @@ class CreateProductScreen extends ConsumerStatefulWidget {
 class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
   @override
   void dispose() {
-    ref.read(productFormNotifierProvider.notifier).cancelSearches();
     super.dispose();
   }
   late final ProductFormNotifier _notifier;

@@ -6,6 +6,8 @@ import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/models/khata_customer.dart';
 import '../../../core/repositories/owner_provider.dart';
+import '../../../core/repositories/sale_repository.dart';
+import '../../../presentation/screens/receipt_screen.dart';
 import '../../../core/services/khata_action_service.dart';
 import '../../../providers/khata_provider.dart';
 import '../widgets/add_entry_sheet.dart';
@@ -103,6 +105,7 @@ class _DetailBody extends ConsumerWidget {
     final storePhone = ownerDetails?['phoneNumber'] as String? ?? '';
     final storeAddress = ownerDetails?['address'] as String? ?? '';
     final upiId = ownerDetails?['upiId'] as String?;
+    final receiptBannerTitle = ownerDetails?['receiptBannerTitle'] as String?;
 
     return CustomScrollView(
       slivers: [
@@ -133,6 +136,7 @@ class _DetailBody extends ConsumerWidget {
                     storePhone: storePhone,
                     storeAddress: storeAddress,
                     upiId: upiId,
+                    receiptBannerTitle: receiptBannerTitle,
                   ),
                 );
               },
@@ -322,8 +326,178 @@ class _DetailBody extends ConsumerWidget {
                 ),
               ),
 
+        // Sales History section
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 28, 20, 12),
+            child: Row(
+              children: [
+                Text('SALES HISTORY',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
+                    color: AppTheme.textPrimary.withValues(alpha: 0.4),
+                    letterSpacing: 1,
+                  ),
+                ),
+                const Spacer(),
+                const Icon(Icons.receipt_long_rounded, size: 14, color: AppTheme.accentColor),
+              ],
+            ),
+          ),
+        ),
+
+        _SalesHistorySliver(
+          phone: customer.phone,
+          storeName: storeName,
+          storePhone: storePhone,
+          storeAddress: storeAddress,
+          upiId: upiId,
+          ownerDetails: ownerDetails,
+        ),
+
         const SliverToBoxAdapter(child: SizedBox(height: 120)),
       ],
+    );
+  }
+}
+
+class _SalesHistorySliver extends ConsumerWidget {
+  final String phone;
+  final String storeName;
+  final String storePhone;
+  final String storeAddress;
+  final String? upiId;
+  final Map<String, dynamic>? ownerDetails;
+
+  const _SalesHistorySliver({
+    required this.phone,
+    required this.storeName,
+    required this.storePhone,
+    required this.storeAddress,
+    required this.upiId,
+    required this.ownerDetails,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final salesAsync = ref.watch(customerSalesByPhoneProvider(phone));
+    final fmt = NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
+
+    return salesAsync.when(
+      loading: () => const SliverToBoxAdapter(
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: Center(child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.accentColor)),
+        ),
+      ),
+      error: (e, st) => const SliverToBoxAdapter(child: SizedBox.shrink()),
+      data: (sales) {
+        if (sales.isEmpty) {
+          return SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+              child: Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.receipt_outlined, size: 32, color: AppTheme.textSecondary.withValues(alpha: 0.2)),
+                    const SizedBox(width: 16),
+                    Text('No sales recorded', style: TextStyle(color: AppTheme.textSecondary.withValues(alpha: 0.5), fontSize: 13)),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }
+
+        return SliverList(
+          delegate: SliverChildBuilderDelegate(
+            (context, i) {
+              final sale = sales[i];
+              final dateFmt = DateFormat('d MMM yyyy, h:mm a');
+              return Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                child: Material(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(16),
+                    onTap: () async {
+                      HapticFeedback.selectionClick();
+                      final saleRepo = SaleRepository();
+                      final items = await saleRepo.getSaleItems(sale.id);
+                      if (!context.mounted) return;
+                      Navigator.of(context).push(MaterialPageRoute(
+                        builder: (_) => ReceiptScreen(
+                          sale: sale,
+                          items: items,
+                          storeName: storeName,
+                          storePhone: storePhone,
+                          storeAddress: storeAddress,
+                          upiId: upiId,
+                        ),
+                      ));
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: AppTheme.accentColor.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Icon(Icons.receipt_rounded, color: AppTheme.accentColor, size: 20),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Bill #${sale.id}',
+                                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+                                ),
+                                Text(
+                                  dateFmt.format(sale.createdAt),
+                                  style: TextStyle(fontSize: 11, color: AppTheme.textSecondary.withValues(alpha: 0.7)),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(
+                                fmt.format(sale.finalAmount),
+                                style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: AppTheme.successColor),
+                              ),
+                              Text(
+                                sale.paymentMethod.toUpperCase(),
+                                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppTheme.textSecondary.withValues(alpha: 0.5)),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(width: 8),
+                          const Icon(Icons.arrow_forward_ios_rounded, size: 12, color: AppTheme.slate300),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+            childCount: sales.length,
+          ),
+        );
+      },
     );
   }
 }

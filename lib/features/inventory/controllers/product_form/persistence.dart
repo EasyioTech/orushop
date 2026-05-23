@@ -109,15 +109,22 @@ extension ProductFormPersistence on ProductFormNotifier {
       controllers['warranty']!.text = data['warranty'] ?? '';
       controllers['schedule']!.text = data['schedule'] ?? '';
       controllers['batchNumber']!.text = data['batchNumber'] ?? '';
-      controllers['price']!.text = data['sellingPrice']?.toString() ?? '';
-      controllers['wholesalePrice']!.text = data['wholesalePrice']?.toString() ?? '';
-      controllers['costPrice']!.text = data['costPrice']?.toString() ?? '';
+      final restoredPrice = (data['sellingPrice'] as num?)?.toDouble() ?? 0.0;
+      controllers['price']!.text = restoredPrice > 0 ? restoredPrice.toString() : '';
+      final restoredWholesale = (data['wholesalePrice'] as num?)?.toDouble() ?? 0.0;
+      controllers['wholesalePrice']!.text = restoredWholesale > 0 ? restoredWholesale.toString() : '';
+      final restoredCost = (data['costPrice'] as num?)?.toDouble() ?? 0.0;
+      controllers['costPrice']!.text = restoredCost > 0 ? restoredCost.toString() : '';
       controllers['mrp']!.text = data['mrp']?.toString() ?? '';
-      controllers['tax']!.text = data['taxRate']?.toString() ?? '';
-      controllers['initialQty']!.text = data['initialQuantity']?.toString() ?? '0';
-      controllers['reorderLevel']!.text = data['reorderLevel']?.toString() ?? '5';
+      final restoredTax = (data['taxRate'] as num?)?.toDouble() ?? 0.0;
+      controllers['tax']!.text = restoredTax > 0 ? restoredTax.toString() : '';
+      final restoredQty = (data['initialQuantity'] as num?)?.toDouble() ?? 0.0;
+      controllers['initialQty']!.text = restoredQty > 0 ? restoredQty.toStringAsFixed(0) : '';
+      final restoredReorder = (data['reorderLevel'] as num?)?.toDouble() ?? 5.0;
+      controllers['reorderLevel']!.text = restoredReorder != 5.0 ? restoredReorder.toStringAsFixed(0) : '';
       controllers['packagingUnit']!.text = data['packagingUnit'] ?? '';
-      controllers['conversionFactor']!.text = data['conversionFactor']?.toString() ?? '1';
+      final restoredConversion = (data['conversionFactor'] as num?)?.toDouble() ?? 1.0;
+      controllers['conversionFactor']!.text = restoredConversion != 1.0 ? restoredConversion.toString() : '';
 
       state = state.copyWith(
         selectedCategory: selectedCategory,

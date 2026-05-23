@@ -127,6 +127,7 @@ extension KhataStatementActions on KhataActionService {
     required String storeAddress,
     required String? upiId,
     required double currentBalance,
+    String? receiptBannerTitle,
   }) async {
     final pdf = pw.Document();
 
@@ -134,6 +135,10 @@ extension KhataStatementActions on KhataActionService {
     final boldFont = await PdfGoogleFonts.notoSansBold();
     final symbolFont = await PdfGoogleFonts.notoSansDevanagariRegular();
     final navyColor = PdfColor.fromHex('#0F172A');
+
+    final bannerText = (receiptBannerTitle != null && receiptBannerTitle.trim().isNotEmpty) 
+        ? '$receiptBannerTitle Digital Khata' 
+        : 'Powered by OruShops Digital Khata';
 
     pdf.addPage(
       pw.MultiPage(
@@ -181,7 +186,7 @@ extension KhataStatementActions on KhataActionService {
               pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
-                  pw.Text('Powered by OruShops Digital Khata', style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey500)),
+                  pw.Text(bannerText, style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey500)),
                   pw.Text('Page ${context.pageNumber} of ${context.pagesCount}', style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey500)),
                 ],
               ),
@@ -381,6 +386,7 @@ extension KhataStatementActions on KhataActionService {
     required String storeAddress,
     required String? upiId,
     required double currentBalance,
+    String? receiptBannerTitle,
   }) async {
     try {
       final pdfBytes = await generateLedgerStatementPdfBytes(
@@ -392,6 +398,7 @@ extension KhataStatementActions on KhataActionService {
         storeAddress: storeAddress,
         upiId: upiId,
         currentBalance: currentBalance,
+        receiptBannerTitle: receiptBannerTitle,
       );
       final tempDir = await getTemporaryDirectory();
       final file = File('${tempDir.path}/Ledger_Statement_${customerName.replaceAll(' ', '_')}.pdf');

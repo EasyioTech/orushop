@@ -139,9 +139,16 @@ class ReceiptActionService {
     required String storeName,
     String? customerPhone,
     Uint8List? receiptImageBytes,
+    String? receiptBannerTitle,
   }) async {
     try {
-      final receiptText = _receiptService.generateReceiptPlain(sale, items, storeName, '₹');
+      final receiptText = _receiptService.generateReceiptPlain(
+        sale, 
+        items, 
+        storeName, 
+        '₹', 
+        receiptBannerTitle: receiptBannerTitle,
+      );
 
       if (customerPhone != null && customerPhone.isNotEmpty) {
         String cleanPhone = customerPhone.replaceAll(RegExp(r'\D'), '');
@@ -181,8 +188,9 @@ class ReceiptActionService {
     Sale sale,
     List<SaleItem> items,
     String storeName,
-    String? phoneNumber,
-  ) async {
+    String? phoneNumber, {
+    String? receiptBannerTitle,
+  }) async {
     try {
       String? cleanPhone = phoneNumber?.replaceAll(RegExp(r'\D'), '');
       if (cleanPhone != null && cleanPhone.startsWith('0')) {
@@ -198,6 +206,7 @@ class ReceiptActionService {
         items,
         storeName,
         '₹',
+        receiptBannerTitle: receiptBannerTitle,
       );
       
       // Use 'smsto:' scheme with LaunchMode.externalNonBrowserApplication

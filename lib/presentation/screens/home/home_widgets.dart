@@ -218,12 +218,16 @@ class _SalesHeroCard extends ConsumerWidget {
                               ),
                             ),
                             const SizedBox(width: 8),
-                            Text(
-                              '${(rawPercent * 100).toStringAsFixed(0)}% achieved',
-                              style: const TextStyle(
-                                color: AppTheme.textPrimary,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w900,
+                            Flexible(
+                              child: Text(
+                                '${(rawPercent * 100).toStringAsFixed(0)}% achieved',
+                                style: const TextStyle(
+                                  color: AppTheme.textPrimary,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                           ],
@@ -434,6 +438,8 @@ class _HeroStatItem extends StatelessWidget {
               fontWeight: FontWeight.w900,
               letterSpacing: -0.5,
             ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),

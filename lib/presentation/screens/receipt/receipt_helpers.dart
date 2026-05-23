@@ -380,13 +380,183 @@ extension _ReceiptScreenHelpers on _ReceiptScreenState {
     );
   }
 
+  IconData _getBannerIcon(String? iconName) {
+    switch (iconName) {
+      case 'shopping_bag': return Icons.shopping_bag_rounded;
+      case 'star': return Icons.star_rounded;
+      case 'favorite': return Icons.favorite_rounded;
+      case 'local_mall': return Icons.local_mall_rounded;
+      case 'discount': return Icons.discount_rounded;
+      case 'emoji_emotions': return Icons.emoji_emotions_rounded;
+      case 'storefront':
+      default:
+        return Icons.storefront_rounded;
+    }
+  }
+
   Widget _buildOruShopsBanner(ThemeData theme) {
+    final ownerDetails = ref.read(ownerDetailsStreamProvider).value;
+    final title = ownerDetails?['receiptBannerTitle'] ?? 'Powered by OruShops';
+    final subtitle = ownerDetails?['receiptBannerSubtitle'] ?? 'Smart POS for Indian Retailers';
+    final url = ownerDetails?['receiptBannerUrl'] ?? 'orushops.in';
+    final style = ownerDetails?['receiptBannerStyle'] ?? 'classic';
+    
+    final customColorVal = ownerDetails?['receiptBannerColor'] as int?;
+    final customTextColorVal = ownerDetails?['receiptBannerTextColor'] as int?;
+    final customIconStr = ownerDetails?['receiptBannerIcon'] as String?;
+
+    final Color primary = customColorVal != null ? Color(customColorVal) : AppTheme.primaryColor;
+    final Color? textPrimary = customTextColorVal != null ? Color(customTextColorVal) : null;
+    final IconData iconData = _getBannerIcon(customIconStr);
+
+    if (title.toString().trim().isEmpty) return const SizedBox.shrink();
+
+    if (style == 'minimal') {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border.all(color: AppTheme.slate200),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(color: AppTheme.slate100, shape: BoxShape.circle),
+              child: Icon(iconData, color: primary, size: 18),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(color: textPrimary ?? AppTheme.slate900, fontWeight: FontWeight.w800, fontSize: 12, letterSpacing: 0.2),
+                  ),
+                  if (subtitle.toString().trim().isNotEmpty)
+                    Text(
+                      subtitle,
+                      style: TextStyle(color: textPrimary?.withValues(alpha: 0.7) ?? AppTheme.slate500, fontSize: 10),
+                    ),
+                ],
+              ),
+            ),
+            if (url.toString().trim().isNotEmpty)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(100),
+                ),
+                child: Text(url, style: TextStyle(color: primary, fontWeight: FontWeight.w700, fontSize: 10)),
+              ),
+          ],
+        ),
+      );
+    } else if (style == 'dark') {
+      final darkBg = customColorVal != null ? primary : const Color(0xFF1E293B);
+      final txtColor = textPrimary ?? Colors.white;
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: darkBg,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(color: txtColor.withValues(alpha: 0.1), shape: BoxShape.circle),
+              child: Icon(iconData, color: txtColor, size: 18),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(color: txtColor, fontWeight: FontWeight.w800, fontSize: 12, letterSpacing: 0.2),
+                  ),
+                  if (subtitle.toString().trim().isNotEmpty)
+                    Text(
+                      subtitle,
+                      style: TextStyle(color: txtColor.withValues(alpha: 0.7), fontSize: 10),
+                    ),
+                ],
+              ),
+            ),
+            if (url.toString().trim().isNotEmpty)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: txtColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(100),
+                ),
+                child: Text(url, style: TextStyle(color: txtColor, fontWeight: FontWeight.w700, fontSize: 10)),
+              ),
+          ],
+        ),
+      );
+    } else if (style == 'accent') {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: primary.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: primary.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(color: primary.withValues(alpha: 0.15), shape: BoxShape.circle),
+              child: Icon(iconData, color: primary, size: 18),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(color: textPrimary ?? primary, fontWeight: FontWeight.w800, fontSize: 12, letterSpacing: 0.2),
+                  ),
+                  if (subtitle.toString().trim().isNotEmpty)
+                    Text(
+                      subtitle,
+                      style: TextStyle(color: (textPrimary ?? primary).withValues(alpha: 0.8), fontSize: 10),
+                    ),
+                ],
+              ),
+            ),
+            if (url.toString().trim().isNotEmpty)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: primary,
+                  borderRadius: BorderRadius.circular(100),
+                ),
+                child: Text(url, style: TextStyle(color: textPrimary ?? Colors.white, fontWeight: FontWeight.w700, fontSize: 10)),
+              ),
+          ],
+        ),
+      );
+    }
+
+    // Default to classic
+    final txtColor = textPrimary ?? Colors.white;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [AppTheme.primaryColor.withValues(alpha: 0.85), AppTheme.primaryColor],
+          colors: [primary.withValues(alpha: 0.85), primary],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -396,33 +566,35 @@ extension _ReceiptScreenHelpers on _ReceiptScreenState {
         children: [
           Container(
             padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.15), shape: BoxShape.circle),
-            child: const Icon(Icons.storefront_rounded, color: Colors.white, size: 18),
+            decoration: BoxDecoration(color: txtColor.withValues(alpha: 0.15), shape: BoxShape.circle),
+            child: Icon(iconData, color: txtColor, size: 18),
           ),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Powered by OruShops',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 12, letterSpacing: 0.2),
-                ),
                 Text(
-                  'Smart POS for Indian Retailers',
-                  style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 10),
+                  title,
+                  style: TextStyle(color: txtColor, fontWeight: FontWeight.w800, fontSize: 12, letterSpacing: 0.2),
                 ),
+                if (subtitle.toString().trim().isNotEmpty)
+                  Text(
+                    subtitle,
+                    style: TextStyle(color: txtColor.withValues(alpha: 0.8), fontSize: 10),
+                  ),
               ],
             ),
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.18),
-              borderRadius: BorderRadius.circular(100),
+          if (url.toString().trim().isNotEmpty)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: txtColor.withValues(alpha: 0.18),
+                borderRadius: BorderRadius.circular(100),
+              ),
+              child: Text(url, style: TextStyle(color: txtColor, fontWeight: FontWeight.w700, fontSize: 10)),
             ),
-            child: const Text('orushops.in', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 10)),
-          ),
         ],
       ),
     );

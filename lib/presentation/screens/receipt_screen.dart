@@ -2,10 +2,12 @@ import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../../core/models/sale.dart';
 import '../../core/models/sale_item.dart';
+import '../../core/repositories/owner_provider.dart';
 import '../../core/services/receipt_action_service.dart';
 import '../../core/services/receipt_service.dart';
 import '../../core/utils/currency_formatter.dart';
@@ -13,7 +15,7 @@ import '../../core/theme/app_theme.dart';
 part 'receipt/receipt_helpers.dart';
 part 'receipt/receipt_widgets.dart';
 
-class ReceiptScreen extends StatefulWidget {
+class ReceiptScreen extends ConsumerStatefulWidget {
   final Sale sale;
   final List<SaleItem> items;
   final String? storeName;
@@ -32,10 +34,10 @@ class ReceiptScreen extends StatefulWidget {
   });
 
   @override
-  State<ReceiptScreen> createState() => _ReceiptScreenState();
+  ConsumerState<ReceiptScreen> createState() => _ReceiptScreenState();
 }
 
-class _ReceiptScreenState extends State<ReceiptScreen> {
+class _ReceiptScreenState extends ConsumerState<ReceiptScreen> {
   late final ReceiptActionService _actionService;
   String? _processingAction;
   bool _autoSending = false;
@@ -55,6 +57,7 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
         if (!mounted) return;
         setState(() => _autoSending = true);
         try {
+          final bannerTitle = ref.read(ownerDetailsStreamProvider).valueOrNull?['receiptBannerTitle'] as String?;
           final Uint8List? imageBytes = await _captureReceiptAsJpeg();
           await _actionService.shareToWhatsApp(
             sale: widget.sale,
@@ -62,6 +65,7 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
             storeName: widget.storeName ?? 'OruShops',
             customerPhone: phone,
             receiptImageBytes: imageBytes,
+            receiptBannerTitle: bannerTitle,
           );
         } catch (_) {
           // Silent fail — user can retry manually
@@ -145,15 +149,18 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
   }
 
   void _sendSms() {
+    final bannerTitle = ref.read(ownerDetailsStreamProvider).valueOrNull?['receiptBannerTitle'] as String?;
     _handleAction('sms', () => _actionService.sendReceiptSms(
       widget.sale,
       widget.items,
       widget.storeName ?? 'OruShops',
       widget.sale.customerPhone,
+      receiptBannerTitle: bannerTitle,
     ));
   }
 
   void _shareToWhatsApp() {
+    final bannerTitle = ref.read(ownerDetailsStreamProvider).valueOrNull?['receiptBannerTitle'] as String?;
     _handleAction('whatsapp', () async {
       final Uint8List? imageBytes = await _captureReceiptAsJpeg();
       // Even if imageBytes is null, we can still fall back to text,
@@ -164,6 +171,7 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
         storeName: widget.storeName ?? 'OruShops',
         customerPhone: widget.sale.customerPhone,
         receiptImageBytes: imageBytes,
+        receiptBannerTitle: bannerTitle,
       );
     });
   }

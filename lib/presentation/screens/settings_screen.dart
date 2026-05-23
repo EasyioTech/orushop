@@ -13,6 +13,8 @@ import '../../core/repositories/owner_provider.dart';
 import '../../core/services/global_catalog_service.dart';
 import '../../core/services/compliance_service.dart';
 import '../../core/services/auth_service.dart';
+import 'settings/receipt_banner_settings_screen.dart';
+
 part 'settings/settings_widgets.dart';
 part 'settings/settings_action_buttons.dart';
 
@@ -127,6 +129,19 @@ class SettingsScreen extends ConsumerWidget {
                         ownerDetailsAsync.value?['storeAddress'] ?? '',
                         (value) => OwnerRepository().updateStoreAddress(value),
                       ),
+                    ),
+                    _ActionButton(
+                      icon: Icons.receipt_long_rounded,
+                      label: 'Receipt Banner Customization',
+                      subtitle: 'Change the advertisement banner on bills',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const ReceiptBannerSettingsScreen(),
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),

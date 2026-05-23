@@ -15,6 +15,7 @@ import '../../core/models/product.dart';
 import '../../core/models/sale.dart';
 import '../../core/models/sale_item.dart';
 import '../../core/widgets/error_boundary.dart';
+import '../../providers/khata_provider.dart';
 
 import '../../presentation/screens/home_screen.dart';
 import '../../presentation/screens/products_screen.dart';
@@ -287,11 +288,16 @@ final routerProvider = Provider<GoRouter>((ref) {
 // Shell scaffold — replaces MyHomePage; wraps each tab with the bottom nav
 // --------------------------------------------------------------------------
 
-class _AppShell extends ConsumerWidget {
+class _AppShell extends ConsumerStatefulWidget {
   final StatefulNavigationShell navigationShell;
 
   const _AppShell({required this.navigationShell});
 
+  @override
+  ConsumerState<_AppShell> createState() => _AppShellState();
+}
+
+class _AppShellState extends ConsumerState<_AppShell> with WidgetsBindingObserver {
   static const _navItems = [
     _NavItem(label: 'Home',    icon: CupertinoIcons.house,          activeIcon: CupertinoIcons.house_fill),
     _NavItem(label: 'POS',     icon: CupertinoIcons.cart,           activeIcon: CupertinoIcons.cart_fill),
@@ -300,33 +306,58 @@ class _AppShell extends ConsumerWidget {
     _NavItem(label: 'Profile', icon: CupertinoIcons.person_circle,  activeIcon: CupertinoIcons.person_circle_fill),
   ];
 
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // Auto-refresh data silently when app returns to foreground
+      ref.read(analyticsRevisionProvider.notifier).state++;
+      ref.read(paginatedProductsProvider.notifier).silentRefresh();
+      ref.invalidate(productsProvider);
+      ref.read(khataListProvider.notifier).load();
+    }
+  }
+
   void _onTap(BuildContext context, WidgetRef ref, int index) {
     HapticFeedback.selectionClick();
     FocusManager.instance.primaryFocus?.unfocus();
 
     // Tapping the active tab scrolls back to top (standard mobile UX)
     // Tapping a different tab switches to that branch, restoring its state
-    navigationShell.goBranch(
+    widget.navigationShell.goBranch(
       index,
-      initialLocation: index == navigationShell.currentIndex,
+      initialLocation: index == widget.navigationShell.currentIndex,
     );
 
-    // Keep the same auto-refresh logic as before
+    // Keep the same auto-refresh logic as before, but use silent updates where possible
     if (index == 1) {
-      ref.invalidate(paginatedProductsProvider);
+      ref.read(paginatedProductsProvider.notifier).silentRefresh();
     } else if (index == 2) {
-      ref.invalidate(paginatedProductsProvider);
+      ref.read(paginatedProductsProvider.notifier).silentRefresh();
       ref.invalidate(productsProvider);
-      ref.invalidate(analyticsRevisionProvider);
+      ref.read(analyticsRevisionProvider.notifier).state++;
     } else if (index == 0) {
-      ref.invalidate(analyticsRevisionProvider);
+      ref.read(analyticsRevisionProvider.notifier).state++;
+    } else if (index == 3) {
+      ref.read(khataListProvider.notifier).load();
     }
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final isOffline = ref.watch(isOfflineProvider);
-    final currentIndex = navigationShell.currentIndex;
+    final currentIndex = widget.navigationShell.currentIndex;
     final cartItems = ref.watch(cartProvider);
     final isMakingSale = currentIndex == 1 && cartItems.isNotEmpty;
 
@@ -335,7 +366,7 @@ class _AppShell extends ConsumerWidget {
       onPopInvokedWithResult: (didPop, _) {
         if (didPop) return;
         if (currentIndex != 0) {
-          navigationShell.goBranch(0);
+          widget.navigationShell.goBranch(0);
         } else {
           SystemNavigator.pop();
         }
@@ -343,13 +374,13 @@ class _AppShell extends ConsumerWidget {
       child: Scaffold(
         body: OfflineBanner(
           isOffline: isOffline,
-          child: navigationShell,
+          child: widget.navigationShell,
         ),
         bottomNavigationBar: isMakingSale
             ? null
             : _AppNavBar(
                 selectedIndex: currentIndex,
-                items: _navItems,
+                items: _AppShellState._navItems,
                 onTap: (i) => _onTap(context, ref, i),
               ),
       ),
