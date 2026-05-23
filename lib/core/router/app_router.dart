@@ -482,44 +482,32 @@ class _AppNavBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final bottomPadding = MediaQuery.of(context).padding.bottom;
 
-    return SafeArea(
-      bottom: false,
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(16, 0, 16, bottomPadding + 16),
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(32),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.08),
-                blurRadius: 24,
-                spreadRadius: 0,
-                offset: const Offset(0, 8),
-              ),
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
-                blurRadius: 8,
-                spreadRadius: -2,
-                offset: const Offset(0, 4),
-              ),
-            ],
+    return Container(
+      padding: EdgeInsets.only(bottom: bottomPadding),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 20,
+            spreadRadius: 0,
+            offset: const Offset(0, -4),
           ),
-          child: SizedBox(
-            height: 64,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: List.generate(items.length, (i) {
-                return Expanded(
-                  child: _NavBarItem(
-                    item: items[i],
-                    active: i == selectedIndex,
-                    onTap: () => onTap(i),
-                  ),
-                );
-              }),
-            ),
-          ),
+        ],
+      ),
+      child: SizedBox(
+        height: 64,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: List.generate(items.length, (i) {
+            return Expanded(
+              child: _NavBarItem(
+                item: items[i],
+                active: i == selectedIndex,
+                onTap: () => onTap(i),
+              ),
+            );
+          }),
         ),
       ),
     );
@@ -543,17 +531,16 @@ class _NavBarItem extends StatelessWidget {
           duration: const Duration(milliseconds: 350),
           curve: Curves.easeOutBack,
           padding: EdgeInsets.symmetric(
-            horizontal: active ? 16 : 8,
-            vertical: 10,
+            horizontal: 8,
+            vertical: 4,
           ),
           decoration: BoxDecoration(
-            color: active
-                ? item.activeColor.withValues(alpha: 0.12)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(20),
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(16),
           ),
-          child: Row(
+          child: Column(
             mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               AnimatedSwitcher(
                 duration: const Duration(milliseconds: 300),
@@ -567,22 +554,20 @@ class _NavBarItem extends StatelessWidget {
                       : AppTheme.textSecondary.withValues(alpha: 0.4),
                 ),
               ),
-              if (active) ...[
-                const SizedBox(width: 6),
-                Flexible(
-                  child: Text(
-                    item.label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w800,
-                      color: item.activeColor,
-                      letterSpacing: 0.2,
-                    ),
-                  ),
+              const SizedBox(height: 4),
+              Text(
+                item.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: active ? FontWeight.w800 : FontWeight.w600,
+                  color: active
+                      ? item.activeColor
+                      : AppTheme.textSecondary.withValues(alpha: 0.4),
+                  letterSpacing: 0.2,
                 ),
-              ]
+              ),
             ],
           ),
         ),

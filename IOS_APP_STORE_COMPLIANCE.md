@@ -2,7 +2,7 @@
 
 ## App Information
 - **App Name:** OruShops
-- **Bundle ID:** com.orushops.retaildost
+- **Bundle ID:** com.orushops.orushops
 - **Version:** 1.0.0
 - **Category:** Business
 - **Target iOS Version:** 14.0 or later

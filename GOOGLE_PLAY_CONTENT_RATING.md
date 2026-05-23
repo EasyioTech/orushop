@@ -2,7 +2,7 @@
 
 ## App Information
 - **App Name:** OruShops
-- **Package Name:** com.orushops.retaildost
+- **Package Name:** com.orushops.orushops
 - **Category:** Business/Productivity (POS System)
 - **Target Age:** 12+
 

@@ -18,7 +18,7 @@ storeFile=app/orushops-release.jks
 ## Building Release APK
 The build process automatically reads credentials from `key.properties`. Just run:
 ```bash
-cd retaildost
+cd orushops
 flutter build apk --release
 ```
 

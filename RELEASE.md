@@ -1,4 +1,4 @@
-# RetailDost — Release Checklist
+# OruShops — Release Checklist
 
 ## 1. Bump version
 Edit `pubspec.yaml`:
@@ -69,7 +69,7 @@ SHA-256 cert fingerprint: `36:CF:04:63:C9:39:43:80:11:81:46:66:EF:DB:EE:E5:54:FE
 ---
 
 ## 6. Play Store upload
-1. Go to Play Console → RetailDost → Production (or Internal for testing)
+1. Go to Play Console → OruShops → Production (or Internal for testing)
 2. Create new release → Upload `app-release.aab`
 3. Fill release notes
 4. Review → Roll out

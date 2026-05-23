@@ -195,11 +195,13 @@ class _OnboardingScreen9State extends State<OnboardingScreen9>
             ),
 
             // Content
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
+            SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
                   Row(
                     mainAxisAlignment: MainAxisAlignment.start,
                     children: [
@@ -415,6 +417,7 @@ class _OnboardingScreen9State extends State<OnboardingScreen9>
                   const SizedBox(height: 24),
                 ],
               ),
+            ),
             ),
           ],
         ),

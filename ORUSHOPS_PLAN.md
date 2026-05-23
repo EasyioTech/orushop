@@ -1,4 +1,4 @@
-# RetailDost — Modernization & Stabilization Plan
+# OruShops — Modernization & Stabilization Plan
 
 > **Rule:** This file is the single source of truth for all architectural and performance work.
 > Update status inline as work completes. Never delete completed items — mark them ✅.

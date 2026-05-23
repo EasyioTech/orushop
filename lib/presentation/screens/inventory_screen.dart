@@ -40,6 +40,8 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> with SingleTi
   String _selectedCategory = 'All';
   String _selectedSubcategory = 'All';
 
+
+
   @override
   void initState() {
     super.initState();
@@ -100,35 +102,35 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> with SingleTi
       backgroundColor: AppTheme.backgroundColor,
       // Removed standard AppBar to use Custom Branded Header
       floatingActionButton: Padding(
-        padding: EdgeInsets.only(bottom: 90.0 + MediaQuery.of(context).padding.bottom),
+        padding: EdgeInsets.only(bottom: 50.0 + MediaQuery.of(context).padding.bottom),
         child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: (_tabController.index == 0 ? AppTheme.primaryColor : Colors.teal.shade600).withValues(alpha: 0.3),
-                blurRadius: 15,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
-          child: FloatingActionButton.extended(
-            heroTag: 'inventory_add_fab',
-            onPressed: _tabController.index == 0 ? _navigateToCreateProduct : _navigateToCreateService,
-            label: Text(
-              _tabController.index == 0 ? 'Add Product' : 'Add Service',
-              style: const TextStyle(fontWeight: FontWeight.bold, letterSpacing: 0.5),
-            ),
-            icon: Icon(_tabController.index == 0 ? Icons.add_business_rounded : Icons.home_repair_service_rounded, size: 24),
-            backgroundColor: _tabController.index == 0 ? AppTheme.primaryColor : Colors.teal.shade600,
-            foregroundColor: Colors.white,
-            elevation: 0,
-            shape: RoundedRectangleBorder(
+            decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: (_tabController.index == 0 ? AppTheme.primaryColor : Colors.teal.shade600).withValues(alpha: 0.3),
+                  blurRadius: 15,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: FloatingActionButton.extended(
+              heroTag: 'inventory_add_fab',
+              onPressed: _tabController.index == 0 ? _navigateToCreateProduct : _navigateToCreateService,
+              label: Text(
+                _tabController.index == 0 ? 'Add Product' : 'Add Service',
+                style: const TextStyle(fontWeight: FontWeight.bold, letterSpacing: 0.5),
+              ),
+              icon: Icon(_tabController.index == 0 ? Icons.add_business_rounded : Icons.home_repair_service_rounded, size: 24),
+              backgroundColor: _tabController.index == 0 ? AppTheme.primaryColor : Colors.teal.shade600,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
             ),
           ),
         ),
-      ),
       body: productsAsync.when(
         data: (products) {
           final filtered = products

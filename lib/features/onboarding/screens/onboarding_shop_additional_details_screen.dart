@@ -66,7 +66,11 @@ class _OnboardingShopAdditionalDetailsScreenState extends ConsumerState<Onboardi
       otherDetails: _notesCtrl.text.isEmpty ? null : _notesCtrl.text,
       hasSelectedShopType: true,
     );
-    widget.onNext();
+    FocusScope.of(context).unfocus();
+    SystemChannels.textInput.invokeMethod('TextInput.hide');
+    Future.delayed(const Duration(milliseconds: 150), () {
+      if (mounted) widget.onNext();
+    });
   }
 
   IconData _getShopIcon(ShopType type) {

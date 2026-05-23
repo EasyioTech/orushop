@@ -99,7 +99,11 @@ class _OnboardingShopBasicDetailsScreenState extends ConsumerState<OnboardingSho
         shopAddress: _addressCtrl.text,
         referralCode: _referralCodeCtrl.text.trim().isEmpty ? null : _referralCodeCtrl.text.trim(),
       );
-      widget.onNext();
+      FocusScope.of(context).unfocus();
+      SystemChannels.textInput.invokeMethod('TextInput.hide');
+      Future.delayed(const Duration(milliseconds: 150), () {
+        if (mounted) widget.onNext();
+      });
     }
   }
 
