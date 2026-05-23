@@ -58,7 +58,6 @@ class ProductCrudService {
     String? imei,
   }) async {
     if (quantity <= 0) throw ArgumentError('Quantity must be greater than 0');
-    if (costPrice <= 0) throw ArgumentError('Cost price must be greater than 0');
 
     // Variant-matrix products hold their stock per size/color combo in
     // product_variants. Adding bulk stock to the parent here would create a

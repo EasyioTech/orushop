@@ -6,12 +6,14 @@ import 'shared_prefs_provider.dart';
 import '../core/models/cart_item.dart';
 import '../core/services/cart_service.dart';
 
-class CartStateNotifier extends StateNotifier<List<CartItem>> {
-  final CartService _cartService;
-  final SharedPreferences _prefs;
+class CartStateNotifier extends Notifier<List<CartItem>> {
+  CartService get _cartService => ref.read(cartServiceProvider);
+  SharedPreferences get _prefs => ref.read(sharedPreferencesProvider);
 
-  CartStateNotifier(this._cartService, this._prefs) : super([]) {
-    _loadCart();
+  @override
+  List<CartItem> build() {
+    Future.microtask(_loadCart);
+    return [];
   }
 
   Future<void> _loadCart() async {
@@ -69,12 +71,8 @@ final cartServiceProvider = Provider((ref) => CartService());
 
 // Centralized sharedPreferencesProvider is now in shared_prefs_provider.dart
 
-final cartProvider = StateNotifierProvider<CartStateNotifier, List<CartItem>>(
-  (ref) {
-    final cartService = ref.watch(cartServiceProvider);
-    final prefs = ref.watch(sharedPreferencesProvider);
-    return CartStateNotifier(cartService, prefs);
-  },
+final cartProvider = NotifierProvider<CartStateNotifier, List<CartItem>>(
+  CartStateNotifier.new,
 );
 
 final cartSubtotalProvider = Provider<double>((ref) {

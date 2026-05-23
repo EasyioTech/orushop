@@ -43,11 +43,13 @@ class KhataListState {
       );
 }
 
-class KhataListNotifier extends StateNotifier<KhataListState> {
-  final KhataRepository _repo;
+class KhataListNotifier extends Notifier<KhataListState> {
+  KhataRepository get _repo => ref.read(khataRepositoryProvider);
 
-  KhataListNotifier(this._repo) : super(const KhataListState()) {
-    load();
+  @override
+  KhataListState build() {
+    Future.microtask(load);
+    return const KhataListState();
   }
 
   Future<void> load({String? search}) async {
@@ -116,10 +118,9 @@ class KhataListNotifier extends StateNotifier<KhataListState> {
   }
 }
 
-final khataListProvider = StateNotifierProvider<KhataListNotifier, KhataListState>((ref) {
-  final repo = ref.watch(khataRepositoryProvider);
-  return KhataListNotifier(repo);
-});
+final khataListProvider = NotifierProvider<KhataListNotifier, KhataListState>(
+  KhataListNotifier.new,
+);
 
 // ── Customer detail (ledger) state ────────────────────────────────────────────
 
@@ -150,19 +151,20 @@ class KhataDetailState {
       );
 }
 
-class KhataDetailNotifier extends StateNotifier<KhataDetailState> {
-  final KhataRepository _repo;
-  final int customerId;
+class KhataDetailNotifier extends FamilyNotifier<KhataDetailState, int> {
+  KhataRepository get _repo => ref.read(khataRepositoryProvider);
 
-  KhataDetailNotifier(this._repo, this.customerId) : super(const KhataDetailState()) {
-    load();
+  @override
+  KhataDetailState build(int arg) {
+    Future.microtask(load);
+    return const KhataDetailState();
   }
 
   Future<void> load() async {
     state = state.copyWith(isLoading: true, error: null);
     try {
-      final customer = await _repo.getCustomerById(customerId);
-      final ledger = await _repo.getLedgerForCustomer(customerId);
+      final customer = await _repo.getCustomerById(arg);
+      final ledger = await _repo.getLedgerForCustomer(arg);
       state = state.copyWith(customer: customer, ledger: ledger, isLoading: false);
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
@@ -176,7 +178,7 @@ class KhataDetailNotifier extends StateNotifier<KhataDetailState> {
   }) async {
     try {
       await _repo.addEntry(
-        customerId: customerId,
+        customerId: arg,
         type: type,
         amount: amount,
         description: description,
@@ -196,7 +198,7 @@ class KhataDetailNotifier extends StateNotifier<KhataDetailState> {
   }) async {
     try {
       await _repo.recordPayment(
-        customerId: customerId,
+        customerId: arg,
         amount: amount,
         paymentMethod: paymentMethod,
         notes: notes,
@@ -210,9 +212,6 @@ class KhataDetailNotifier extends StateNotifier<KhataDetailState> {
   }
 }
 
-final khataDetailProvider = StateNotifierProvider.family<KhataDetailNotifier, KhataDetailState, int>(
-  (ref, customerId) {
-    final repo = ref.watch(khataRepositoryProvider);
-    return KhataDetailNotifier(repo, customerId);
-  },
+final khataDetailProvider = NotifierProvider.family<KhataDetailNotifier, KhataDetailState, int>(
+  KhataDetailNotifier.new,
 );

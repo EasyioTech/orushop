@@ -142,18 +142,12 @@ class _InventoryItemCardState extends ConsumerState<_InventoryItemCard> {
                 color: AppTheme.primaryColor,
               ),
               title: const Text('Edit Product'),
-              onTap: () {
+              onTap: () async {
                 Navigator.pop(ctx);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => EditProductScreen(product: widget.product),
-                  ),
-                ).then((_) {
-                  ref.invalidate(productsProvider);
-                  ref.invalidate(paginatedProductsProvider);
-                  ref.invalidate(expiredBatchesProvider);
-                });
+                await context.push('/stock/edit', extra: widget.product);
+                ref.invalidate(productsProvider);
+                ref.invalidate(paginatedProductsProvider);
+                ref.invalidate(expiredBatchesProvider);
               },
             ),
             ListTile(
@@ -239,12 +233,11 @@ class _InventoryItemPill extends ConsumerStatefulWidget {
 
 class _InventoryItemPillState extends ConsumerState<_InventoryItemPill> {
   void _openEdit() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => EditProductScreen(product: widget.product),
-      ),
-    );
+    if (widget.product.isService) {
+      context.push('/stock/service/${widget.product.id}');
+    } else {
+      context.push('/stock/edit', extra: widget.product);
+    }
   }
 
   void _showProductMenu(BuildContext context, WidgetRef ref) {
@@ -257,47 +250,84 @@ class _InventoryItemPillState extends ConsumerState<_InventoryItemPill> {
         padding: const EdgeInsets.symmetric(vertical: 24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.add_box_rounded, color: AppTheme.primaryColor),
-              title: const Text('Add Stock', style: TextStyle(fontWeight: FontWeight.bold)),
-              onTap: () {
-                Navigator.pop(context);
-                widget.onAddStock();
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.edit_rounded, color: AppTheme.primaryColor),
-              title: const Text('Edit Product', style: TextStyle(fontWeight: FontWeight.bold)),
-              onTap: () {
-                Navigator.pop(context);
-                _openEdit();
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.delete_outline_rounded, color: AppTheme.errorColor),
-              title: const Text('Delete Product', style: TextStyle(color: AppTheme.errorColor, fontWeight: FontWeight.bold)),
-              onTap: () async {
-                final confirm = await showDialog<bool>(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    title: const Text('Delete Product?'),
-                    content: const Text('This action cannot be undone.'),
-                    actions: [
-                      TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-                      TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete', style: TextStyle(color: AppTheme.errorColor))),
-                    ],
+          children: widget.product.isService
+              ? [
+                  ListTile(
+                    leading: const Icon(Icons.edit_rounded, color: Colors.teal),
+                    title: const Text('Edit Service', style: TextStyle(fontWeight: FontWeight.bold)),
+                    onTap: () {
+                      Navigator.pop(context);
+                      context.push('/stock/edit-service', extra: widget.product);
+                    },
                   ),
-                );
+                  ListTile(
+                    leading: const Icon(Icons.delete_outline_rounded, color: AppTheme.errorColor),
+                    title: const Text('Delete Service', style: TextStyle(color: AppTheme.errorColor, fontWeight: FontWeight.bold)),
+                    onTap: () async {
+                      final confirm = await showDialog<bool>(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: const Text('Delete Service?'),
+                          content: const Text('This action cannot be undone.'),
+                          actions: [
+                            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+                            TextButton(
+                              onPressed: () => Navigator.pop(context, true),
+                              child: const Text('Delete', style: TextStyle(color: AppTheme.errorColor)),
+                            ),
+                          ],
+                        ),
+                      );
 
-                if (confirm == true) {
-                  await ProductCrudService().deleteProduct(widget.product.id);
-                  ref.invalidate(productsProvider);
-                  if (context.mounted) Navigator.pop(context);
-                }
-              },
-            ),
-          ],
+                      if (confirm == true) {
+                        await ProductCrudService().deleteProduct(widget.product.id);
+                        ref.invalidate(productsProvider);
+                        if (context.mounted) Navigator.pop(context);
+                      }
+                    },
+                  ),
+                ]
+              : [
+                  ListTile(
+                    leading: const Icon(Icons.add_box_rounded, color: AppTheme.primaryColor),
+                    title: const Text('Add Stock', style: TextStyle(fontWeight: FontWeight.bold)),
+                    onTap: () {
+                      Navigator.pop(context);
+                      widget.onAddStock();
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.edit_rounded, color: AppTheme.primaryColor),
+                    title: const Text('Edit Product', style: TextStyle(fontWeight: FontWeight.bold)),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _openEdit();
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.delete_outline_rounded, color: AppTheme.errorColor),
+                    title: const Text('Delete Product', style: TextStyle(color: AppTheme.errorColor, fontWeight: FontWeight.bold)),
+                    onTap: () async {
+                      final confirm = await showDialog<bool>(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: const Text('Delete Product?'),
+                          content: const Text('This action cannot be undone.'),
+                          actions: [
+                            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+                            TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete', style: TextStyle(color: AppTheme.errorColor))),
+                          ],
+                        ),
+                      );
+
+                      if (confirm == true) {
+                        await ProductCrudService().deleteProduct(widget.product.id);
+                        ref.invalidate(productsProvider);
+                        if (context.mounted) Navigator.pop(context);
+                      }
+                    },
+                  ),
+                ],
         ),
       ),
     );
@@ -305,17 +335,23 @@ class _InventoryItemPillState extends ConsumerState<_InventoryItemPill> {
 
   @override
   Widget build(BuildContext context) {
-    final bool isLowStock = widget.product.quantity < 10;
-    final bool isOutOfStock = widget.product.quantity == 0;
+    final bool isService = widget.product.isService;
+    final bool isLowStock = !isService && widget.product.quantity < 10;
+    final bool isOutOfStock = !isService && widget.product.quantity == 0;
     
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppTheme.slate200, width: 1.5),
+        border: Border.all(
+          color: isService ? Colors.teal.withValues(alpha: 0.2) : AppTheme.slate200,
+          width: 1.5,
+        ),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.slate900.withValues(alpha: 0.04),
+            color: isService
+                ? Colors.teal.withValues(alpha: 0.04)
+                : AppTheme.slate900.withValues(alpha: 0.04),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -379,38 +415,66 @@ class _InventoryItemPillState extends ConsumerState<_InventoryItemPill> {
                       const SizedBox(height: 4),
                       Row(
                         children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: isOutOfStock 
-                                ? AppTheme.errorColor.withValues(alpha: 0.1)
-                                : (isLowStock ? AppTheme.warningColor.withValues(alpha: 0.1) : AppTheme.successColor.withValues(alpha: 0.1)),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  isOutOfStock ? Icons.error_outline_rounded : Icons.inventory_2_outlined,
-                                  size: 10,
-                                  color: isOutOfStock 
-                                    ? AppTheme.errorColor 
-                                    : (isLowStock ? AppTheme.warningColor : AppTheme.successColor),
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  '${widget.product.quantity.toInt()} left',
-                                  style: TextStyle(
+                          if (isService)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.teal.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.schedule_rounded,
+                                    size: 10,
+                                    color: Colors.teal.shade700,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '${widget.product.serviceDuration ?? 30} min',
+                                    style: TextStyle(
+                                      color: Colors.teal.shade700,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          else
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: isOutOfStock 
+                                  ? AppTheme.errorColor.withValues(alpha: 0.1)
+                                  : (isLowStock ? AppTheme.warningColor.withValues(alpha: 0.1) : AppTheme.successColor.withValues(alpha: 0.1)),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    isOutOfStock ? Icons.error_outline_rounded : Icons.inventory_2_outlined,
+                                    size: 10,
                                     color: isOutOfStock 
                                       ? AppTheme.errorColor 
                                       : (isLowStock ? AppTheme.warningColor : AppTheme.successColor),
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w900,
                                   ),
-                                ),
-                              ],
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '${widget.product.quantity.toInt()} left',
+                                    style: TextStyle(
+                                      color: isOutOfStock 
+                                        ? AppTheme.errorColor 
+                                        : (isLowStock ? AppTheme.warningColor : AppTheme.successColor),
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
                           const SizedBox(width: 6),
                           Text(
                             '₹${widget.product.price}',
@@ -436,9 +500,11 @@ class _InventoryItemPillState extends ConsumerState<_InventoryItemPill> {
   Widget _buildPlaceholderIcon() {
     return Center(
       child: Icon(
-        Icons.inventory_2_rounded,
+        widget.product.isService ? Icons.schedule_rounded : Icons.inventory_2_rounded,
         size: 20,
-        color: AppTheme.textSecondary.withValues(alpha: 0.3),
+        color: widget.product.isService 
+            ? Colors.teal.shade400
+            : AppTheme.textSecondary.withValues(alpha: 0.3),
       ),
     );
   }

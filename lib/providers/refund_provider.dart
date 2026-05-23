@@ -3,10 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/models/refund.dart';
 import '../core/repositories/refund_repository.dart';
 
-class RefundNotifier extends StateNotifier<Map<String, dynamic>?> {
-  final RefundRepository _refundRepository;
+class RefundNotifier extends Notifier<Map<String, dynamic>?> {
+  RefundRepository get _refundRepository => ref.read(refundRepositoryProvider);
 
-  RefundNotifier(this._refundRepository) : super(null);
+  @override
+  Map<String, dynamic>? build() {
+    return null;
+  }
 
   Future<Map<String, dynamic>?> createRefund({
     required int saleId,
@@ -76,11 +79,8 @@ class RefundNotifier extends StateNotifier<Map<String, dynamic>?> {
 
 final refundRepositoryProvider = Provider((ref) => RefundRepository());
 
-final refundProvider = StateNotifierProvider<RefundNotifier, Map<String, dynamic>?>(
-  (ref) {
-    final refundRepository = ref.watch(refundRepositoryProvider);
-    return RefundNotifier(refundRepository);
-  },
+final refundProvider = NotifierProvider<RefundNotifier, Map<String, dynamic>?>(
+  RefundNotifier.new,
 );
 
 final refundListProvider = FutureProvider<List<Refund>>((ref) async {

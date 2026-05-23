@@ -444,6 +444,28 @@ extension _ReceiptScreenHelpers on _ReceiptScreenState {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          if (_autoSending) ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              margin: const EdgeInsets.only(bottom: 10),
+              decoration: BoxDecoration(
+                color: const Color(0xFF25D366).withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFF25D366).withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                children: [
+                  const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF25D366))),
+                  const SizedBox(width: 10),
+                  Text(
+                    'Sending receipt to ${widget.sale.customerPhone}…',
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF25D366)),
+                  ),
+                ],
+              ),
+            ),
+          ],
           // --- PRIMARY ACTIONS: WhatsApp & Send SMS ---
           Row(
             children: [

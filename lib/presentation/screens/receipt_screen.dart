@@ -38,6 +38,7 @@ class ReceiptScreen extends StatefulWidget {
 class _ReceiptScreenState extends State<ReceiptScreen> {
   late final ReceiptActionService _actionService;
   String? _processingAction;
+  bool _autoSending = false;
   // Key used to capture the receipt widget as a JPEG image (like Paytm)
   final GlobalKey _receiptKey = GlobalKey();
 
@@ -45,6 +46,30 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
   void initState() {
     super.initState();
     _actionService = ReceiptActionService(ReceiptService());
+
+    final phone = widget.sale.customerPhone;
+    if (phone != null && phone.isNotEmpty) {
+      // Auto-send receipt to customer via WhatsApp after receipt renders
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        await Future.delayed(const Duration(milliseconds: 800));
+        if (!mounted) return;
+        setState(() => _autoSending = true);
+        try {
+          final Uint8List? imageBytes = await _captureReceiptAsJpeg();
+          await _actionService.shareToWhatsApp(
+            sale: widget.sale,
+            items: widget.items,
+            storeName: widget.storeName ?? 'OruShops',
+            customerPhone: phone,
+            receiptImageBytes: imageBytes,
+          );
+        } catch (_) {
+          // Silent fail — user can retry manually
+        } finally {
+          if (mounted) setState(() => _autoSending = false);
+        }
+      });
+    }
   }
 
   Future<void> _handleAction(String action, Future<void> Function() callback) async {
@@ -65,26 +90,22 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
     }
   }
 
-  /// Captures the receipt widget as a high-quality JPEG image.
-  /// pixelRatio 4.0 → 4x resolution so it looks crisp on any phone screen.
+  /// Captures the receipt widget as a PNG image.
   Future<Uint8List?> _captureReceiptAsJpeg() async {
+    // Wait for the current frame to fully paint before capturing.
+    // debugNeedsPaint always returns false in release mode so we cannot rely on it.
+    await WidgetsBinding.instance.endOfFrame;
+
     Object? lastError;
     for (int i = 0; i < 5; i++) {
       try {
         final RenderRepaintBoundary? boundary =
             _receiptKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
         if (boundary == null) {
-          await Future.delayed(const Duration(milliseconds: 50));
-          continue;
-        }
-        // Wait a frame if the widget is still rendering
-        if (boundary.debugNeedsPaint) {
           await Future.delayed(const Duration(milliseconds: 100));
           continue;
         }
-        // Reduce pixelRatio from 4.0 to 2.5 to avoid layout, dimension or memory allocation exceptions on standard devices
         final ui.Image image = await boundary.toImage(pixelRatio: 2.5);
-        // For simplicity we use PNG bytes — WhatsApp recompresses on send anyway
         final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
         image.dispose();
         if (byteData != null) {
@@ -93,12 +114,10 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
       } catch (e) {
         lastError = e;
         if (kDebugMode) print('Capture attempt $i failed: $e');
-        await Future.delayed(const Duration(milliseconds: 100));
+        await Future.delayed(const Duration(milliseconds: 150));
       }
     }
-    if (lastError != null) {
-      throw Exception('Capture failed: $lastError');
-    }
+    if (lastError != null) throw Exception('Capture failed: $lastError');
     return null;
   }
 
@@ -120,6 +139,7 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
       await _actionService.shareReceiptImage(
         widget.sale,
         imageBytes,
+        customerPhone: widget.sale.customerPhone,
       );
     });
   }
@@ -135,14 +155,15 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
 
   void _shareToWhatsApp() {
     _handleAction('whatsapp', () async {
-      // Capture the receipt widget as an image first
       final Uint8List? imageBytes = await _captureReceiptAsJpeg();
-      if (imageBytes == null) throw Exception('Could not capture receipt image');
+      // Even if imageBytes is null, we can still fall back to text,
+      // but ideally it's captured successfully.
       await _actionService.shareToWhatsApp(
         sale: widget.sale,
+        items: widget.items,
         storeName: widget.storeName ?? 'OruShops',
-        receiptImageBytes: imageBytes,
         customerPhone: widget.sale.customerPhone,
+        receiptImageBytes: imageBytes,
       );
     });
   }

@@ -8,7 +8,7 @@ final List<ShopCategory> _groceryCategories = [
         productFields: ProductFieldConfig(
           hasExpiryDate: true, hasMrp: true, hasHsnCode: true, hasTaxRate: true,
           hasBrand: true, hasUnit: true,
-          defaultUnit: 'Kg', unitOptions: ['Kg', 'Gram', 'Pack', 'Bag'],
+          defaultUnit: 'Kg', unitOptions: ['Kg', 'Gram', 'Bag', 'Pack', 'Piece'],
           defaultTaxRate: 0.0,
           isLoose: true, template: ProductTemplate.bulkUom,
         ),

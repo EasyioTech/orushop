@@ -36,11 +36,13 @@ class CheckoutState {
   }
 }
 
-class CheckoutNotifier extends StateNotifier<CheckoutState> {
-  final SaleRepository _saleRepository;
-  final Ref _ref;
+class CheckoutNotifier extends Notifier<CheckoutState> {
+  SaleRepository get _saleRepository => ref.read(saleRepositoryProvider);
 
-  CheckoutNotifier(this._saleRepository, this._ref) : super(CheckoutState());
+  @override
+  CheckoutState build() {
+    return CheckoutState();
+  }
 
   Future<Map<String, dynamic>?> saveSale({
     required List<CartItem> items,
@@ -59,7 +61,7 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
       state = state.copyWith(isLoading: true, error: null);
 
       // Get or create customer if phone is provided
-      final customerRepository = _ref.read(customerRepositoryProvider);
+      final customerRepository = ref.read(customerRepositoryProvider);
       int? customerId;
       if (customerPhone != null && customerPhone.isNotEmpty) {
         final customer = await customerRepository.getOrCreateByPhone(
@@ -96,7 +98,7 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
 
       // ── Khata Integration ──────────────────────────────────────────────────
       if (paymentMethod == 'Khata' && customerPhone != null) {
-        final khataRepo = _ref.read(khataRepositoryProvider);
+        final khataRepo = ref.read(khataRepositoryProvider);
         var customer = await khataRepo.getCustomerByPhone(customerPhone);
         
         int customerId;
@@ -141,7 +143,7 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
         }
         
         // Refresh khata state
-        _ref.invalidate(khataListProvider);
+        ref.invalidate(khataListProvider);
       }
 
       // Build productId → quantitySold map from the committed sale items
@@ -152,11 +154,11 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
       }
 
       // Surgical in-place stock decrement — no full reload, no empty-screen flash
-      _ref.read(paginatedProductsProvider.notifier).decrementStock(soldItems);
+      ref.read(paginatedProductsProvider.notifier).decrementStock(soldItems);
 
       // Increment revision to trigger global refresh of all analytics-dependent providers
       debugPrint('Checkout: Syncing analytics revision...');
-      _ref.read(analyticsRevisionProvider.notifier).state++;
+      ref.read(analyticsRevisionProvider.notifier).state++;
 
       final checkoutResult = {
         'sale': result['sale'],
@@ -185,9 +187,6 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
   }
 }
 
-final checkoutProvider = StateNotifierProvider<CheckoutNotifier, CheckoutState>(
-  (ref) {
-    final saleRepository = ref.watch(saleRepositoryProvider);
-    return CheckoutNotifier(saleRepository, ref);
-  },
+final checkoutProvider = NotifierProvider<CheckoutNotifier, CheckoutState>(
+  CheckoutNotifier.new,
 );

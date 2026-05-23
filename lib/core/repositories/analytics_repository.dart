@@ -145,15 +145,17 @@ class AnalyticsRepository {
 
     final saleRow = saleResult.first;
     final itemsResult = await db.rawQuery(
-      'SELECT si.productName, si.quantity, si.unitPrice FROM sale_items si '
+      'SELECT p.name AS productName, si.quantity, si.unitPrice '
+      'FROM sale_items si '
+      'LEFT JOIN products p ON p.id = si.productId '
       'WHERE si.saleId = ?',
       [saleId],
     );
 
     final items = itemsResult
         .map((row) => SaleDetailItem(
-              productName: row['productName'] as String,
-              quantity: (row['quantity'] as int?) ?? 0,
+              productName: (row['productName'] as String?) ?? 'Unknown',
+              quantity: (row['quantity'] as num?)?.toInt() ?? 0,
               unitPrice: (row['unitPrice'] as num).toDouble(),
             ))
         .toList();

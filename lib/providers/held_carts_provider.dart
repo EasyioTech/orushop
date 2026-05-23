@@ -31,9 +31,11 @@ class HeldCart {
       );
 }
 
-class HeldCartsNotifier extends StateNotifier<List<HeldCart>> {
-  HeldCartsNotifier() : super([]) {
-    _load();
+class HeldCartsNotifier extends Notifier<List<HeldCart>> {
+  @override
+  List<HeldCart> build() {
+    Future.microtask(_load);
+    return [];
   }
 
   Future<void> _load() async {
@@ -82,6 +84,4 @@ class HeldCartsNotifier extends StateNotifier<List<HeldCart>> {
 }
 
 final heldCartsProvider =
-    StateNotifierProvider<HeldCartsNotifier, List<HeldCart>>((ref) {
-  return HeldCartsNotifier();
-});
+    NotifierProvider<HeldCartsNotifier, List<HeldCart>>(HeldCartsNotifier.new);

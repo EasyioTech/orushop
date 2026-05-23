@@ -2,38 +2,38 @@
 part of '../edit_product_screen.dart';
 
 extension _EditProductHelpers on _EditProductScreenState {
-  Widget _stockCard(double stock, bool outOfStock, bool lowStock) {
-    final color = outOfStock ? AppTheme.errorColor : lowStock ? AppTheme.warningColor : AppTheme.primaryColor;
+  Widget _stockStatusCard(double stock, bool outOfStock, bool lowStock) {
+    final color = outOfStock ? AppTheme.errorColor : lowStock ? AppTheme.warningColor : AppTheme.successColor;
     final msg = outOfStock
         ? 'Out of stock — add stock now'
         : lowStock
             ? 'Low stock — add more soon'
-            : 'Stock is good';
+            : 'In stock';
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: AppTheme.primaryDark.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 4))],
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
       ),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(14)),
-            child: Icon(Icons.inventory_2_outlined, color: color, size: 28),
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
+            child: Icon(Icons.inventory_2_outlined, color: color, size: 24),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   '${stock % 1 == 0 ? stock.toInt() : stock.toStringAsFixed(2)} items',
-                  style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: AppTheme.textPrimary),
+                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: AppTheme.textPrimary),
                 ),
-                Text(msg, style: TextStyle(fontSize: 13, color: color, fontWeight: FontWeight.w600)),
+                Text(msg, style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w600)),
               ],
             ),
           ),
@@ -42,18 +42,88 @@ extension _EditProductHelpers on _EditProductScreenState {
     );
   }
 
-  Widget _unitDropdown() {
-    final options = _selectedCategory?.productFields.unitOptions ?? ['Piece'];
+  Widget _sectionCard({required String title, required Widget child}) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(color: AppTheme.backgroundColor, borderRadius: BorderRadius.circular(16)),
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFEEEEEE)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: AppTheme.textPrimary)),
+          const SizedBox(height: 14),
+          child,
+        ],
+      ),
+    );
+  }
+
+  Widget _dropdown<T>({
+    required T? value,
+    required List<T> items,
+    required String Function(T) label,
+    required ValueChanged<T?> onChanged,
+    required String hint,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF4F6FA),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
       child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: options.contains(_selectedUnit) ? _selectedUnit : options.first,
+        child: DropdownButton<T>(
+          value: value,
           isExpanded: true,
-          items: options.map((u) => DropdownMenuItem(value: u, child: Text(u, style: const TextStyle(fontWeight: FontWeight.w600)))).toList(),
-          onChanged: (val) { if (val != null) setState(() => _selectedUnit = val); },
+          hint: Text(hint, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 15)),
+          items: items
+              .map((item) => DropdownMenuItem<T>(
+                    value: item,
+                    child: Text(label(item), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                  ))
+              .toList(),
+          onChanged: onChanged,
+          icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppTheme.textSecondary),
         ),
+      ),
+    );
+  }
+
+  Widget _priceField({
+    required TextEditingController controller,
+    required String hint,
+    required Color color,
+    required IconData icon,
+  }) {
+    return TextField(
+      controller: controller,
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: color),
+      decoration: InputDecoration(
+        hintText: hint,
+        prefixText: '₹ ',
+        prefixStyle: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: color),
+        prefixIcon: Icon(icon, size: 18, color: color),
+        filled: true,
+        fillColor: color.withValues(alpha: 0.06),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: color.withValues(alpha: 0.3)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: color.withValues(alpha: 0.2)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: color, width: 1.5),
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
       ),
     );
   }
@@ -61,7 +131,7 @@ extension _EditProductHelpers on _EditProductScreenState {
   Widget _label(String text) {
     return Text(
       text,
-      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppTheme.textPrimary),
+      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppTheme.textPrimary),
     );
   }
 
@@ -74,15 +144,15 @@ extension _EditProductHelpers on _EditProductScreenState {
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: AppTheme.backgroundColor,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: value ? AppTheme.primaryColor.withValues(alpha: 0.4) : AppTheme.slate200),
+        color: const Color(0xFFF4F6FA),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: value ? AppTheme.primaryColor.withValues(alpha: 0.4) : const Color(0xFFE2E8F0)),
       ),
       child: SwitchListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        secondary: Icon(icon, color: value ? AppTheme.primaryColor : AppTheme.slate400, size: 22),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+        secondary: Icon(icon, color: value ? AppTheme.primaryColor : AppTheme.slate400, size: 20),
         title: Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
-        subtitle: Text(subtitle, style: TextStyle(fontSize: 12, color: AppTheme.slate600)),
+        subtitle: Text(subtitle, style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
         value: value,
         onChanged: onChanged,
         activeThumbColor: AppTheme.primaryColor,
@@ -100,16 +170,19 @@ extension _EditProductHelpers on _EditProductScreenState {
     return TextField(
       controller: controller,
       keyboardType: keyboard,
-      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
       decoration: InputDecoration(
         hintText: hint,
         prefixText: prefix,
-        prefixStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
-        prefixIcon: Icon(icon, size: 20, color: AppTheme.primaryColor),
+        prefixStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+        prefixIcon: Icon(icon, size: 18, color: AppTheme.primaryColor),
         filled: true,
-        fillColor: AppTheme.backgroundColor,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        fillColor: const Color(0xFFF4F6FA),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       ),
     );
   }

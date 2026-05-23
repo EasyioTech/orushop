@@ -2,10 +2,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import '../core/services/revenue_cat_service.dart';
 
-final paywallProvider = StateNotifierProvider<PaywallNotifier, PaywallState>((ref) {
-  final service = ref.watch(revenueCatServiceProvider);
-  return PaywallNotifier(service);
-});
+final paywallProvider = NotifierProvider<PaywallNotifier, PaywallState>(
+  PaywallNotifier.new,
+);
 
 class PaywallState {
   final bool isLoading;
@@ -35,10 +34,13 @@ class PaywallState {
   }
 }
 
-class PaywallNotifier extends StateNotifier<PaywallState> {
-  final RevenueCatService _service;
+class PaywallNotifier extends Notifier<PaywallState> {
+  RevenueCatService get _service => ref.read(revenueCatServiceProvider);
 
-  PaywallNotifier(this._service) : super(PaywallState());
+  @override
+  PaywallState build() {
+    return PaywallState();
+  }
 
   Future<bool> purchasePackage(Package package) async {
     state = state.copyWith(isPurchasing: true, error: null);

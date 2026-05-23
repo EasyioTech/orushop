@@ -60,7 +60,7 @@ final List<ShopCategory> _clothingCategories = [
         productFields: ProductFieldConfig(
           hasMrp: true, hasHsnCode: true, hasTaxRate: true, hasBrand: true,
           hasSizeVariant: true, hasColorVariant: true,
-          defaultUnit: 'Piece', unitOptions: ['Piece'],
+          defaultUnit: 'Piece', unitOptions: ['Piece', 'Set', 'Pair'],
           defaultTaxRate: 5.0,
           sizeOptions: ['S', 'M', 'L', 'XL', 'XXL', 'Free Size'],
           template: ProductTemplate.variantMatrix,

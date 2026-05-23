@@ -282,6 +282,7 @@ class ShopDetails {
   final String? otherDetails;
   final List<String> productCategories;
   final ShopFeatures features;
+  final String? referralCode;
 
   ShopDetails({
     required this.shopName,
@@ -293,6 +294,7 @@ class ShopDetails {
     this.otherDetails,
     required this.productCategories,
     required this.features,
+    this.referralCode,
   });
 
   static const _sentinel = Object();
@@ -307,6 +309,7 @@ class ShopDetails {
     Object? otherDetails = _sentinel,
     List<String>? productCategories,
     ShopFeatures? features,
+    Object? referralCode = _sentinel,
   }) {
     return ShopDetails(
       shopName: shopName ?? this.shopName,
@@ -318,6 +321,7 @@ class ShopDetails {
       otherDetails: otherDetails == _sentinel ? this.otherDetails : otherDetails as String?,
       productCategories: productCategories ?? this.productCategories,
       features: features ?? this.features,
+      referralCode: referralCode == _sentinel ? this.referralCode : referralCode as String?,
     );
   }
 
@@ -332,7 +336,38 @@ class ShopDetails {
       'otherDetails': otherDetails,
       'productCategories': productCategories,
       'features': features.toMap(),
+      'referralCode': referralCode,
     };
+  }
+
+  factory ShopDetails.fromMap(Map<String, dynamic> map) {
+    final typeName = map['shopType'] as String?;
+    final shopType = ShopType.values.firstWhere(
+      (e) => e.name == typeName,
+      orElse: () => ShopType.other,
+    );
+    
+    final featuresMap = map['features'] as Map<String, dynamic>? ?? {};
+    final features = ShopFeatures(
+      expiryDateTracking: featuresMap['expiryDateTracking'] as bool? ?? false,
+      batchNumber: featuresMap['batchNumber'] as bool? ?? false,
+      serialNumberTracking: featuresMap['serialNumberTracking'] as bool? ?? false,
+      gstTaxInvoicing: featuresMap['gstTaxInvoicing'] as bool? ?? true,
+      lowStockAlerts: featuresMap['lowStockAlerts'] as bool? ?? true,
+    );
+
+    return ShopDetails(
+      shopName: map['storeName'] as String? ?? '',
+      ownerName: map['ownerName'] as String? ?? '',
+      phoneNumber: map['storePhone'] as String? ?? '',
+      shopAddress: map['storeAddress'] as String? ?? '',
+      gstNumber: map['gstNumber'] as String?,
+      shopType: shopType,
+      otherDetails: map['otherDetails'] as String?,
+      productCategories: List<String>.from(map['productCategories'] ?? []),
+      features: features,
+      referralCode: map['referralCode'] as String?,
+    );
   }
 }
 

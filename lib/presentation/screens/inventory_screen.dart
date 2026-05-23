@@ -1,19 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import 'package:orushops/core/services/product_crud_service.dart';
 import 'package:orushops/core/theme/app_theme.dart';
 import 'package:orushops/providers/products_provider.dart';
 import 'package:orushops/providers/batch_provider.dart';
-import 'package:orushops/features/inventory/screens/create_product/create_product_screen.dart';
-import 'edit_product_screen.dart';
 import 'inventory_history_screen.dart';
 import 'batch_scan_screen.dart';
 import 'package:orushops/core/models/product.dart';
 import 'package:orushops/features/onboarding/models/shop_models.dart';
 import 'package:orushops/providers/analytics_provider.dart';
+import 'package:orushops/providers/staff_provider.dart';
+import 'package:orushops/providers/service_categories_provider.dart';
+import 'package:orushops/providers/shop_provider.dart';
+import 'package:orushops/features/inventory/controllers/product_form_notifier.dart';
 
 part 'inventory/inventory_widgets.dart';
 part 'inventory/add_stock_sheet.dart';
@@ -25,7 +28,8 @@ class InventoryScreen extends ConsumerStatefulWidget {
   ConsumerState<InventoryScreen> createState() => _InventoryScreenState();
 }
 
-class _InventoryScreenState extends ConsumerState<InventoryScreen> {
+class _InventoryScreenState extends ConsumerState<InventoryScreen> with SingleTickerProviderStateMixin {
+  late final TabController _tabController;
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
   String _searchQuery = '';
@@ -33,26 +37,46 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
   String _selectedSubcategory = 'All';
 
   @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() {
+      if (mounted) {
+        setState(() {
+          _selectedCategory = 'All';
+          _selectedSubcategory = 'All';
+        });
+      }
+    });
+  }
+
+  @override
   void dispose() {
+    _tabController.dispose();
     _searchController.dispose();
     _searchFocusNode.dispose();
     super.dispose();
   }
 
-  bool _canPop() {
-    return Navigator.of(context).canPop();
+  bool _canPop() => context.canPop();
+
+  Future<void> _navigateToCreateProduct() async {
+    HapticFeedback.mediumImpact();
+    ref.read(productFormNotifierProvider.notifier).reset();
+    await context.push('/stock/create');
+    if (!mounted) return;
+    ref.invalidate(productsProvider);
+    ref.invalidate(paginatedProductsProvider);
+    ref.invalidate(expiredBatchesProvider);
   }
 
-  void _navigateToCreateProduct() {
+  Future<void> _navigateToCreateService() async {
     HapticFeedback.mediumImpact();
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const CreateProductScreen()),
-    ).then((_) {
-      ref.invalidate(productsProvider);
-      ref.invalidate(paginatedProductsProvider);
-      ref.invalidate(expiredBatchesProvider);
-    });
+    await context.push('/stock/create-service');
+    if (!mounted) return;
+    ref.invalidate(productsProvider);
+    ref.invalidate(paginatedProductsProvider);
+    ref.invalidate(expiredBatchesProvider);
   }
 
   @override
@@ -76,7 +100,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: AppTheme.primaryColor.withValues(alpha: 0.3),
+              color: (_tabController.index == 0 ? AppTheme.primaryColor : Colors.teal.shade600).withValues(alpha: 0.3),
               blurRadius: 15,
               offset: const Offset(0, 8),
             ),
@@ -84,13 +108,13 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
         ),
         child: FloatingActionButton.extended(
           heroTag: 'inventory_add_fab',
-          onPressed: _navigateToCreateProduct,
-          label: const Text(
-            'Add Stock',
-            style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 0.5),
+          onPressed: _tabController.index == 0 ? _navigateToCreateProduct : _navigateToCreateService,
+          label: Text(
+            _tabController.index == 0 ? 'Add Product' : 'Add Service',
+            style: const TextStyle(fontWeight: FontWeight.bold, letterSpacing: 0.5),
           ),
-          icon: const Icon(Icons.add_business_rounded, size: 24),
-          backgroundColor: AppTheme.primaryColor,
+          icon: Icon(_tabController.index == 0 ? Icons.add_business_rounded : Icons.home_repair_service_rounded, size: 24),
+          backgroundColor: _tabController.index == 0 ? AppTheme.primaryColor : Colors.teal.shade600,
           foregroundColor: Colors.white,
           elevation: 0,
           shape: RoundedRectangleBorder(
@@ -103,12 +127,13 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
           final filtered = products
               .where(
                 (p) =>
+                    (_tabController.index == 0 ? !p.isService : p.isService) &&
                     (_searchQuery.isEmpty ||
                      p.name.toLowerCase().contains(_searchQuery) ||
                      (p.brand?.toLowerCase().contains(_searchQuery) ?? false) ||
                      p.sku.toLowerCase().contains(_searchQuery)) &&
                     (_selectedCategory == 'All' || p.category == _selectedCategory) &&
-                    (_selectedSubcategory == 'All' || p.subcategory == _selectedSubcategory),
+                    (_tabController.index == 1 || _selectedSubcategory == 'All' || p.subcategory == _selectedSubcategory),
               )
               .toList();
 
@@ -122,15 +147,15 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
               await ref.read(productsProvider.future);
               await ref.read(expiredBatchesProvider.future);
             },
-            color: AppTheme.primaryColor,
+            color: _tabController.index == 0 ? AppTheme.primaryColor : Colors.teal.shade600,
             child: CustomScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
               slivers: [
                 SliverAppBar(
-                  expandedHeight: 280.0,
+                  expandedHeight: 330.0,
                   floating: false,
                   pinned: true,
-                  backgroundColor: AppTheme.primaryColor,
+                  backgroundColor: _tabController.index == 0 ? AppTheme.primaryColor : Colors.teal.shade600,
                   elevation: 0,
                   leading: _canPop()
                       ? IconButton(
@@ -148,80 +173,87 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                     ),
                   ),
                   actions: [
-                    Container(
-                      margin: const EdgeInsets.only(right: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: IconButton(
-                        icon: const Icon(
-                          Icons.qr_code_scanner_rounded,
-                          color: Colors.white,
-                          size: 20,
+                    if (_tabController.index == 0) ...[
+                      Container(
+                        margin: const EdgeInsets.only(right: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(14),
                         ),
-                        tooltip: 'Batch Scan',
-                        onPressed: () {
-                          HapticFeedback.mediumImpact();
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const BatchScanScreen(),
-                            ),
-                          );
-                        },
-                        constraints: const BoxConstraints(
-                          minWidth: 40,
-                          minHeight: 40,
+                        child: IconButton(
+                          icon: const Icon(
+                            Icons.qr_code_scanner_rounded,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                          tooltip: 'Batch Scan',
+                          onPressed: () {
+                            HapticFeedback.mediumImpact();
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const BatchScanScreen(),
+                              ),
+                            );
+                          },
+                          constraints: const BoxConstraints(
+                            minWidth: 40,
+                            minHeight: 40,
+                          ),
+                          padding: EdgeInsets.zero,
                         ),
-                        padding: EdgeInsets.zero,
                       ),
-                    ),
-                    Container(
-                      margin: const EdgeInsets.only(right: 16),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: IconButton(
-                        icon: const Icon(
-                          Icons.history_rounded,
-                          color: Colors.white,
-                          size: 20,
+                      Container(
+                        margin: const EdgeInsets.only(right: 16),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(14),
                         ),
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const InventoryHistoryScreen(),
-                            ),
-                          );
-                        },
-                        constraints: const BoxConstraints(
-                          minWidth: 40,
-                          minHeight: 40,
+                        child: IconButton(
+                          icon: const Icon(
+                            Icons.history_rounded,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const InventoryHistoryScreen(),
+                              ),
+                            );
+                          },
+                          constraints: const BoxConstraints(
+                            minWidth: 40,
+                            minHeight: 40,
+                          ),
+                          padding: EdgeInsets.zero,
                         ),
-                        padding: EdgeInsets.zero,
                       ),
-                    ),
+                    ],
                   ],
                   flexibleSpace: FlexibleSpaceBar(
                     background: Container(
-                      decoration: const BoxDecoration(
+                      decoration: BoxDecoration(
                         gradient: LinearGradient(
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
-                          colors: [
-                            AppTheme.primaryColor,
-                            AppTheme.primaryLight,
-                          ],
+                          colors: _tabController.index == 0
+                              ? [
+                                  AppTheme.primaryColor,
+                                  AppTheme.primaryLight,
+                                ]
+                              : [
+                                  Colors.teal.shade700,
+                                  Colors.teal.shade500,
+                                ],
                         ),
                       ),
                       padding: EdgeInsets.only(
                         top: MediaQuery.of(context).padding.top + 40,
                         left: 20,
                         right: 20,
-                        bottom: 110,
+                        bottom: 165,
                       ),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.end,
@@ -230,7 +262,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                     ),
                   ),
                   bottom: PreferredSize(
-                    preferredSize: const Size.fromHeight(80.0),
+                    preferredSize: const Size.fromHeight(140.0),
                     child: Container(
                       width: double.infinity,
                       decoration: BoxDecoration(
@@ -240,59 +272,201 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                           topRight: Radius.circular(32),
                         ),
                       ),
-                      padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
-                      child: TextField(
-                        controller: _searchController,
-                        focusNode: _searchFocusNode,
-                        autofocus: false,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          color: AppTheme.textPrimary,
-                          fontWeight: FontWeight.w500,
-                        ),
-                        cursorColor: AppTheme.primaryColor,
-                        decoration: InputDecoration(
-                          hintText: 'Search by name or SKU...',
-                          hintStyle: TextStyle(
-                            color: AppTheme.textSecondary.withValues(alpha: 0.5),
+                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            height: 48,
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: AppTheme.slate100,
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: TabBar(
+                              controller: _tabController,
+                              indicator: BoxDecoration(
+                                color: _tabController.index == 0 ? AppTheme.primaryColor : Colors.teal.shade600,
+                                borderRadius: BorderRadius.circular(12),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: (_tabController.index == 0 ? AppTheme.primaryColor : Colors.teal.shade600).withValues(alpha: 0.2),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              labelColor: Colors.white,
+                              unselectedLabelColor: AppTheme.textSecondary,
+                              labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                              unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                              indicatorSize: TabBarIndicatorSize.tab,
+                              dividerColor: Colors.transparent,
+                              tabs: const [
+                                Tab(text: 'Products'),
+                                Tab(text: 'Services'),
+                              ],
+                            ),
                           ),
-                          prefixIcon: const Icon(
-                            Icons.search_rounded,
-                            color: AppTheme.primaryColor,
-                            size: 22,
+                          const SizedBox(height: 12),
+                          TextField(
+                            controller: _searchController,
+                            focusNode: _searchFocusNode,
+                            autofocus: false,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              color: AppTheme.textPrimary,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            cursorColor: _tabController.index == 0 ? AppTheme.primaryColor : Colors.teal.shade600,
+                            decoration: InputDecoration(
+                              hintText: _tabController.index == 0 ? 'Search products...' : 'Search services...',
+                              hintStyle: TextStyle(
+                                color: AppTheme.textSecondary.withValues(alpha: 0.5),
+                              ),
+                              prefixIcon: Icon(
+                                Icons.search_rounded,
+                                color: _tabController.index == 0 ? AppTheme.primaryColor : Colors.teal.shade600,
+                                size: 22,
+                              ),
+                              filled: true,
+                              fillColor: Colors.white,
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(18),
+                                borderSide: BorderSide.none,
+                              ),
+                            ),
+                            onChanged: (v) =>
+                                setState(() => _searchQuery = v.toLowerCase()),
                           ),
-                          filled: true,
-                          fillColor: Colors.white,
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 16,
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(18),
-                            borderSide: BorderSide.none,
-                          ),
-                        ),
-                        onChanged: (v) =>
-                            setState(() => _searchQuery = v.toLowerCase()),
+                        ],
                       ),
                     ),
                   ),
                 ),
 
                 // Category & Subcategory Pills
-                SliverToBoxAdapter(
-                  child: Container(
-                    color: AppTheme.backgroundColor,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildCategoryPills(ref),
-                        _buildSubcategoryPills(ref),
-                        const SizedBox(height: 8),
-                      ],
+                if (_tabController.index == 0)
+                  SliverToBoxAdapter(
+                    child: Container(
+                      color: AppTheme.backgroundColor,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildCategoryPills(ref),
+                          _buildSubcategoryPills(ref),
+                          const SizedBox(height: 8),
+                        ],
+                      ),
                     ),
                   ),
-                ),
+                if (_tabController.index == 1)
+                  SliverToBoxAdapter(
+                    child: Container(
+                      color: AppTheme.backgroundColor,
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: InkWell(
+                                  onTap: () {
+                                    HapticFeedback.selectionClick();
+                                    context.push('/staff');
+                                  },
+                                  borderRadius: BorderRadius.circular(16),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: [Colors.teal.shade700, Colors.teal.shade500],
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                      ),
+                                      borderRadius: BorderRadius.circular(16),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.teal.withValues(alpha: 0.2),
+                                          blurRadius: 8,
+                                          offset: const Offset(0, 4),
+                                        ),
+                                      ],
+                                    ),
+                                    child: const Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(Icons.people_alt_rounded, color: Colors.white, size: 20),
+                                        SizedBox(width: 8),
+                                        Text(
+                                          'Manage Staff',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: InkWell(
+                                  onTap: () {
+                                    HapticFeedback.selectionClick();
+                                    context.push('/service-categories');
+                                  },
+                                  borderRadius: BorderRadius.circular(16),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      border: Border.all(color: Colors.teal.shade600, width: 1.5),
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(Icons.category_rounded, color: Colors.teal.shade700, size: 20),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          'Categories',
+                                          style: TextStyle(
+                                            color: Colors.teal.shade700,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          const Text(
+                            'CATEGORIES',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 1.5,
+                              color: AppTheme.slate500,
+                            ),
+                          ),
+                          _buildServiceCategoryPills(ref),
+                          const SizedBox(height: 4),
+                        ],
+                      ),
+                    ),
+                  ),
                 SliverPadding(
                   padding: const EdgeInsets.only(bottom: 100),
                   sliver: filtered.isEmpty
@@ -338,44 +512,74 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
     );
   }
 
-  Widget _buildStatsHeader(List products, int expiredCount) {
-    final lowStockCount = products
-        .where((p) => p.quantity < 10 && p.quantity > 0)
-        .length;
-    final totalValue = products.fold<double>(
-      0,
-      (sum, p) => sum + (p.quantity * p.price),
-    );
-
-    return Row(
-      children: [
-        Expanded(
-          child: _StatBox(
-            label: 'Inventory Value',
-            value: '₹${NumberFormat.compact().format(totalValue)}',
-            icon: Icons.account_balance_wallet_rounded,
+  Widget _buildStatsHeader(List<Product> products, int expiredCount) {
+    if (_tabController.index == 0) {
+      final totalValue = products.where((p) => !p.isService).fold<double>(0, (sum, p) => sum + (p.quantity * p.price));
+      final lowStockCount = products.where((p) => !p.isService && p.quantity < 10 && p.quantity > 0).length;
+      return Row(
+        children: [
+          Expanded(
+            child: _StatBox(
+              label: 'Inventory Value',
+              value: '₹${NumberFormat.compact().format(totalValue)}',
+              icon: Icons.account_balance_wallet_rounded,
+            ),
           ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: _StatBox(
-            label: 'Low Stock',
-            value: '$lowStockCount',
-            icon: Icons.warning_amber_rounded,
-            isWarning: lowStockCount > 0,
+          const SizedBox(width: 8),
+          Expanded(
+            child: _StatBox(
+              label: 'Low Stock',
+              value: '$lowStockCount',
+              icon: Icons.warning_amber_rounded,
+              isWarning: lowStockCount > 0,
+            ),
           ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: _StatBox(
-            label: 'Expired',
-            value: '$expiredCount',
-            icon: Icons.event_busy_rounded,
-            isError: expiredCount > 0,
+          const SizedBox(width: 8),
+          Expanded(
+            child: _StatBox(
+              label: 'Expired',
+              value: '$expiredCount',
+              icon: Icons.event_busy_rounded,
+              isError: expiredCount > 0,
+            ),
           ),
-        ),
-      ],
-    );
+        ],
+      );
+    } else {
+      final activeServicesCount = products.where((p) => p.isService).length;
+      final staffListAsync = ref.watch(staffListProvider);
+      final staffCount = staffListAsync.asData?.value.length ?? 0;
+      final shopType = ref.watch(shopTypeProvider);
+      final categoriesAsync = ref.watch(serviceCategoriesProvider(shopType.name));
+      final categoryCount = categoriesAsync.asData?.value.length ?? 0;
+      return Row(
+        children: [
+          Expanded(
+            child: _StatBox(
+              label: 'Active Services',
+              value: '$activeServicesCount',
+              icon: Icons.home_repair_service_rounded,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: _StatBox(
+              label: 'Staff Count',
+              value: '$staffCount',
+              icon: Icons.people_alt_rounded,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: _StatBox(
+              label: 'Categories',
+              value: '$categoryCount',
+              icon: Icons.category_rounded,
+            ),
+          ),
+        ],
+      );
+    }
   }
 
   Widget _buildCategoryPills(WidgetRef ref) {
@@ -476,6 +680,55 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
     );
   }
 
+  Widget _buildServiceCategoryPills(WidgetRef ref) {
+    final shopType = ref.watch(shopTypeProvider);
+    final categoriesAsync = ref.watch(serviceCategoriesProvider(shopType.name));
+    return categoriesAsync.when(
+      data: (categories) {
+        final allCategoryNames = ['All', ...categories.map((c) => c.name)];
+        return Container(
+          height: 40,
+          margin: const EdgeInsets.symmetric(vertical: 8),
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            itemCount: allCategoryNames.length,
+            itemBuilder: (context, index) {
+              final cat = allCategoryNames[index];
+              final isSelected = _selectedCategory == cat;
+              return Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: FilterChip(
+                  label: Text(cat),
+                  selected: isSelected,
+                  onSelected: (selected) {
+                    setState(() {
+                      _selectedCategory = cat;
+                      _selectedSubcategory = 'All';
+                    });
+                  },
+                  selectedColor: Colors.teal.withValues(alpha: 0.15),
+                  checkmarkColor: Colors.teal.shade700,
+                  labelStyle: TextStyle(
+                    color: isSelected ? Colors.teal.shade700 : AppTheme.textSecondary,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  ),
+                  backgroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                    side: BorderSide(color: isSelected ? Colors.teal.shade600 : AppTheme.slate200),
+                  ),
+                ),
+              );
+            },
+          ),
+        );
+      },
+      loading: () => const SizedBox(height: 40),
+      error: (e, s) => const SizedBox.shrink(),
+    );
+  }
+
   Widget _buildEmptyState() {
     return Center(
       child: Column(
@@ -524,10 +777,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
           content: Text('This product has variants — open it to update stock per size/color.'),
         ),
       );
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => EditProductScreen(product: product)),
-      );
+      context.push('/stock/edit', extra: product);
       return;
     }
     showModalBottomSheet(

@@ -32,4 +32,11 @@ class TableConstants {
 
   // Customers (v17)
   static const String customers = 'customers';
+
+  // Services & Staff (v20)
+  static const String serviceDetails = 'service_details';
+  static const String staff = 'staff';
+  static const String staffServiceAssignments = 'staff_service_assignments';
+  static const String serviceCategories = 'service_categories';
 }
+

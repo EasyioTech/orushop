@@ -70,11 +70,6 @@ extension ProductFormFieldUpdates on ProductFormNotifier {
         state = state.copyWith(conversionFactor: doubleValue);
       case 'packagingUnit':
         state = state.copyWith(packagingUnit: value.isEmpty ? null : value);
-      case 'serviceDuration':
-        final intValue = int.tryParse(value);
-        state = state.copyWith(serviceDuration: intValue);
-      case 'staffCommission':
-        state = state.copyWith(staffCommission: doubleValue);
     }
   }
 }

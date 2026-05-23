@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -21,18 +23,18 @@ part 'product_form/create_product.dart';
 part 'product_form/persistence.dart';
 
 /// Notifier for managing product creation form state
-class ProductFormNotifier extends StateNotifier<ProductFormState> {
-  final Ref ref;
+class ProductFormNotifier extends Notifier<ProductFormState> {
   final ImagePicker _imagePicker = ImagePicker();
 
-  // Text controllers (not in immutable state; managed locally)
-  late final Map<String, TextEditingController> controllers = {
+  // Text controllers live here (not in immutable state) and are disposed via
+  // ref.onDispose registered inside build().
+  final Map<String, TextEditingController> controllers = {
     'name': TextEditingController(),
     'sku': TextEditingController(),
     'price': TextEditingController(),
     'wholesalePrice': TextEditingController(),
     'costPrice': TextEditingController(),
-    'initialQty': TextEditingController(text: '0'),
+    'initialQty': TextEditingController(),
     'mrp': TextEditingController(),
     'hsn': TextEditingController(),
     'tax': TextEditingController(),
@@ -48,15 +50,30 @@ class ProductFormNotifier extends StateNotifier<ProductFormState> {
     'isbn': TextEditingController(),
     'color': TextEditingController(),
     'size': TextEditingController(),
-    'reorderLevel': TextEditingController(text: '5'),
+    'reorderLevel': TextEditingController(),
     'packagingUnit': TextEditingController(),
-    'conversionFactor': TextEditingController(text: '1'),
+    'conversionFactor': TextEditingController(),
     'serviceDuration': TextEditingController(),
     'staffCommission': TextEditingController(),
   };
 
-  ProductFormNotifier(this.ref) : super(const ProductFormState()) {
+  // Tracks whether the notifier has been disposed so async callbacks can bail out early
+  bool _disposed = false;
+
+  @override
+  ProductFormState build() {
+    _disposed = false;
     _initializeListeners();
+    ref.onDispose(() {
+      _disposed = true;
+      for (final c in controllers.values) {
+        c.dispose();
+      }
+      for (final o in state.variantOverrides.values) {
+        o.dispose();
+      }
+    });
+    return const ProductFormState();
   }
 
   void _initializeListeners() {
@@ -95,11 +112,11 @@ class ProductFormNotifier extends StateNotifier<ProductFormState> {
       conversionFactor: 1.0,
     );
 
-    controllers['tax']!.text = fields.defaultTaxRate.toString();
-    controllers['reorderLevel']!.text = '5';
-    controllers['conversionFactor']!.text = '1';
+    controllers['tax']!.text = '';
+    controllers['reorderLevel']!.text = '';
+    controllers['conversionFactor']!.text = '';
     if (fields.hasPackagingUnit) {
-      controllers['packagingUnit']!.text = 'Box';
+      controllers['packagingUnit']!.text = '';
     }
   }
 
@@ -113,16 +130,27 @@ class ProductFormNotifier extends StateNotifier<ProductFormState> {
     state = state.copyWith(selectedUnit: unit);
   }
 
+  Timer? _nameDebounce;
+  Timer? _skuDebounce;
+  String _currentSearchQuery = '';
+  String _currentSkuSearch = '';
+
   /// Handle name input changes
   void _onNameChanged() {
     final query = controllers['name']!.text.trim();
     state = state.copyWith(name: query);
 
-    if (query.length >= 2) {
-      _searchCatalog(query);
-    } else if (state.catalogSuggestions.isNotEmpty) {
-      state = state.copyWith(catalogSuggestions: []);
+    if (query.length < 2) {
+      if (state.catalogSuggestions.isNotEmpty) {
+        state = state.copyWith(catalogSuggestions: []);
+      }
+      return;
     }
+
+    _nameDebounce?.cancel();
+    _nameDebounce = Timer(const Duration(milliseconds: 400), () {
+      _searchCatalog(query);
+    });
   }
 
   /// Handle SKU input changes
@@ -130,17 +158,31 @@ class ProductFormNotifier extends StateNotifier<ProductFormState> {
     final sku = controllers['sku']!.text.trim();
     state = state.copyWith(sku: sku);
 
-    if (sku.length >= 8) {
+    if (sku.length < 8) return;
+
+    _skuDebounce?.cancel();
+    _skuDebounce = Timer(const Duration(milliseconds: 400), () {
       _lookupGlobalProduct(sku);
-    }
+    });
+  }
+
+  void cancelSearches() {
+    _nameDebounce?.cancel();
+    _skuDebounce?.cancel();
+    _currentSearchQuery = '';
+    _currentSkuSearch = '';
   }
 
   /// Search catalog for suggestions
   Future<void> _searchCatalog(String query) async {
+    _currentSearchQuery = query;
     try {
       final shopType = ref.read(shopTypeProvider);
       final service = ref.read(shopCatalogServiceProvider);
       final results = await service.searchLocal(query, shopType);
+
+      if (_disposed) return; // Prevent updating state after widget dispose
+      if (_currentSearchQuery != query) return; // Cancelled or superseded
 
       final suggestions = results
           .map((item) => CatalogItemSuggestion(
@@ -152,6 +194,7 @@ class ProductFormNotifier extends StateNotifier<ProductFormState> {
 
       state = state.copyWith(catalogSuggestions: suggestions);
     } catch (e) {
+      if (_disposed) return; // Prevent updating state after widget dispose
       state = state.copyWith(
         errorMessage: 'Search failed: $e',
         catalogSuggestions: [],
@@ -161,10 +204,14 @@ class ProductFormNotifier extends StateNotifier<ProductFormState> {
 
   /// Lookup product globally by SKU
   Future<void> _lookupGlobalProduct(String sku) async {
+    _currentSkuSearch = sku;
     try {
       final shopType = ref.read(shopTypeProvider);
       final globalCatalogService = ref.read(globalCatalogServiceProvider);
       final product = await globalCatalogService.searchBySKU(sku, shopType.name);
+
+      if (_disposed) return; // Prevent updating state after widget dispose
+      if (_currentSkuSearch != sku) return; // Cancelled or superseded
 
       if (product != null) {
         // Populate text controllers
@@ -201,6 +248,7 @@ class ProductFormNotifier extends StateNotifier<ProductFormState> {
         );
       }
     } catch (e) {
+      if (_disposed) return; // Prevent updating state after widget dispose
       debugPrint('Error looking up global product: $e');
     }
   }
@@ -244,11 +292,14 @@ class ProductFormNotifier extends StateNotifier<ProductFormState> {
         imageQuality: 70,
       );
       if (pickedFile != null) {
+        // Guard: provider may have been disposed while camera/gallery was open
+        if (_disposed) return;
         state = state.copyWith(productImage: File(pickedFile.path));
         // Save draft again after successful image pick
         await saveAsDraft();
       }
     } catch (e) {
+      if (_disposed) return;
       state = state.copyWith(errorMessage: 'Image pick failed: $e');
     }
   }
@@ -330,30 +381,19 @@ class ProductFormNotifier extends StateNotifier<ProductFormState> {
 
   /// Clear all form data
   void reset() {
+    cancelSearches();
     for (final controller in controllers.values) {
       controller.text = '';
     }
-    controllers['initialQty']!.text = '0';
-    controllers['reorderLevel']!.text = '5';
-    controllers['conversionFactor']!.text = '1';
 
     state = const ProductFormState();
   }
 
-  @override
-  void dispose() {
-    for (final controller in controllers.values) {
-      controller.dispose();
-    }
-    for (final override in state.variantOverrides.values) {
-      override.dispose();
-    }
-    super.dispose();
-  }
 }
 
-/// Riverpod provider for the notifier
+/// Not autoDispose — survives while camera/gallery is open during image picking.
+/// Disposal is handled via ref.onDispose registered inside build().
 final productFormNotifierProvider =
-    StateNotifierProvider.autoDispose<ProductFormNotifier, ProductFormState>(
-  (ref) => ProductFormNotifier(ref),
+    NotifierProvider<ProductFormNotifier, ProductFormState>(
+  ProductFormNotifier.new,
 );

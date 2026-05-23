@@ -41,13 +41,6 @@ extension _EditProductAdvanced on _EditProductScreenState {
             _field(controller: _weightController, hint: 'e.g. 500g, 1kg, 750ml', icon: Icons.scale_outlined),
           ],
 
-          if (fields.hasUnit) ...[
-            const SizedBox(height: 20),
-            _label('Unit'),
-            const SizedBox(height: 8),
-            _unitDropdown(),
-          ],
-
           const SizedBox(height: 20),
           _toggleTile(
             title: 'Service / No Stock',

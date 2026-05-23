@@ -203,10 +203,11 @@ class _HeroSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 240,
+      height: 280,
+      margin: const EdgeInsets.fromLTRB(20, 60, 20, 24),
       decoration: BoxDecoration(
-        color: AppTheme.primaryColor.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(32),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(28),
       ),
       child: const Center(child: CupertinoActivityIndicator()),
     );

@@ -24,9 +24,13 @@ class _ErrorBoundaryState extends State<ErrorBoundary> {
     FlutterError.onError = (FlutterErrorDetails details) {
       _previousOnError?.call(details);
       if (mounted) {
-        setState(() {
-          _hasError = true;
-          _errorDetails = details;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            setState(() {
+              _hasError = true;
+              _errorDetails = details;
+            });
+          }
         });
       }
     };
@@ -83,7 +87,7 @@ class _ErrorBoundaryState extends State<ErrorBoundary> {
                 Text(
                   _isNetworkError
                       ? 'No Internet Connection'
-                      : 'Something went wrong',
+                      : 'Error Encountered',
                   style: const TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w700,
@@ -91,16 +95,21 @@ class _ErrorBoundaryState extends State<ErrorBoundary> {
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 8),
-                Text(
-                  _isNetworkError
-                      ? 'Your local data is safe. Connect to internet and retry.'
-                      : 'The app encountered an error. Your data is safe.',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: AppTheme.slate600,
-                    height: 1.4,
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Text(
+                      _isNetworkError
+                          ? 'Your local data is safe. Connect to internet and retry.'
+                          : 'Error: ${_errorDetails?.exceptionAsString() ?? "Unknown error"}\n\n${_errorDetails?.stack ?? ""}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppTheme.slate600,
+                        height: 1.4,
+                        fontFamily: 'monospace',
+                      ),
+                      textAlign: TextAlign.left,
+                    ),
                   ),
-                  textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 24),
                 ElevatedButton.icon(

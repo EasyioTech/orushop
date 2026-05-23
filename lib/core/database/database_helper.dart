@@ -18,7 +18,8 @@ import 'migrations/migration_v15.dart';
 import 'migrations/migration_v16.dart';
 import 'migrations/migration_v17.dart';
 import 'migrations/migration_v18.dart';
-
+import 'migrations/migration_v19.dart';
+import 'migrations/migration_v20.dart';
 
 import 'table_constants.dart';
 
@@ -52,11 +53,11 @@ class DatabaseHelper {
       final path = join(dbPath, 'OruShops.db');
       debugPrint('DB: Opening database at $path...');
       return await openDatabase(
-        path,
-        version: 18,
-        onCreate: _onCreate,
-        onUpgrade: _onUpgrade,
-        onOpen: _onOpen,
+          path,
+          version: 20,
+          onCreate: _onCreate,
+          onUpgrade: _onUpgrade,
+          onOpen: _onOpen,
       );
     } catch (e) {
       debugPrint('DB: Init error: $e');
@@ -83,6 +84,8 @@ class DatabaseHelper {
     await MigrationV16.up(db);
     await MigrationV17.up(db);
     await MigrationV18.up(db);
+    await MigrationV19.up(db);
+    await MigrationV20.up(db);
     debugPrint('DB: Database creation complete.');
   }
 
@@ -112,6 +115,8 @@ class DatabaseHelper {
     if (oldVersion < 16) await MigrationV16.up(db);
     if (oldVersion < 17) await MigrationV17.up(db);
     if (oldVersion < 18) await MigrationV18.up(db);
+    if (oldVersion < 19) await MigrationV19.up(db);
+    if (oldVersion < 20) await MigrationV20.up(db);
   }
 
   Future<void> _onOpen(Database db) async {
@@ -158,6 +163,10 @@ class DatabaseHelper {
         TableConstants.productSubcategories,
         TableConstants.productVariants,
         TableConstants.customers,
+        TableConstants.serviceDetails,
+        TableConstants.staff,
+        TableConstants.staffServiceAssignments,
+        TableConstants.serviceCategories,
       ];
 
       for (final table in tables) {

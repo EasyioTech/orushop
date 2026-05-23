@@ -23,11 +23,12 @@ class MainActivity : FlutterActivity() {
                     "shareImageToWhatsApp" -> {
                         val filePath = call.argument<String>("filePath")
                         val phone = call.argument<String>("phone")
+                        val message = call.argument<String>("message")
                         if (filePath == null) {
                             result.error("INVALID_ARGS", "filePath is required", null)
                             return@setMethodCallHandler
                         }
-                        val success = shareImageToWhatsApp(filePath, phone)
+                        val success = shareImageToWhatsApp(filePath, phone, message)
                         result.success(success)
                     }
                     else -> result.notImplemented()
@@ -40,7 +41,7 @@ class MainActivity : FlutterActivity() {
      * Bypasses the system share sheet entirely — opens WhatsApp straight away.
      * Returns true if WhatsApp was opened, false if not installed.
      */
-    private fun shareImageToWhatsApp(filePath: String, phone: String?): Boolean {
+    private fun shareImageToWhatsApp(filePath: String, phone: String?, message: String? = null): Boolean {
         val file = File(filePath)
         if (!file.exists()) return false
 
@@ -70,18 +71,16 @@ class MainActivity : FlutterActivity() {
                     if (!phone.isNullOrEmpty()) {
                         // Clean phone number (strip non-digits)
                         var cleanPhone = phone.replace(Regex("\\D"), "")
-                        if (cleanPhone.startsWith("0")) {
-                            cleanPhone = cleanPhone.substring(1)
-                        }
-                        if (cleanPhone.length == 10) {
-                            cleanPhone = "91$cleanPhone"
-                        }
+                        if (cleanPhone.startsWith("0")) cleanPhone = cleanPhone.substring(1)
+                        if (cleanPhone.length == 10) cleanPhone = "91$cleanPhone"
                         if (cleanPhone.isNotEmpty()) {
-                            // Put multiple standard/reverse-engineered extras for maximum direct routing compatibility
                             putExtra("jid", "$cleanPhone@s.whatsapp.net")
                             putExtra("phone_number", cleanPhone)
                             putExtra("android.intent.extra.PHONE_NUMBER", cleanPhone)
                         }
+                    }
+                    if (!message.isNullOrEmpty()) {
+                        putExtra(Intent.EXTRA_TEXT, message)
                     }
                     setPackage(packageName)
                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)

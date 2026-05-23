@@ -49,5 +49,6 @@ final shopDetailsProvider = Provider<ShopDetails?>((ref) {
       gstTaxInvoicing: ownerDetails['features']?['gstTaxInvoicing'] ?? true,
       lowStockAlerts: ownerDetails['features']?['lowStockAlerts'] ?? true,
     ),
+    referralCode: ownerDetails['referralCode'],
   );
 });

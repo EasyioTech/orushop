@@ -50,8 +50,6 @@ class ProductFormState {
   // Additional Flags
   final bool isService;
   final bool isLoose;
-  final int? serviceDuration;
-  final double? staffCommission;
 
   // Media
   final File? productImage;
@@ -100,8 +98,6 @@ class ProductFormState {
     this.isVariantTemplate = false,
     this.isService = false,
     this.isLoose = false,
-    this.serviceDuration,
-    this.staffCommission,
     this.productImage,
     this.externalImageUrl,
     this.showScanner = false,
@@ -147,8 +143,6 @@ class ProductFormState {
     bool? isVariantTemplate,
     bool? isService,
     bool? isLoose,
-    int? serviceDuration,
-    double? staffCommission,
     File? productImage,
     String? externalImageUrl,
     bool? showScanner,
@@ -193,8 +187,6 @@ class ProductFormState {
       isVariantTemplate: isVariantTemplate ?? this.isVariantTemplate,
       isService: isService ?? this.isService,
       isLoose: isLoose ?? this.isLoose,
-      serviceDuration: serviceDuration ?? this.serviceDuration,
-      staffCommission: staffCommission ?? this.staffCommission,
       productImage: productImage ?? this.productImage,
       externalImageUrl: externalImageUrl ?? this.externalImageUrl,
       showScanner: showScanner ?? this.showScanner,

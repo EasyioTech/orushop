@@ -250,6 +250,7 @@ class AppTheme {
     Widget? suffixIcon,
     String? prefixText,
     Color? activeColor,
+    BoxConstraints? prefixIconConstraints,
   }) {
     final focusColor = activeColor ?? primaryColor;
     return InputDecoration(
@@ -262,6 +263,7 @@ class AppTheme {
       hintText: hint,
       hintStyle: const TextStyle(color: slate300, fontSize: 14),
       prefixIcon: prefixIcon,
+      prefixIconConstraints: prefixIconConstraints,
       prefixText: prefixText,
       prefixStyle: const TextStyle(
         color: textPrimary,

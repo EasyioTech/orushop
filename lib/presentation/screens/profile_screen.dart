@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:go_router/go_router.dart';
 import '../../core/database/database_helper.dart';
 
 import '../../core/services/auth_service.dart';
@@ -245,6 +246,28 @@ class _ProfileContent extends ConsumerWidget {
                         ),
                       ],
                     ),
+                  ),
+                ],
+              ),
+              // Business Tools Section
+              _Section(
+                title: 'Business Tools',
+                children: [
+                  _ActionTile(
+                    icon: Icons.people_alt_rounded,
+                    label: 'Staff Roster',
+                    subtitle: 'Manage staff, assignments, and rates',
+                    onTap: () {
+                      context.push('/staff');
+                    },
+                  ),
+                  _ActionTile(
+                    icon: Icons.category_rounded,
+                    label: 'Service Categories',
+                    subtitle: 'Configure default and custom service categories',
+                    onTap: () {
+                      context.push('/service-categories');
+                    },
                   ),
                 ],
               ),

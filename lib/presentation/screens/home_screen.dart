@@ -3,12 +3,14 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:go_router/go_router.dart';
 import 'package:orushops/core/theme/app_theme.dart';
 
 import '../../core/repositories/analytics_repository.dart';
+import '../../core/router/app_router.dart';
 import '../../providers/analytics_provider.dart';
-import '../../providers/navigation_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/settings_provider.dart';
 import 'analytics_screen.dart';
 
 part 'home/home_widgets.dart';
@@ -50,45 +52,30 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         child: CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
-          // ── Elegant Top Bar ────────────────────────────────────────────────
-          SliverAppBar(
-            expandedHeight: 0,
-            toolbarHeight: 75,
-            pinned: true,
-            backgroundColor: AppTheme.backgroundColor,
-            surfaceTintColor: Colors.transparent,
-            elevation: 0,
-            centerTitle: false,
-            titleSpacing: 20,
-            title: Row(
-              children: [
-                _ProfileAvatar(name: name),
-                const SizedBox(width: 14),
-                _GreetingTitle(greeting: greeting, name: name, date: todayStr),
-              ],
+          // ── Main Dashboard Hero (Full Width, Attached to Top) ─────────────
+          SliverToBoxAdapter(
+            child: todayTotal.when(
+              data: (data) {
+                final prev = yesterdayTotal.valueOrNull?.total ?? 0.0;
+                final growth = prev == 0 ? (data.total > 0 ? 100.0 : 0.0) : ((data.total - prev) / prev) * 100;
+                return _SalesHeroCard(
+                  revenue: data.total,
+                  count: data.count,
+                  growth: growth,
+                  greeting: greeting,
+                  name: name,
+                  date: todayStr,
+                );
+              },
+              loading: () => const _HeroSkeleton(),
+              error: (e, _) => const SizedBox.shrink(),
             ),
-            actions: const [],
           ),
 
-          // ── Main Dashboard Hero ───────────────────────────────────────────
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 10, 20, 24),
-              child: todayTotal.when(
-                data: (data) {
-                  final prev = yesterdayTotal.valueOrNull?.total ?? 0.0;
-                  final growth = prev == 0 ? (data.total > 0 ? 100.0 : 0.0) : ((data.total - prev) / prev) * 100;
-                  return _SalesHeroCard(revenue: data.total, count: data.count, growth: growth);
-                },
-                loading: () => const _HeroSkeleton(),
-                error: (e, _) => const SizedBox.shrink(),
-              ),
-            ),
-          ),
 
           // ── Core Action Grid ──────────────────────────────────────────────
           SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
+            padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
             sliver: SliverGrid(
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 2,
@@ -100,34 +87,50 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 _ActionPill(
                   icon: CupertinoIcons.add_circled_solid,
                   label: 'New Sale',
-                  color: AppTheme.accentColor,
+                  subtitle: 'Create Bill',
+                  color: const Color(0xFF1D4ED8),
+                  backgroundColor: const Color(0xFFEFF6FF),
+                  borderColor: const Color(0xFFDBEAFE),
+                  iconBgColor: const Color(0xFFDBEAFE),
                   onTap: () {
                     HapticFeedback.mediumImpact();
-                    ref.read(navigationIndexProvider.notifier).state = 1;
+                    context.go(AppRoutes.pos);
                   },
                 ),
                 _ActionPill(
                   icon: CupertinoIcons.cube_box_fill,
                   label: 'Stock',
-                  color: const Color(0xFF6366F1),
+                  subtitle: 'Manage Items',
+                  color: const Color(0xFF6D28D9),
+                  backgroundColor: const Color(0xFFF5F3FF),
+                  borderColor: const Color(0xFFEDE9FE),
+                  iconBgColor: const Color(0xFFEDE9FE),
                   onTap: () {
                     HapticFeedback.selectionClick();
-                    ref.read(navigationIndexProvider.notifier).state = 2;
+                    context.go(AppRoutes.stock);
                   },
                 ),
                 _ActionPill(
                   icon: CupertinoIcons.book_fill,
                   label: 'Khata',
-                  color: const Color(0xFFF59E0B),
+                  subtitle: 'Udhar Ledger',
+                  color: const Color(0xFFB45309),
+                  backgroundColor: const Color(0xFFFFFBEB),
+                  borderColor: const Color(0xFFFEF3C7),
+                  iconBgColor: const Color(0xFFFEF3C7),
                   onTap: () {
                     HapticFeedback.selectionClick();
-                    ref.read(navigationIndexProvider.notifier).state = 3;
+                    context.go(AppRoutes.khata);
                   },
                 ),
                 _ActionPill(
                   icon: CupertinoIcons.chart_bar_square_fill,
                   label: 'Reports',
-                  color: const Color(0xFF10B981),
+                  subtitle: 'Earnings Info',
+                  color: const Color(0xFF047857),
+                  backgroundColor: const Color(0xFFECFDF5),
+                  borderColor: const Color(0xFFD1FAE5),
+                  iconBgColor: const Color(0xFFD1FAE5),
                   onTap: () {
                     HapticFeedback.selectionClick();
                     Navigator.of(context).push(

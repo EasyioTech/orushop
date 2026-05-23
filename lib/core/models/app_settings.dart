@@ -7,6 +7,7 @@ class AppSettings {
   final bool enableUpi;
   final double defaultDiscountPercent;
   final DateTime lastSyncTime;
+  final String? referralCode;
 
   AppSettings({
     required this.storeName,
@@ -17,6 +18,7 @@ class AppSettings {
     required this.enableUpi,
     required this.defaultDiscountPercent,
     required this.lastSyncTime,
+    this.referralCode,
   });
 
   Map<String, dynamic> toMap() {
@@ -29,6 +31,7 @@ class AppSettings {
       'enableUpi': enableUpi ? 1 : 0,
       'defaultDiscountPercent': defaultDiscountPercent,
       'lastSyncTime': lastSyncTime.toIso8601String(),
+      'referralCode': referralCode,
     };
   }
 
@@ -42,6 +45,7 @@ class AppSettings {
       enableUpi: (map['enableUpi'] as int) == 1,
       defaultDiscountPercent: (map['defaultDiscountPercent'] as num).toDouble(),
       lastSyncTime: DateTime.parse(map['lastSyncTime'] as String),
+      referralCode: map['referralCode'] as String?,
     );
   }
 
@@ -54,6 +58,7 @@ class AppSettings {
     bool? enableUpi,
     double? defaultDiscountPercent,
     DateTime? lastSyncTime,
+    String? referralCode,
   }) {
     return AppSettings(
       storeName: storeName ?? this.storeName,
@@ -65,6 +70,7 @@ class AppSettings {
       defaultDiscountPercent:
           defaultDiscountPercent ?? this.defaultDiscountPercent,
       lastSyncTime: lastSyncTime ?? this.lastSyncTime,
+      referralCode: referralCode ?? this.referralCode,
     );
   }
 }

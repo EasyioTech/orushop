@@ -131,6 +131,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
   Future<void> _addVariantToCart(Product product) async {
     final picked = await showModalBottomSheet<_VariantSelection>(
       context: context,
+      useRootNavigator: true,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => _VariantPickerSheet(product: product),
@@ -158,6 +159,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
 
     final result = await showModalBottomSheet<double>(
       context: context,
+      useRootNavigator: true,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => _QtyInputSheet(
@@ -174,6 +176,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
 
     showModalBottomSheet(
       context: context,
+      useRootNavigator: true,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => _QRScannerModal(
@@ -191,6 +194,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
 
     showModalBottomSheet(
       context: context,
+      useRootNavigator: true,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -674,6 +678,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
   void _showCheckoutSheet({String initialStep = 'cart'}) {
     showModalBottomSheet(
       context: context,
+      useRootNavigator: true,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => _CheckoutSheet(initialStep: initialStep),
@@ -683,6 +688,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
   void _showMiniCartBottomSheet() {
     showModalBottomSheet(
       context: context,
+      useRootNavigator: true,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),

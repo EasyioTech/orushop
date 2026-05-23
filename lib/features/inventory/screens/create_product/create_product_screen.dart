@@ -1,13 +1,14 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orushops/features/inventory/controllers/product_form_notifier.dart';
 import 'package:orushops/features/inventory/models/product_form_state.dart';
 import 'package:orushops/core/theme/app_theme.dart';
+import 'package:orushops/features/onboarding/models/shop_models.dart';
 import 'package:orushops/features/inventory/screens/create_product/steps/category_step.dart';
 import 'package:orushops/features/inventory/screens/create_product/steps/info_step.dart';
-import 'package:orushops/features/inventory/screens/create_product/steps/pricing_step.dart';
-import 'package:orushops/features/inventory/screens/create_product/steps/stock_step.dart';
+import 'package:orushops/features/inventory/screens/create_product/steps/details_step.dart';
 import 'package:orushops/features/inventory/screens/create_product/steps/variants_step.dart';
 
 class CreateProductScreen extends ConsumerStatefulWidget {
@@ -19,16 +20,28 @@ class CreateProductScreen extends ConsumerStatefulWidget {
 
 class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
   @override
+  void dispose() {
+    ref.read(productFormNotifierProvider.notifier).cancelSearches();
+    super.dispose();
+  }
+  late final ProductFormNotifier _notifier;
+
+
+
+  @override
   void initState() {
     super.initState();
+    _notifier = ref.read(productFormNotifierProvider.notifier);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final notifier = ref.read(productFormNotifierProvider.notifier);
-      notifier.loadCategories();
+      _notifier.loadCategories();
+
+      // Recover any image lost to Android process death before checking for a draft
+      await _notifier.retrieveLostImage();
 
       // Check if a saved draft exists and prompt to restore
-      final hasSavedDraft = await notifier.hasDraft();
+      final hasSavedDraft = await _notifier.hasDraft();
       if (hasSavedDraft && mounted) {
-        _showRestoreDraftDialog(notifier);
+        _showRestoreDraftDialog(_notifier);
       }
     });
   }
@@ -85,130 +98,148 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
     );
   }
 
-  void _showDraftExitDialog(ProductFormNotifier notifier) {
+  void _showExitConfirmationDialog() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Row(
           children: [
-            Icon(Icons.drafts, color: AppTheme.primaryColor, size: 28),
+            Icon(Icons.warning_amber_rounded, color: AppTheme.errorColor, size: 28),
             SizedBox(width: 8),
             Text(
-              'Save Draft?',
+              'Discard Changes?',
               style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
             ),
           ],
         ),
         content: const Text(
-          'Do you want to save this product as a draft? You can restore it next time you open the product wizard.',
+          'Are you sure you want to close? All unsaved progress will be lost.',
           style: TextStyle(color: AppTheme.textSecondary, height: 1.4),
         ),
         actionsPadding: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
         actions: [
           TextButton(
             onPressed: () {
-              Navigator.pop(context); // Close dialog
-              notifier.clearDraft();
-              notifier.reset();
-              Navigator.of(context).pop(); // Close wizard screen
+              Navigator.pop(dialogContext); // Close dialog (No)
             },
             child: const Text(
-              'Discard Changes',
-              style: TextStyle(color: AppTheme.errorColor, fontWeight: FontWeight.w600),
+              'No',
+              style: TextStyle(color: AppTheme.textSecondary, fontWeight: FontWeight.w600),
             ),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primaryColor,
+              backgroundColor: AppTheme.errorColor,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             ),
-            onPressed: () async {
-              final navigator = Navigator.of(context);
-              navigator.pop(); // Close dialog
-              await notifier.saveAsDraft();
-              notifier.reset();
-              navigator.pop(); // Close wizard screen
+            onPressed: () {
+              Navigator.pop(dialogContext); // Close dialog
+              ref.read(productFormNotifierProvider.notifier).clearDraft(); // Ensure draft is wiped
+              if (context.mounted) {
+                 context.pop(); // Close wizard screen safely
+              }
             },
-            child: const Text('Save as Draft'),
+            child: const Text('Yes, Discard'),
           ),
         ],
       ),
     );
   }
 
+
   void _handleBack(ProductFormState state, ProductFormNotifier notifier) {
     if (state.currentStep > 0) {
       notifier.setCurrentStep(state.currentStep - 1);
     } else {
-      _showDraftExitDialog(notifier);
+      _showExitConfirmationDialog();
     }
   }
 
-  String? _validateStep(int step, ProductFormState state, ProductFormNotifier notifier) {
+String? _validateStep(int step, ProductFormState state, ProductFormNotifier notifier) {
     switch (step) {
       case 0:
         if (state.selectedCategory == null) {
           return 'Please select a category to continue';
         }
         break;
+
       case 1:
+        // Step 1: name, price, stock only
         final name = notifier.controllers['name']?.text.trim() ?? '';
-        if (name.isEmpty) {
-          return 'Product name is required';
+        if (name.isEmpty) return 'Product Name is required';
+
+        final priceText = notifier.controllers['price']?.text.trim() ?? '';
+        if (priceText.isEmpty) return 'Selling Price is required';
+        final price = double.tryParse(priceText);
+        if (price == null || price <= 0) return 'Please enter a valid Selling Price greater than 0';
+
+        final qtyText = notifier.controllers['initialQty']?.text.trim() ?? '';
+        if (qtyText.isNotEmpty) {
+          final qty = double.tryParse(qtyText);
+          if (qty == null || qty < 0) return 'Current Stock cannot be negative';
         }
         break;
+
       case 2:
-        final priceText = notifier.controllers['price']?.text.trim() ?? '';
-        if (priceText.isEmpty) {
-          return 'Selling price is required';
-        }
-        final price = double.tryParse(priceText);
-        if (price == null || price <= 0) {
-          return 'Please enter a valid selling price greater than 0';
-        }
-        
+        // Step 2: MRP check + per-category field flag validation (NOT shop-type-level)
         final mrpText = notifier.controllers['mrp']?.text.trim() ?? '';
         if (mrpText.isNotEmpty) {
+          final priceText = notifier.controllers['price']?.text.trim() ?? '';
+          final price = double.tryParse(priceText) ?? 0;
           final mrp = double.tryParse(mrpText);
           if (mrp == null || mrp < price) {
-            return 'MRP must be greater than or equal to the selling price';
+            return 'MRP must be greater than or equal to the Selling Price';
           }
         }
-        break;
-      case 3:
-        if (state.isService) {
-          final durationText = notifier.controllers['serviceDuration']?.text.trim() ?? '';
-          if (durationText.isEmpty) {
-            return 'Service duration is required';
+
+        final category = state.selectedCategory;
+        if (category != null) {
+          final fields = category.productFields;
+
+          if (fields.hasBatchNumber) {
+            final batch = notifier.controllers['batchNumber']?.text.trim() ?? '';
+            if (batch.isEmpty) return 'Batch Number is required for this item';
           }
-          final duration = int.tryParse(durationText);
-          if (duration == null || duration <= 0) {
-            return 'Please enter a valid service duration in minutes';
+
+          if (fields.hasExpiryDate && state.expiryDate == null) {
+            return 'Expiry Date is required for this item';
           }
-          
-          final commissionText = notifier.controllers['staffCommission']?.text.trim() ?? '';
-          if (commissionText.isNotEmpty) {
-            final commission = double.tryParse(commissionText);
-            if (commission == null || commission < 0 || commission > 100) {
-              return 'Staff commission must be between 0% and 100%';
+
+          if (fields.hasImei) {
+            final imei = notifier.controllers['imei']?.text.trim() ?? '';
+            if (imei.isEmpty) return 'IMEI is required';
+            if (imei.length != 15 || int.tryParse(imei) == null) {
+              return 'IMEI must be a valid 15-digit number';
             }
           }
-        } else {
-          final qtyText = notifier.controllers['initialQty']?.text.trim() ?? '';
-          if (qtyText.isEmpty) {
-            return 'Stock quantity is required';
+
+          if (fields.hasIsbn) {
+            final isbn = notifier.controllers['isbn']?.text.trim() ?? '';
+            if (isbn.isEmpty) return 'ISBN is required for this item';
+            if (isbn.length != 13 || int.tryParse(isbn) == null) {
+              return 'ISBN must be a valid 13-digit number';
+            }
           }
-          final qty = double.tryParse(qtyText);
-          if (qty == null || qty < 0) {
-            return 'Stock quantity cannot be negative';
+
+          // Variant fields only validated when NOT going to the variant matrix step
+          if (fields.template != ProductTemplate.variantMatrix) {
+            if (fields.hasSizeVariant) {
+              final size = notifier.controllers['size']?.text.trim() ?? '';
+              if (size.isEmpty) return 'Size is required for this item';
+            }
+            if (fields.hasColorVariant) {
+              final color = notifier.controllers['color']?.text.trim() ?? '';
+              if (color.isEmpty) return 'Color is required for this item';
+            }
           }
         }
         break;
-      case 4:
-        // Variants validation
+
+      case 3:
+        // Variants step — validation handled inside VariantsStep
         break;
     }
     return null;
@@ -240,13 +271,6 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
       );
       return;
     }
-    
-    // Auto-expand advanced options on pricing step instead of proceeding immediately
-    // so that the user is reminded to fill them in if they need to.
-    if (state.currentStep == 2 && !state.showAdvancedPricing) {
-      notifier.setAdvancedPricing(true);
-      return; // Do not advance step yet
-    }
 
     notifier.setCurrentStep(state.currentStep + 1);
   }
@@ -259,12 +283,11 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
   }
 
   /// Ordered list of step widgets for the current category.
-  List<Widget> _stepWidgets(ProductFormState state) {
+  List<Widget> _stepWidgets(ProductFormState state, ProductFormNotifier notifier) {
     return [
       const CategoryStep(),
-      const InfoStep(),
-      const PricingStep(),
-      const StockStep(),
+      InfoStep(onSave: () => _handleSave(notifier)),
+      DetailsStep(onSave: () => _handleSave(notifier)),
       if (_hasVariantStep(state)) const VariantsStep(),
     ];
   }
@@ -274,7 +297,7 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
     final state = ref.watch(productFormNotifierProvider);
     final notifier = ref.read(productFormNotifierProvider.notifier);
 
-    final steps = _stepWidgets(state);
+    final steps = _stepWidgets(state, notifier);
     final stepCount = steps.length;
     // Guard against a stale step index after the category (and thus the step
     // list) changed — e.g. switching from a variant category to a simple one.

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -28,6 +29,7 @@ class OnboardingState {
   final bool isCompleted;
   /// Phone number entered during OTP auth (screen 7). Carried forward to Basic Details.
   final String? pendingPhone;
+  final bool hasSelectedShopType;
 
   OnboardingState({
     this.language = 'en',
@@ -37,6 +39,7 @@ class OnboardingState {
     this.shopDetails,
     this.isCompleted = false,
     this.pendingPhone,
+    this.hasSelectedShopType = false,
   });
 
   OnboardingState copyWith({
@@ -47,6 +50,7 @@ class OnboardingState {
     Object? shopDetails = _sentinel,
     bool? isCompleted,
     Object? pendingPhone = _sentinel,
+    bool? hasSelectedShopType,
   }) {
     return OnboardingState(
       language: language ?? this.language,
@@ -56,35 +60,79 @@ class OnboardingState {
       shopDetails: shopDetails == _sentinel ? this.shopDetails : shopDetails as ShopDetails?,
       isCompleted: isCompleted ?? this.isCompleted,
       pendingPhone: pendingPhone == _sentinel ? this.pendingPhone : pendingPhone as String?,
+      hasSelectedShopType: hasSelectedShopType ?? this.hasSelectedShopType,
     );
   }
 
   static const _sentinel = Object();
 }
 
-class OnboardingNotifier extends StateNotifier<OnboardingState> {
-  final SharedPreferences? _prefs;
-  final AuthService _authService;
-  final RevenueCatService _revenueCatService;
-  final OwnerRepository _ownerRepository;
-  final CategoryRepository _categoryRepository;
-  final ShopCatalogService _catalogService;
+class OnboardingNotifier extends Notifier<OnboardingState> {
+  SharedPreferences get _prefs => ref.read(sharedPreferencesProvider);
+  AuthService get _authService => ref.read(authServiceProvider);
+  RevenueCatService get _revenueCatService => RevenueCatService.instance;
+  OwnerRepository get _ownerRepository => ref.read(ownerRepositoryProvider);
+  CategoryRepository get _categoryRepository => ref.read(categoryRepositoryProvider);
+  ShopCatalogService get _catalogService => ref.read(shopCatalogServiceProvider);
 
-  OnboardingNotifier(
-    this._prefs,
-    this._authService,
-    this._revenueCatService,
-    this._ownerRepository,
-    this._categoryRepository,
-    this._catalogService,
-  ) : super(OnboardingState()) {
-    if (_prefs != null) _loadOnboarding();
+  @override
+  OnboardingState build() {
+
+    Future.microtask(_loadOnboarding);
+
+    final sub = _authService.authStateChanges.listen((user) {
+      if (user != null) {
+        final isCompleted = _prefs.getBool('onboarding_completed') ?? false;
+        if (!isCompleted) _checkExistingShopAndComplete(user.uid);
+      } else {
+        resetOnboarding();
+      }
+    });
+    ref.onDispose(sub.cancel);
+
+    return OnboardingState();
+  }
+
+  Future<bool> _checkExistingShopAndComplete(String uid) async {
+    try {
+      final ownerDetails = await _ownerRepository.getOwnerDetails();
+      if (ownerDetails != null &&
+          ownerDetails.containsKey('storeName') &&
+          (ownerDetails['storeName'] as String).isNotEmpty) {
+        debugPrint('Onboarding: Existing shop details found on Firestore. Restoring...');
+        final shopDetails = ShopDetails.fromMap(ownerDetails);
+
+        await _prefs.setBool('onboarding_completed', true);
+
+        // Seed categories
+        try {
+          await _categoryRepository.seedFromShopType(shopDetails.shopType);
+        } catch (e) {
+          debugPrint('Failed to seed categories on auto-complete: $e');
+        }
+
+        // Sync catalog
+        try {
+          await _catalogService.syncCatalog(shopDetails.shopType);
+        } catch (e) {
+          debugPrint('Failed to sync catalog on auto-complete: $e');
+        }
+
+        state = state.copyWith(
+          isCompleted: true,
+          shopDetails: shopDetails,
+        );
+        return true;
+      }
+    } catch (e) {
+      debugPrint('Failed to check existing shop: $e');
+    }
+    return false;
   }
 
   User? get currentUser => _authService.currentUser;
 
   void _loadOnboarding() {
-    if (_prefs == null) return;
     final isCompleted = _prefs.getBool('onboarding_completed') ?? false;
     final language = _prefs.getString('language') ?? 'en';
     if (isCompleted) {
@@ -95,7 +143,7 @@ class OnboardingNotifier extends StateNotifier<OnboardingState> {
   }
 
   Future<void> setLanguage(String language) async {
-    if (_prefs != null) await _prefs.setString('language', language);
+    await _prefs.setString('language', language);
     state = state.copyWith(language: language);
   }
 
@@ -128,11 +176,14 @@ class OnboardingNotifier extends StateNotifier<OnboardingState> {
     String? gstNumber,
     ShopType? shopType,
     String? otherDetails,
+    bool? hasSelectedShopType,
+    String? referralCode,
   }) {
     if (state.shopDetails == null) {
       // If no details exist, we create a temporary one with default values for missing required fields
       // This is safe because the flow ensures all required fields are filled by the end.
       state = state.copyWith(
+        hasSelectedShopType: hasSelectedShopType ?? state.hasSelectedShopType,
         shopDetails: ShopDetails(
           shopName: shopName ?? '',
           ownerName: ownerName ?? '',
@@ -143,6 +194,7 @@ class OnboardingNotifier extends StateNotifier<OnboardingState> {
           otherDetails: otherDetails,
           productCategories: ShopTypeConfig.getConfig(shopType ?? ShopType.other).defaultCategories,
           features: ShopTypeConfig.getConfig(shopType ?? ShopType.other).features.copy(),
+          referralCode: referralCode,
         ),
       );
     } else {
@@ -159,6 +211,7 @@ class OnboardingNotifier extends StateNotifier<OnboardingState> {
       }
 
       state = state.copyWith(
+        hasSelectedShopType: hasSelectedShopType ?? state.hasSelectedShopType,
         shopDetails: state.shopDetails!.copyWith(
           shopName: shopName,
           ownerName: ownerName,
@@ -169,6 +222,7 @@ class OnboardingNotifier extends StateNotifier<OnboardingState> {
           otherDetails: otherDetails,
           features: updatedFeatures,
           productCategories: updatedCategories,
+          referralCode: referralCode ?? state.shopDetails!.referralCode,
         ),
       );
     }
@@ -199,8 +253,9 @@ class OnboardingNotifier extends StateNotifier<OnboardingState> {
           await _authService.updateDisplayName(user.displayName!);
         }
         await _handleRevenueCatLogin(user.uid);
-        if (complete) {
-          if (_prefs != null) await _prefs.setBool('onboarding_completed', true);
+        final shopExists = await _checkExistingShopAndComplete(user.uid);
+        if (!shopExists && complete) {
+          await _prefs.setBool('onboarding_completed', true);
           state = state.copyWith(isCompleted: true);
         }
       }
@@ -218,8 +273,9 @@ class OnboardingNotifier extends StateNotifier<OnboardingState> {
           await _authService.updateDisplayName(user.displayName!);
         }
         await _handleRevenueCatLogin(user.uid);
-        if (complete) {
-          if (_prefs != null) await _prefs.setBool('onboarding_completed', true);
+        final shopExists = await _checkExistingShopAndComplete(user.uid);
+        if (!shopExists && complete) {
+          await _prefs.setBool('onboarding_completed', true);
           state = state.copyWith(isCompleted: true);
         }
       }
@@ -254,10 +310,8 @@ class OnboardingNotifier extends StateNotifier<OnboardingState> {
       );
     }
 
-    if (_prefs != null) {
-      await _prefs.setBool('onboarding_completed', true);
-      await _prefs.setString('language', state.language);
-    }
+    await _prefs.setBool('onboarding_completed', true);
+    await _prefs.setString('language', state.language);
 
     // Save shop details to Firestore — rethrow as OnboardingException so the
     // UI can show a retry prompt instead of silently losing data.
@@ -295,7 +349,7 @@ class OnboardingNotifier extends StateNotifier<OnboardingState> {
   }
 
   Future<void> resetOnboarding() async {
-    if (_prefs != null) await _prefs.setBool('onboarding_completed', false);
+    await _prefs.setBool('onboarding_completed', false);
     state = OnboardingState(language: state.language);
   }
 
@@ -309,7 +363,9 @@ class OnboardingNotifier extends StateNotifier<OnboardingState> {
   Future<bool> verifyOtp(String verificationId, String otp) async {
     final credential = await _authService.verifyOtp(verificationId, otp);
     if (credential?.user != null) {
-      await _handleRevenueCatLogin(credential!.user!.uid);
+      final user = credential!.user!;
+      await _handleRevenueCatLogin(user.uid);
+      await _checkExistingShopAndComplete(user.uid);
       return true;
     }
     return false;
@@ -318,14 +374,7 @@ class OnboardingNotifier extends StateNotifier<OnboardingState> {
 
 final categoryRepositoryProvider = Provider<CategoryRepository>((ref) => CategoryRepository());
 
-final onboardingProvider = StateNotifierProvider<OnboardingNotifier, OnboardingState>((ref) {
-  final prefs = ref.watch(sharedPreferencesProvider);
-  final authService = ref.watch(authServiceProvider);
-  final revenueCatService = RevenueCatService.instance;
-  final ownerRepository = ref.watch(ownerRepositoryProvider);
-  final categoryRepository = ref.watch(categoryRepositoryProvider);
-  final catalogService = ref.watch(shopCatalogServiceProvider);
-
-  return OnboardingNotifier(prefs, authService, revenueCatService, ownerRepository, categoryRepository, catalogService);
-});
+final onboardingProvider = NotifierProvider<OnboardingNotifier, OnboardingState>(
+  OnboardingNotifier.new,
+);
 

@@ -20,8 +20,8 @@ final syncServiceProvider = Provider<SyncService>((ref) {
   );
 });
 
-final syncStateProvider = StateNotifierProvider<SyncStateNotifier, SyncState>(
-  (ref) => SyncStateNotifier(ref.watch(syncServiceProvider)),
+final syncStateProvider = NotifierProvider<SyncStateNotifier, SyncState>(
+  SyncStateNotifier.new,
 );
 
 class SyncState {
@@ -73,10 +73,13 @@ class SyncState {
   }
 }
 
-class SyncStateNotifier extends StateNotifier<SyncState> {
-  final SyncService _syncService;
+class SyncStateNotifier extends Notifier<SyncState> {
+  SyncService get _syncService => ref.read(syncServiceProvider);
 
-  SyncStateNotifier(this._syncService) : super(const SyncState());
+  @override
+  SyncState build() {
+    return const SyncState();
+  }
 
   Future<bool> performSync() async {
     state = state.copyWith(isSyncing: true, clearError: true, clearErrorType: true);

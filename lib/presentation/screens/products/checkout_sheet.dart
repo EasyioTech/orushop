@@ -78,8 +78,7 @@ class _CheckoutSheetState extends ConsumerState<_CheckoutSheet> {
       }
       if (!mounted) return;
       Navigator.pop(context); // close sheet
-      Navigator.push(
-        context,
+      Navigator.of(context, rootNavigator: true).push(
         MaterialPageRoute(
           builder: (_) => ReceiptScreen(
             sale: success['sale'],

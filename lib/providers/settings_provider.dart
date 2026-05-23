@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'shared_prefs_provider.dart';
 
 import '../core/models/app_settings.dart';
@@ -107,4 +108,29 @@ final updateRevenueCatTestModeProvider = FutureProvider.family<void, bool>((ref,
   final settings = await ref.watch(settingsServiceProvider.future);
   await settings.setRevenueCatTestMode(enabled);
 });
+
+// ── Daily Sales Target Persistence ──────────────────────────────────────────
+class DailySalesGoalNotifier extends StateNotifier<double> {
+  final SharedPreferences _prefs;
+  static const String _key = 'daily_sales_goal_v1';
+
+  DailySalesGoalNotifier(this._prefs) : super(10000.0) {
+    _loadGoal();
+  }
+
+  void _loadGoal() {
+    state = _prefs.getDouble(_key) ?? 10000.0;
+  }
+
+  Future<void> setGoal(double value) async {
+    state = value;
+    await _prefs.setDouble(_key, value);
+  }
+}
+
+final dailySalesGoalProvider = StateNotifierProvider<DailySalesGoalNotifier, double>((ref) {
+  final prefs = ref.watch(sharedPreferencesProvider);
+  return DailySalesGoalNotifier(prefs);
+});
+
 

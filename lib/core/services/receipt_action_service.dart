@@ -11,10 +11,44 @@ import '../models/sale.dart';
 import '../models/sale_item.dart';
 import 'receipt_service.dart';
 
+const _whatsAppChannel = MethodChannel('com.orushops/whatsapp_share');
+
 class ReceiptActionService {
   final ReceiptService _receiptService;
 
   ReceiptActionService(this._receiptService);
+
+  /// Sends image directly into a WhatsApp chat via the native MainActivity channel.
+  /// Returns false if WhatsApp is not installed or the channel call fails.
+  Future<bool> _nativeShareImageToWhatsApp(String filePath, String phone, {String? message}) async {
+    try {
+      final result = await _whatsAppChannel.invokeMethod<bool>(
+        'shareImageToWhatsApp',
+        {'filePath': filePath, 'phone': phone, 'message': message},
+      );
+      return result == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Opens WhatsApp with [phone] pre-selected and [text] pre-filled (text fallback).
+  Future<bool> _isWhatsAppAvailable() =>
+      canLaunchUrl(Uri.parse('whatsapp://send?phone=1'));
+
+  /// Opens WhatsApp with [phone] pre-selected and [text] pre-filled.
+  Future<void> _deepLinkWhatsApp(String phone, String text) async {
+    final encoded = Uri.encodeComponent(text);
+    final direct = Uri.parse('whatsapp://send?phone=$phone&text=$encoded');
+    if (await canLaunchUrl(direct)) {
+      await launchUrl(direct, mode: LaunchMode.externalApplication);
+      return;
+    }
+    final web = Uri.parse('https://wa.me/$phone?text=$encoded');
+    if (await canLaunchUrl(web)) {
+      await launchUrl(web, mode: LaunchMode.externalApplication);
+    }
+  }
 
   Future<void> saveReceiptAsPdf(
     Sale sale,
@@ -70,14 +104,27 @@ class ReceiptActionService {
   Future<void> shareReceiptImage(
     Sale sale,
     Uint8List receiptImageBytes,
+    {String? customerPhone}
   ) async {
     try {
       final tempDir = await getTemporaryDirectory();
-      final file = File('${tempDir.path}/Receipt_${sale.id}.jpg');
+      // Use .png extension to match actual PNG bytes from toImage()
+      final file = File('${tempDir.path}/Receipt_${sale.id}.png');
       await file.writeAsBytes(receiptImageBytes);
-      
+
+      if (customerPhone != null && customerPhone.isNotEmpty) {
+        String cleanPhone = customerPhone.replaceAll(RegExp(r'\D'), '');
+        if (cleanPhone.startsWith('0')) cleanPhone = cleanPhone.substring(1);
+        if (cleanPhone.length == 10) cleanPhone = '91$cleanPhone';
+
+        if (cleanPhone.isNotEmpty && await _isWhatsAppAvailable()) {
+          if (await _nativeShareImageToWhatsApp(file.path, cleanPhone)) return;
+        }
+      }
+
+
       await Share.shareXFiles(
-        [XFile(file.path, mimeType: 'image/jpeg')],
+        [XFile(file.path, mimeType: 'image/png')],
       );
     } catch (e) {
       if (kDebugMode) print('Share Image error: $e');
@@ -85,43 +132,44 @@ class ReceiptActionService {
     }
   }
 
+  /// Sends the receipt image directly to the customer's WhatsApp chat.
   Future<void> shareToWhatsApp({
     required Sale sale,
+    required List<SaleItem> items,
     required String storeName,
-    required Uint8List receiptImageBytes,
     String? customerPhone,
+    Uint8List? receiptImageBytes,
   }) async {
     try {
-      // Save the captured receipt image to a temp file
-      final tempDir = await getTemporaryDirectory();
-      final imageFile = File('${tempDir.path}/Receipt_${sale.id}.png');
-      await imageFile.writeAsBytes(receiptImageBytes);
+      final receiptText = _receiptService.generateReceiptPlain(sale, items, storeName, '₹');
 
-      // === STEP 1: Try direct WhatsApp via native platform channel (NO share sheet) ===
-      // MainActivity.kt fires ACTION_SEND to com.whatsapp.w4b or com.whatsapp directly.
-      bool sentViaChannel = false;
-      if (Platform.isAndroid) {
-        try {
-          const channel = MethodChannel('com.orushops/whatsapp_share');
-          final bool? result = await channel.invokeMethod<bool>(
-            'shareImageToWhatsApp',
-            {
-              'filePath': imageFile.path,
-              'phone': customerPhone,
-            },
-          );
-          sentViaChannel = result == true;
-        } catch (e) {
-          if (kDebugMode) print('Platform channel error: $e');
+      if (customerPhone != null && customerPhone.isNotEmpty) {
+        String cleanPhone = customerPhone.replaceAll(RegExp(r'\D'), '');
+        if (cleanPhone.startsWith('0')) cleanPhone = cleanPhone.substring(1);
+        if (cleanPhone.length == 10) cleanPhone = '91$cleanPhone';
+
+        if (cleanPhone.isNotEmpty) {
+          if (receiptImageBytes != null) {
+            final tempDir = await getTemporaryDirectory();
+            final file = File('${tempDir.path}/Receipt_${sale.id}.png');
+            await file.writeAsBytes(receiptImageBytes);
+            final whatsappMsg = 'Here\'s your receipt from $storeName 🧾\nThank you for shopping with us!';
+            if (await _isWhatsAppAvailable() && await _nativeShareImageToWhatsApp(file.path, cleanPhone, message: whatsappMsg)) return;
+          }
+          // Deep link: opens WhatsApp chat with phone + text pre-filled
+          await _deepLinkWhatsApp(cleanPhone, receiptText);
+          return;
         }
       }
 
-      if (!sentViaChannel) {
-        // === STEP 2: Fallback — share sheet with image (iOS or channel failed) ===
-        // Removed subject/text to ensure WhatsApp treats it purely as an image
-        await Share.shareXFiles(
-          [XFile(imageFile.path, mimeType: 'image/png')],
-        );
+      // No phone number or WhatsApp not installed — system share sheet with text
+      if (receiptImageBytes != null) {
+         final tempDir = await getTemporaryDirectory();
+         final file = File('${tempDir.path}/Receipt_${sale.id}.png');
+         await file.writeAsBytes(receiptImageBytes);
+         await Share.shareXFiles([XFile(file.path, mimeType: 'image/png')]);
+      } else {
+         await Share.share(receiptText);
       }
     } catch (e) {
       if (kDebugMode) print('WhatsApp share error: $e');

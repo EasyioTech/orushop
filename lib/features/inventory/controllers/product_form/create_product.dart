@@ -24,11 +24,14 @@ extension ProductFormCreate on ProductFormNotifier {
       }
 
       final now = DateTime.now();
+      final sku = state.sku.trim().isNotEmpty
+          ? state.sku.trim()
+          : 'SKU-${now.millisecondsSinceEpoch}';
       final product = Product(
         id: 0,
         template: template,
         name: state.name,
-        sku: state.sku,
+        sku: sku,
         price: state.sellingPrice,
         quantity: state.initialQuantity,
         category: state.selectedCategory!.name,
@@ -55,8 +58,8 @@ extension ProductFormCreate on ProductFormNotifier {
         reorderLevel: state.reorderLevel,
         packagingUnit: state.packagingUnit,
         conversionFactor: state.conversionFactor,
-        serviceDuration: state.serviceDuration,
-        staffCommission: state.staffCommission,
+        serviceDuration: null,
+        staffCommission: null,
         expiryDate: state.expiryDate?.toIso8601String(),
         batchNumber: state.batchNumber,
         isService: state.isService,

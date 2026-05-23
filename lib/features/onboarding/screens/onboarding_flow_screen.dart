@@ -33,7 +33,13 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
     setState(() => _isLoading = true);
     try {
       await authMethod();
-      if (mounted) _pageController.jumpToPage(4);
+      if (!mounted) return;
+      final onboardingState = ref.read(onboardingProvider);
+      if (onboardingState.isCompleted) {
+        debugPrint('Social auth complete: Existing shop details restored. Redirecting to home.');
+      } else {
+        _pageController.jumpToPage(4);
+      }
     } catch (e) {
       String message = e.toString();
       if (message.contains('email-already-in-use') || message.contains('already in use')) {
@@ -148,7 +154,14 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
                 OnboardingScreen8(
                   verificationId: _otpVerificationId ?? '',
                   phone: _otpPhone ?? '',
-                  onNext: () => _pageController.jumpToPage(4),
+                  onNext: () {
+                    final onboardingState = ref.read(onboardingProvider);
+                    if (onboardingState.isCompleted) {
+                      debugPrint('OTP verify complete: Existing shop details restored. Redirecting to home.');
+                    } else {
+                      _pageController.jumpToPage(4);
+                    }
+                  },
                   onBack: _goBack,
                 ),
                 // Shop Setup Path (Indices 4, 5)

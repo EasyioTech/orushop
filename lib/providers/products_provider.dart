@@ -17,12 +17,16 @@ final productsProvider = FutureProvider<List<Product>>((ref) async {
   final batchRepo = ref.watch(batchRepositoryProvider);
   final products = await repository.getAll();
 
-  // Sync batches for any products with mismatched quantities
-  for (final product in products) {
-    if (product.displayQuantity != (product.liveBatchQuantity ?? 0)) {
-      await batchRepo.syncBatchesForProduct(product.id, product.quantity);
+  // Fire-and-forget batch sync — never block or crash the provider
+  Future(() async {
+    for (final product in products) {
+      if (product.displayQuantity != (product.liveBatchQuantity ?? 0)) {
+        try {
+          await batchRepo.syncBatchesForProduct(product.id, product.quantity);
+        } catch (_) {}
+      }
     }
-  }
+  });
 
   return products;
 });
@@ -57,15 +61,17 @@ final productByIdProvider =
   return repository.getById(productId);
 });
 
-class PaginationNotifier extends StateNotifier<List<Product>> {
-  final ProductRepository _repository;
+class PaginationNotifier extends Notifier<List<Product>> {
+  ProductRepository get _repository => ref.read(productRepositoryProvider);
   static const int pageSize = 500;
   int _currentPage = 0;
   bool _hasMore = true;
   bool _isLoading = false;
 
-  PaginationNotifier(this._repository) : super([]) {
-    loadMore();
+  @override
+  List<Product> build() {
+    Future.microtask(loadMore);
+    return [];
   }
 
   Future<void> loadMore() async {
@@ -109,10 +115,9 @@ class PaginationNotifier extends StateNotifier<List<Product>> {
   }
 }
 
-final paginatedProductsProvider = StateNotifierProvider<PaginationNotifier, List<Product>>((ref) {
-  final repository = ref.watch(productRepositoryProvider);
-  return PaginationNotifier(repository);
-});
+final paginatedProductsProvider = NotifierProvider<PaginationNotifier, List<Product>>(
+  PaginationNotifier.new,
+);
 
 final productSearchQueryProvider = StateProvider<String>((ref) => '');
 final productCategoryProvider = StateProvider<String>((ref) => 'All');

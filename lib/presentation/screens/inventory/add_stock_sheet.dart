@@ -332,8 +332,7 @@ class _AddStockBottomSheetState extends ConsumerState<_AddStockBottomSheet> {
       HapticFeedback.mediumImpact();
       if (mounted) {
         ref.invalidate(productsProvider);
-        ref.invalidate(lowStockProductsProvider);
-        ref.invalidate(expiringBatchesProvider);
+        ref.read(analyticsRevisionProvider.notifier).state++;
         Navigator.pop(context);
       }
     } catch (e) {

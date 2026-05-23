@@ -17,6 +17,7 @@ extension _CheckoutCustomerDialog on _CheckoutSheetState {
 
     showModalBottomSheet(
       context: context,
+      useRootNavigator: true,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => StatefulBuilder(
@@ -81,7 +82,7 @@ extension _CheckoutCustomerDialog on _CheckoutSheetState {
                     ),
                   ),
                   IconButton(
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () => Navigator.pop(ctx),
                     icon: Container(
                       padding: const EdgeInsets.all(4),
                       decoration: BoxDecoration(
@@ -296,7 +297,7 @@ extension _CheckoutCustomerDialog on _CheckoutSheetState {
                         _customerPhone = phone;
                         _customerName = name.isEmpty ? null : name;
                       });
-                      Navigator.pop(context);
+                      Navigator.pop(ctx);
                       onSaved();
                     },
                     style: FilledButton.styleFrom(
